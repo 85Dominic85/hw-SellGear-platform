@@ -26,3 +26,6 @@ data/
 # Secrets
 secrets/
 service-account.json
+
+# Claude Code worktrees
+.claude/worktrees/
