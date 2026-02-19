@@ -1,0 +1,27 @@
+# Node
+node_modules/
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.local.example
+
+# Supabase
+.supabase/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+.next/
+dist/
+
+# Data (CSVs para migración histórica — pueden tener datos sensibles)
+data/
+*.csv
+
+# Secrets
+secrets/
+service-account.json
