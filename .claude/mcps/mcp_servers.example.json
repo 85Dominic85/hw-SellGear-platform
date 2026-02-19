@@ -1,0 +1,31 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--read-only",
+        "--project-ref=<project-ref>"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "<personal-access-token>"
+      }
+    },
+    "google-sheets": {
+      "command": "node",
+      "args": ["./scripts/mcp/google-sheets-server.js"],
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "./secrets/google-service-account.json",
+        "SHEETS_SPREADSHEET_ID": "REPLACE_ME"
+      }
+    },
+    "slack": {
+      "command": "node",
+      "args": ["./scripts/mcp/slack-server.js"],
+      "env": {
+        "SLACK_WEBHOOK_URL": "REPLACE_ME"
+      }
+    }
+  }
+}
