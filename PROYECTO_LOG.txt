@@ -1,7 +1,7 @@
 ================================================================================
   PROYECTO LOG — hw-SellGear-platform (MainOperation Platform)
   Creado: 2026-02-20
-  Última actualización: 2026-02-20 (sesion 3)
+  Última actualización: 2026-02-20 (sesion 4)
 ================================================================================
 
 --------------------------------------------------------------------------------
@@ -71,7 +71,7 @@ ESTRUCTURA DEL REPO (monorepo ligero):
     - bank_receipt_url
     - ae_ref (referencia ejecutivo de cuentas)
     - shipping_address
-    - status (enum controlado)
+    - status (enum: nuevo, pendiente, solicitado_a_proveedor, pagado, falta_informacion, bloqueado)
     - notes
     - phone, contact_email
     - hubspot_ref, invoice_ref
@@ -87,7 +87,29 @@ ESTRUCTURA DEL REPO (monorepo ligero):
     - order_id, from_status, to_status
     - changed_by, changed_at, comment
 
+  TABLA: comments
+    - order_id (FK → orders)
+    - author_id (FK → user_profiles)
+    - body (texto)
+    - created_at, updated_at
+
+  ROLES (enum user_role): viewer, creator, hardware, manager, admin
+    - viewer: solo lectura (default para nuevos registros)
+    - creator: puede crear pedidos y modificar los suyos en ciertos estados
+    - hardware: acceso completo a pedidos
+    - manager: lectura completa
+    - admin: acceso total (incluyendo panel de administracion)
+
+  ESTADOS (enum order_status): nuevo, pendiente, solicitado_a_proveedor, pagado,
+    falta_informacion, bloqueado
+    - Transiciones libres entre todos los estados
+    - Auto-transicion: nuevo → pendiente al visualizar la ficha del pedido
+
   POLÍTICAS RLS: habilitadas para control de acceso por rol.
+    - admin/hardware: ALL en orders, order_items, status_history, comments
+    - manager/viewer: SELECT en todas las tablas
+    - creator: SELECT/INSERT/UPDATE limitado a pedidos propios
+    - viewer: SELECT en todas las tablas (sin INSERT/UPDATE/DELETE)
   SEED: estados predefinidos cargados vía migración.
 
 MIGRACIONES EXISTENTES:
@@ -98,6 +120,11 @@ MIGRACIONES EXISTENTES:
   - admin_rls_policies                      → RLS full access para admins
   - add_supplier_to_orders                  → Campo supplier en orders
   - add_invoiced_to_orders                  → Campo invoiced (boolean) en orders
+  - add_notifications_cleared_at            → Campo notifications_cleared_at en user_profiles
+  - update_order_statuses                   → Nuevo enum order_status con 6 estados
+  - recreate_status_dependent_policies      → Recrea politicas RLS tras cambio de enum
+  - add_viewer_role_enum                    → Añade 'viewer' a enum user_role
+  - viewer_role_default_and_policies        → Default viewer + RLS SELECT para viewers
 
 --------------------------------------------------------------------------------
 4. INTEGRACIONES PLANIFICADAS
@@ -134,15 +161,40 @@ MCPs configurados (.mcp.json):
        - Boton "Limpiar" para resetear notificaciones por usuario
        - Basado en notifications_cleared_at (persistente por usuario)
     ✅ Detalle de pedido (/orders/[id])
-       - Lista de ítems (ItemsList)
-       - Comentarios (CommentsList)
-       - Cambio de estado con nota (StatusChangePanel)
-       - Selector de proveedor (SupplierSelect)
-       - Boton notificacion a Slack (SlackNotifyButton)
-       - Checkbox facturado (InvoiceCheckbox)
+       - Lista de ítems (ItemsList, readOnly para viewers)
+       - Comentarios (CommentsList, readOnly para viewers)
+       - Cambio de estado con nota (StatusChangePanel, oculto para viewers)
+       - Selector de proveedor (SupplierSelect, oculto para viewers)
+       - Boton notificacion a Slack (SlackNotifyButton, oculto para viewers)
+       - Checkbox facturado (InvoiceCheckbox, readOnly para viewers)
        - Boton eliminar pedido (DeleteOrderButton, solo admins)
-    ✅ Formulario nuevo pedido (/orders/new)
+       - Auto-transicion: nuevo → pendiente al visualizar (AutoMarkSeen)
+    ✅ Formulario nuevo pedido (/orders/new, oculto para viewers)
     ✅ Sidebar con categorías de pedidos por tipo (SidebarNav)
+
+  SISTEMA DE ESTADOS:
+    ✅ 6 estados: nuevo, pendiente, solicitado_a_proveedor, pagado,
+       falta_informacion, bloqueado
+    ✅ Transiciones libres entre todos los estados (selector completo)
+    ✅ Auto-transicion nuevo → pendiente al abrir ficha del pedido
+       - Componente AutoMarkSeen (client) llama a /api/orders/[id]/mark-seen
+       - Solo dispara si status === 'nuevo', registra en status_history
+    ✅ Historial de estados con trazabilidad completa
+
+  ROLES Y PERMISOS:
+    ✅ 5 roles: viewer, creator, hardware, manager, admin
+    ✅ Viewer (nuevo): solo lectura, default para nuevos registros
+       - Ve todos los pedidos, items, comentarios, historial
+       - No puede crear/editar/eliminar nada
+       - Sidebar sin "Nuevo pedido", detalle sin sidebar de acciones
+       - Formularios de comentarios/items ocultos
+       - Checkbox factura en modo texto (sin interaccion)
+       - API bloquea cambios de estado con 403
+       - RLS: solo SELECT en todas las tablas
+    ✅ Creator: crea pedidos y modifica los suyos en estados nuevo/falta_informacion
+    ✅ Hardware: acceso completo a pedidos
+    ✅ Manager: lectura completa de todos los pedidos
+    ✅ Admin: acceso total incluyendo panel de administracion
 
   ADMIN:
     ✅ Panel de administracion de usuarios (/admin/users)
@@ -150,13 +202,14 @@ MCPs configurados (.mcp.json):
     ✅ Edicion de rol, nombre y departamento
     ✅ Eliminar usuarios (borra de auth.users + cascadea a perfil)
     ✅ Reset de contraseña por email
-    ✅ Roles: creator, hardware, manager, admin
+    ✅ Roles disponibles: viewer, creator, hardware, manager, admin
 
   API ROUTES:
-    ✅ PATCH  /api/orders/[id]/status       → Cambio de estado
+    ✅ POST   /api/orders/[id]/status       → Cambio de estado (bloquea viewers)
+    ✅ POST   /api/orders/[id]/mark-seen    → Auto-transicion nuevo → pendiente
     ✅ DELETE /api/orders/[id]              → Eliminar pedido (solo admin)
     ✅ POST   /api/orders/[id]/notify-slack → Notificacion a Slack
-    ✅ POST   /api/admin/users              → Crear usuario (admin client)
+    ✅ POST   /api/admin/users              → Crear usuario (default: viewer)
     ✅ GET/PUT/DELETE /api/admin/users/[id] → Gestion de usuarios
     ✅ POST   /api/admin/users/[id]/reset-password → Reset contraseña
     ✅ POST   /api/notifications/clear      → Limpiar badges del usuario
@@ -345,6 +398,84 @@ MCPs configurados (.mcp.json):
   Estado general: Panel admin completo (crear/editar/eliminar usuarios),
   eliminacion de pedidos, y sistema de notificaciones con limpieza por usuario.
 
+--- SESIÓN 2026-02-20 (sesión 4 — nuevos estados, auto-transición, rol viewer) ---
+
+  NUEVO SISTEMA DE ESTADOS:
+    - Migrados los estados del pedido a 6 valores: nuevo, pendiente,
+      solicitado_a_proveedor, pagado, falta_informacion, bloqueado.
+    - Migracion compleja: requirio 5 intentos por dependencias de RLS policies
+      y triggers que referenciaban el enum antiguo.
+      - v1-v2: Error "cannot alter type of a column used in a policy definition"
+      - v3: Error con trigger orders_status_history (necesitaba CASCADE)
+      - v4: Error de PK duplicada en order_status_labels por mapeo many-to-one
+      - v5: Exito — limpieza previa de labels, drop policies/triggers, migracion
+    - Transiciones libres: cualquier estado puede ir a cualquier otro.
+    - Actualizados: types/database.ts, lib/utils.ts (STATUS_LABELS, STATUS_COLORS,
+      STATUS_TRANSITIONS), StatusChangePanel, notify-slack, tests.
+
+  AUTO-TRANSICIÓN NUEVO → PENDIENTE:
+    - Cuando un usuario abre la ficha de un pedido con status "nuevo",
+      automaticamente pasa a "pendiente" sin intervencion manual.
+    - Componente AutoMarkSeen.tsx (client, invisible): llama POST /api/orders/[id]/mark-seen
+      al montar si currentStatus === 'nuevo'. Si cambia, hace router.refresh().
+    - API mark-seen: verifica status actual, actualiza a pendiente, registra en
+      status_history con comment "Marcado como pendiente al visualizar la ficha".
+    - Esto permite saber que pedidos han sido vistos (ya no estan en "nuevo").
+
+  ROL VIEWER (SOLO LECTURA):
+    - Nuevo rol para AE/AM y resto de la empresa que solicitan pedidos.
+    - Es el default para todos los nuevos registros (antes era 'creator').
+    - Cambios en base de datos:
+      - ALTER TYPE user_role ADD VALUE 'viewer'
+      - ALTER TABLE user_profiles ALTER COLUMN role SET DEFAULT 'viewer'
+      - 5 politicas RLS de SELECT en: orders, order_items, status_history,
+        comments, user_profiles
+    - Cambios en API:
+      - status/route.ts: viewers reciben 403 al intentar cambiar estado
+      - admin/users/route.ts: default al crear usuario cambiado a 'viewer'
+      - VALID_ROLES actualizado en ambos endpoints admin
+    - Cambios en UI (12 archivos modificados):
+      - SidebarNav: oculta "Nuevo pedido" para viewers
+      - orders/page.tsx: oculta boton "Nuevo pedido" para viewers
+      - orders/[id]/page.tsx: detecta isViewer, oculta sidebar completa de
+        acciones (StatusChangePanel, SupplierSelect, SlackNotifyButton, Delete)
+      - ItemsList: prop readOnly — oculta botones añadir/eliminar articulos
+      - CommentsList: prop readOnly — oculta formulario de comentarios
+      - InvoiceCheckbox: prop readOnly — muestra texto en vez de checkbox
+      - admin/users/page.tsx: viewer en ROLE_LABELS (gris) y default del modal
+
+  ARCHIVOS CLAVE MODIFICADOS:
+    - apps/web/types/database.ts (UserRole con 'viewer')
+    - apps/web/lib/utils.ts (STATUS_LABELS, STATUS_COLORS, STATUS_TRANSITIONS)
+    - apps/web/app/(dashboard)/orders/[id]/page.tsx (isViewer, AutoMarkSeen)
+    - apps/web/app/(dashboard)/orders/page.tsx (ocultar nuevo pedido)
+    - apps/web/app/(dashboard)/admin/users/page.tsx (viewer labels/colors/default)
+    - apps/web/app/api/orders/[id]/status/route.ts (bloqueo viewer)
+    - apps/web/app/api/orders/[id]/mark-seen/route.ts (NUEVO)
+    - apps/web/app/api/admin/users/route.ts (viewer en VALID_ROLES, default)
+    - apps/web/app/api/admin/users/[id]/route.ts (viewer en VALID_ROLES)
+    - apps/web/components/orders/AutoMarkSeen.tsx (NUEVO)
+    - apps/web/components/orders/CommentsList.tsx (readOnly prop)
+    - apps/web/components/orders/ItemsList.tsx (readOnly prop)
+    - apps/web/components/orders/InvoiceCheckbox.tsx (readOnly prop)
+    - apps/web/components/layout/SidebarNav.tsx (isViewer, ocultar nuevo pedido)
+
+  COMMITS DE ESTA SESION:
+    - af9c7f4: feat: nuevos estados de pedido y auto-transicion nuevo→pendiente
+    - 3c6e569: feat: añadir rol viewer (solo lectura) para AE/AM y resto de la empresa
+
+  MIGRACIONES APLICADAS:
+    - update_order_statuses: nuevo enum order_status con 6 estados
+    - recreate_status_dependent_policies: recrea politicas RLS
+    - add_viewer_role_enum: añade 'viewer' a user_role
+    - viewer_role_default_and_policies: default viewer + 5 RLS SELECT
+
+  TESTS: 35/35 pasando. Build exitoso sin errores.
+
+  Estado general: Sistema de estados completo con 6 valores y transiciones libres.
+  Auto-transicion nuevo→pendiente implementada. Rol viewer operativo: los AE/AM
+  pueden ver todo pero no modificar nada. Default para nuevos registros es viewer.
+
 --------------------------------------------------------------------------------
 7. PENDIENTE / BACKLOG
 --------------------------------------------------------------------------------
@@ -352,7 +483,10 @@ MCPs configurados (.mcp.json):
   COMPLETADO:
   [x] Edge Function: webhook Typeform → validacion → insercion en Supabase (v4)
   [x] Panel de administracion / gestion de usuarios (crear/editar/eliminar)
-  [x] Permisos por rol (admin, manager, hardware, creator)
+  [x] Permisos por rol (admin, manager, hardware, creator, viewer)
+  [x] Rol viewer (solo lectura) para AE/AM y resto de la empresa
+  [x] Nuevo sistema de 6 estados con transiciones libres
+  [x] Auto-transicion nuevo → pendiente al visualizar ficha
   [x] Notificacion Slack manual desde detalle de pedido
   [x] Selector de proveedor en detalle de pedido
   [x] Campo facturado (checkbox) en lista y detalle
@@ -372,6 +506,7 @@ MCPs configurados (.mcp.json):
   [ ] Login Google Workspace (OAuth con Google, restriccion a dominio empresa)
   [ ] Edicion inline de pedidos desde la vista general
   [ ] Paginacion en listado de pedidos (actualmente limite 100)
+  [ ] Proteger /orders/new con redirect server-side para viewers (ahora solo UI)
 
 --------------------------------------------------------------------------------
 8. CÓMO ARRANCAR EL PROYECTO EN LOCAL
