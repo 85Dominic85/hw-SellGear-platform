@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminUser } from '@/lib/auth'
 import type { UserRole } from '@/types/database'
 
@@ -78,7 +79,7 @@ export async function DELETE(
   }
 
   const { id } = await params
-  const { supabase, user } = auth
+  const { user } = auth
 
   // No permitir eliminarse a si mismo
   if (id === user.id) {
@@ -88,12 +89,9 @@ export async function DELETE(
     )
   }
 
-  // Eliminar perfil (cascadea desde auth.users si se usa service role,
-  // pero desde cliente normal solo eliminamos el perfil)
-  const { error } = await supabase
-    .from('user_profiles')
-    .delete()
-    .eq('id', id)
+  // Eliminar de auth.users con admin client (cascadea a user_profiles por FK)
+  const adminClient = createAdminClient()
+  const { error } = await adminClient.auth.admin.deleteUser(id)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
