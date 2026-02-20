@@ -51,7 +51,7 @@ export async function POST(
 
   // Enviar email de reset via Supabase Auth
   const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/auth/callback`,
+    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://hw-sell-gear-platform-tsm1.vercel.app'}/api/auth/callback`,
   })
 
   if (error) {
