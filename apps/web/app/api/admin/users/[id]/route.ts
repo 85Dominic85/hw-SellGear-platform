@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { isAdminUser } from '@/components/layout/SidebarNav'
+import { isAdminUser } from '@/lib/auth'
 import type { UserRole } from '@/types/database'
 
 const VALID_ROLES: UserRole[] = ['creator', 'hardware', 'manager', 'admin']

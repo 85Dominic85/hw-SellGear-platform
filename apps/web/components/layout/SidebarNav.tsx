@@ -4,12 +4,7 @@ import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import type { UserRole } from '@/types/database'
-
-/** Emails con acceso admin hardcoded (fallback si el rol aún no está asignado en BD) */
-const ADMIN_EMAILS = [
-  'jj.gallego@qamarero.com',
-  'domingo.bueno@qamarero.com',
-]
+import { isAdminUser } from '@/lib/auth'
 
 interface SidebarNavProps {
   userEmail?: string | null
@@ -115,12 +110,6 @@ const linkClass = (active: boolean) =>
       ? 'bg-white/15 text-white font-medium'
       : 'text-gray-400 hover:bg-white/10 hover:text-white'
   )
-
-export function isAdminUser(email?: string | null, role?: UserRole | null): boolean {
-  if (role === 'admin') return true
-  if (email && ADMIN_EMAILS.includes(email.toLowerCase())) return true
-  return false
-}
 
 function Badge({ count }: { count: number }) {
   if (count <= 0) return null

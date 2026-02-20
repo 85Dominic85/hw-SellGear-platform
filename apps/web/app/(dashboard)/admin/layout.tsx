@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { isAdminUser } from '@/components/layout/SidebarNav'
+import { isAdminUser } from '@/lib/auth'
 
 export default async function AdminLayout({
   children,
