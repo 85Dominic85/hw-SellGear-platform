@@ -70,9 +70,9 @@ export async function POST(
   }
 
   // 6. Role-based restriction:
-  // Creators can only change status when order is 'nuevo' or 'falta_info'
+  // Creators can only change status when order is 'nuevo' or 'falta_informacion'
   if (role === 'creator') {
-    if (currentStatus !== 'nuevo' && currentStatus !== 'falta_info') {
+    if (currentStatus !== 'nuevo' && currentStatus !== 'falta_informacion') {
       return NextResponse.json(
         {
           error: 'Solo el equipo de hardware puede cambiar el estado en este punto.',

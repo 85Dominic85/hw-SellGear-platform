@@ -7,29 +7,21 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const STATUS_LABELS: Record<OrderStatus, string> = {
-  nuevo:               'Nuevo',
-  en_revision:         'En revisión',
-  falta_info:          'Falta info',
-  aprobado:            'Aprobado',
-  pedido_a_proveedor:  'Pedido a proveedor',
-  en_transito:         'En tránsito',
-  recibido:            'Recibido',
-  preparacion:         'Preparación/Envío',
-  completado:          'Completado',
-  cancelado:           'Cancelado',
+  nuevo:                    'Nuevo',
+  pendiente:                'Pendiente',
+  solicitado_a_proveedor:   'Solicitado a proveedor',
+  pagado:                   'Pagado',
+  falta_informacion:        'Falta informacion',
+  bloqueado:                'Bloqueado',
 }
 
 export const STATUS_COLORS: Record<OrderStatus, string> = {
-  nuevo:               'bg-blue-100 text-blue-800',
-  en_revision:         'bg-yellow-100 text-yellow-800',
-  falta_info:          'bg-orange-100 text-orange-800',
-  aprobado:            'bg-green-100 text-green-800',
-  pedido_a_proveedor:  'bg-purple-100 text-purple-800',
-  en_transito:         'bg-indigo-100 text-indigo-800',
-  recibido:            'bg-teal-100 text-teal-800',
-  preparacion:         'bg-cyan-100 text-cyan-800',
-  completado:          'bg-emerald-100 text-emerald-800',
-  cancelado:           'bg-red-100 text-red-800',
+  nuevo:                    'bg-blue-100 text-blue-800',
+  pendiente:                'bg-yellow-100 text-yellow-800',
+  solicitado_a_proveedor:   'bg-purple-100 text-purple-800',
+  pagado:                   'bg-green-100 text-green-800',
+  falta_informacion:        'bg-orange-100 text-orange-800',
+  bloqueado:                'bg-red-100 text-red-800',
 }
 
 export const PURCHASE_TYPE_LABELS: Record<PurchaseType, string> = {
@@ -40,18 +32,14 @@ export const PURCHASE_TYPE_LABELS: Record<PurchaseType, string> = {
   otro:                   'Otro',
 }
 
-// Transiciones de estado permitidas por rol
+// Transiciones de estado permitidas (selector libre entre todos)
 export const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  nuevo:               ['en_revision', 'cancelado'],
-  en_revision:         ['falta_info', 'aprobado', 'cancelado'],
-  falta_info:          ['en_revision', 'cancelado'],
-  aprobado:            ['pedido_a_proveedor', 'cancelado'],
-  pedido_a_proveedor:  ['en_transito', 'cancelado'],
-  en_transito:         ['recibido', 'cancelado'],
-  recibido:            ['preparacion'],
-  preparacion:         ['completado'],
-  completado:          [],
-  cancelado:           [],
+  nuevo:                    ['pendiente', 'solicitado_a_proveedor', 'pagado', 'falta_informacion', 'bloqueado'],
+  pendiente:                ['nuevo', 'solicitado_a_proveedor', 'pagado', 'falta_informacion', 'bloqueado'],
+  solicitado_a_proveedor:   ['nuevo', 'pendiente', 'pagado', 'falta_informacion', 'bloqueado'],
+  pagado:                   ['nuevo', 'pendiente', 'solicitado_a_proveedor', 'falta_informacion', 'bloqueado'],
+  falta_informacion:        ['nuevo', 'pendiente', 'solicitado_a_proveedor', 'pagado', 'bloqueado'],
+  bloqueado:                ['nuevo', 'pendiente', 'solicitado_a_proveedor', 'pagado', 'falta_informacion'],
 }
 
 export function formatCurrency(amount: number | null): string {

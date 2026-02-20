@@ -13,9 +13,8 @@ import {
 import type { OrderStatus } from '@/types/database'
 
 const ALL_STATUSES: OrderStatus[] = [
-  'nuevo', 'en_revision', 'falta_info', 'aprobado',
-  'pedido_a_proveedor', 'en_transito', 'recibido',
-  'preparacion', 'completado', 'cancelado',
+  'nuevo', 'pendiente', 'solicitado_a_proveedor',
+  'pagado', 'falta_informacion', 'bloqueado',
 ]
 
 describe('STATUS_LABELS', () => {
@@ -35,17 +34,14 @@ describe('STATUS_COLORS', () => {
 })
 
 describe('STATUS_TRANSITIONS', () => {
-  it('completado has no transitions', () => {
-    expect(STATUS_TRANSITIONS['completado']).toHaveLength(0)
+  it('every status can transition to all others', () => {
+    for (const s of ALL_STATUSES) {
+      expect(STATUS_TRANSITIONS[s].length).toBe(ALL_STATUSES.length - 1)
+    }
   })
 
-  it('cancelado has no transitions', () => {
-    expect(STATUS_TRANSITIONS['cancelado']).toHaveLength(0)
-  })
-
-  it('nuevo can go to en_revision or cancelado', () => {
-    expect(STATUS_TRANSITIONS['nuevo']).toContain('en_revision')
-    expect(STATUS_TRANSITIONS['nuevo']).toContain('cancelado')
+  it('nuevo can go to pendiente', () => {
+    expect(STATUS_TRANSITIONS['nuevo']).toContain('pendiente')
   })
 
   it('all transition targets are valid statuses', () => {

@@ -7,15 +7,11 @@ const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL
 
 const STATUS_LABELS: Record<string, string> = {
   nuevo: 'Nuevo',
-  en_revision: 'En revision',
-  falta_info: 'Falta info',
-  aprobado: 'Aprobado',
-  pedido_a_proveedor: 'Pedido a proveedor',
-  en_transito: 'En transito',
-  recibido: 'Recibido',
-  preparacion: 'Preparacion/Envio',
-  completado: 'Completado',
-  cancelado: 'Cancelado',
+  pendiente: 'Pendiente',
+  solicitado_a_proveedor: 'Solicitado a proveedor',
+  pagado: 'Pagado',
+  falta_informacion: 'Falta informacion',
+  bloqueado: 'Bloqueado',
 }
 
 export async function POST(

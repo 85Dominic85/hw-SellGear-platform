@@ -5,15 +5,11 @@
 
 export type OrderStatus =
   | 'nuevo'
-  | 'en_revision'
-  | 'falta_info'
-  | 'aprobado'
-  | 'pedido_a_proveedor'
-  | 'en_transito'
-  | 'recibido'
-  | 'preparacion'
-  | 'completado'
-  | 'cancelado'
+  | 'pendiente'
+  | 'solicitado_a_proveedor'
+  | 'pagado'
+  | 'falta_informacion'
+  | 'bloqueado'
 
 export type PurchaseType =
   | 'kit_digital'

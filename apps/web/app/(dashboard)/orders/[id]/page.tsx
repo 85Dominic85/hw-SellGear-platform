@@ -10,6 +10,7 @@ import SupplierSelect from '@/components/orders/SupplierSelect'
 import SlackNotifyButton from '@/components/orders/SlackNotifyButton'
 import InvoiceCheckbox from '@/components/orders/InvoiceCheckbox'
 import DeleteOrderButton from '@/components/orders/DeleteOrderButton'
+import AutoMarkSeen from '@/components/orders/AutoMarkSeen'
 import { isAdminUser } from '@/lib/auth'
 import type { OrderStatus, PurchaseType } from '@/types/database'
 
@@ -73,6 +74,9 @@ export default async function OrderDetailPage({
 
   return (
     <div className="px-6 py-8">
+      {/* Auto-transicion nuevo → pendiente al visualizar */}
+      <AutoMarkSeen orderId={order.id} currentStatus={order.status} />
+
       {/* Breadcrumb + header */}
       <div className="mb-6">
         <nav className="mb-2 flex items-center gap-2 text-sm text-gray-500">
