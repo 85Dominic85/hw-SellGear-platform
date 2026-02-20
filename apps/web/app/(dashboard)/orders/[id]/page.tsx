@@ -142,18 +142,6 @@ export default async function OrderDetailPage({
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-gray-500">Creado por</dt>
-                <dd className="mt-0.5 text-sm text-gray-900">
-                  {order.creator?.full_name ?? '—'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-gray-500">Asignado a</dt>
-                <dd className="mt-0.5 text-sm text-gray-900">
-                  {order.assignee?.full_name ?? '—'}
-                </dd>
-              </div>
-              <div>
                 <dt className="text-xs text-gray-500">Fecha de creación</dt>
                 <dd className="mt-0.5 text-sm text-gray-900">
                   {formatDate(order.created_at)}

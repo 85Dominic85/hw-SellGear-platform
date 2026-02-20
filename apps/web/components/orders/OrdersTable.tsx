@@ -1,15 +1,73 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
-import type { Order } from '@/types/database'
+import type { Order, UserRole } from '@/types/database'
 import { formatCurrency, formatDate, PURCHASE_TYPE_LABELS } from '@/lib/utils'
 import StatusBadge from './StatusBadge'
+import { createClient } from '@/lib/supabase/client'
 
 interface OrdersTableProps {
   orders: Order[]
+  userRole?: UserRole | null
 }
 
-export default function OrdersTable({ orders }: OrdersTableProps) {
+function InvoiceCell({ orderId, value, canEdit }: { orderId: string; value: boolean; canEdit: boolean }) {
+  const [invoiced, setInvoiced] = useState(value)
+  const [saving, setSaving] = useState(false)
+
+  const handleToggle = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!canEdit || saving) return
+
+    const newValue = !invoiced
+    setInvoiced(newValue)
+    setSaving(true)
+
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('orders')
+      .update({ invoiced: newValue })
+      .eq('id', orderId)
+
+    setSaving(false)
+    if (error) setInvoiced(!newValue)
+  }
+
+  if (!canEdit) {
+    return (
+      <span className={`text-sm ${invoiced ? 'text-green-600' : 'text-gray-400'}`}>
+        {invoiced ? 'Si' : '—'}
+      </span>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleToggle}
+      disabled={saving}
+      className="flex items-center justify-center disabled:opacity-50"
+    >
+      <span
+        className={`flex h-5 w-5 items-center justify-center rounded border transition-colors ${
+          invoiced
+            ? 'border-green-500 bg-green-500 text-white'
+            : 'border-gray-300 bg-white text-transparent hover:border-gray-400'
+        }`}
+      >
+        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      </span>
+    </button>
+  )
+}
+
+export default function OrdersTable({ orders, userRole }: OrdersTableProps) {
+  const canEditInvoice = userRole === 'admin' || userRole === 'manager'
+
   if (orders.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white py-16 text-center">
@@ -47,13 +105,16 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
                 Cliente
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                Venue
+                Local
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                 Tipo
               </th>
               <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
                 Importe
+              </th>
+              <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">
+                Fact.
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                 Estado
@@ -62,7 +123,7 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
                 Fecha
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                Asignado a
+                Ref AE
               </th>
             </tr>
           </thead>
@@ -108,6 +169,9 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
                     </span>
                   </Link>
                 </td>
+                <td className="whitespace-nowrap px-4 py-3 text-center">
+                  <InvoiceCell orderId={order.id} value={order.invoiced} canEdit={canEditInvoice} />
+                </td>
                 <td className="whitespace-nowrap px-4 py-3">
                   <Link href={`/orders/${order.id}`} className="block">
                     <StatusBadge status={order.status} />
@@ -123,7 +187,7 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
                 <td className="px-4 py-3">
                   <Link href={`/orders/${order.id}`} className="block">
                     <span className="text-sm text-gray-500">
-                      {order.assignee?.full_name ?? order.creator?.full_name ?? '—'}
+                      {order.ae_ref ?? '—'}
                     </span>
                   </Link>
                 </td>

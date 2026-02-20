@@ -59,6 +59,8 @@ export interface Order {
   notes: string | null
   sheet_row: number | null
   typeform_response_id: string | null
+  supplier: string | null
+  invoiced: boolean
   // joins
   order_items?: OrderItem[]
   creator?: UserProfile

@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { Suspense } from 'react'
 import Link from 'next/link'
-import type { OrderStatus, PurchaseType } from '@/types/database'
+import type { OrderStatus, PurchaseType, UserRole } from '@/types/database'
 import OrdersTable from '@/components/orders/OrdersTable'
 import StatusFilter from '@/components/orders/StatusFilter'
 import SearchBar from '@/components/orders/SearchBar'
@@ -20,15 +20,24 @@ export default async function OrdersPage({
   const params = await searchParams
   const supabase = await createClient()
 
+  // Get current user role
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  let userRole: UserRole | null = null
+  if (user) {
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    userRole = (profile?.role as UserRole) ?? null
+  }
+
   let query = supabase
     .from('orders')
-    .select(
-      `
-      *,
-      creator:user_profiles!orders_created_by_fkey(id, full_name, email, role, department, created_at, updated_at),
-      assignee:user_profiles!orders_assigned_to_fkey(id, full_name, email, role, department, created_at, updated_at)
-    `
-    )
+    .select('*')
     .order('created_at', { ascending: false })
 
   if (params.status) {
@@ -100,7 +109,7 @@ export default async function OrdersPage({
       )}
 
       {/* Table */}
-      <OrdersTable orders={orders ?? []} />
+      <OrdersTable orders={orders ?? []} userRole={userRole} />
     </div>
   )
 }
