@@ -6,8 +6,8 @@ import StatusBadge from '@/components/orders/StatusBadge'
 import StatusChangePanel from '@/components/orders/StatusChangePanel'
 import CommentsList from '@/components/orders/CommentsList'
 import ItemsList from '@/components/orders/ItemsList'
-import SyncButton from '@/components/orders/SyncButton'
 import SupplierSelect from '@/components/orders/SupplierSelect'
+import SlackNotifyButton from '@/components/orders/SlackNotifyButton'
 import type { OrderStatus, PurchaseType } from '@/types/database'
 
 export default async function OrderDetailPage({
@@ -259,7 +259,7 @@ export default async function OrderDetailPage({
         <div className="space-y-4">
           <StatusChangePanel orderId={order.id} currentStatus={order.status as OrderStatus} />
           <SupplierSelect orderId={order.id} currentSupplier={order.supplier} />
-          <SyncButton orderId={order.id} />
+          <SlackNotifyButton orderId={order.id} />
         </div>
       </div>
     </div>
