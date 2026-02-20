@@ -1,7 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import type { UserRole } from '@/types/database'
 import { isAdminUser } from '@/lib/auth'
@@ -123,19 +124,43 @@ function Badge({ count }: { count: number }) {
 export default function SidebarNav({ userEmail, userRole, badgeCounts = {}, totalNew = 0 }: SidebarNavProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const currentType = searchParams.get('type')
+  const [clearing, setClearing] = useState(false)
 
   const isTodos = pathname === '/orders' && !currentType
   const isNew = pathname === '/orders/new'
   const showAdmin = isAdminUser(userEmail, userRole)
 
+  const handleClearNotifications = async () => {
+    setClearing(true)
+    try {
+      await fetch('/api/notifications/clear', { method: 'POST' })
+      router.refresh()
+    } finally {
+      setClearing(false)
+    }
+  }
+
   return (
     <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
       {/* Seccion principal */}
       <div className="space-y-1">
-        <p className="px-2 text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
-          Pedidos
-        </p>
+        <div className="flex items-center justify-between px-2 mb-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+            Pedidos
+          </p>
+          {totalNew > 0 && (
+            <button
+              onClick={handleClearNotifications}
+              disabled={clearing}
+              className="text-[10px] text-gray-500 hover:text-white transition-colors disabled:opacity-50"
+              title="Limpiar notificaciones"
+            >
+              {clearing ? '...' : 'Limpiar'}
+            </button>
+          )}
+        </div>
         <Link href="/orders" className={linkClass(isTodos)}>
           {NAV_ITEMS[0].icon}
           Todos los pedidos

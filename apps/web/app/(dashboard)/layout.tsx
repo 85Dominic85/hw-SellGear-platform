@@ -20,15 +20,20 @@ export default async function DashboardLayout({
   // Load user profile for display
   const { data: profile } = await supabase
     .from('user_profiles')
-    .select('full_name, email, role')
+    .select('full_name, email, role, notifications_cleared_at')
     .eq('id', user.id)
     .single()
 
   // Count new orders per purchase_type for sidebar badges
-  const { data: newCounts } = await supabase
+  // Only count orders created after the user's last clear
+  const clearedAt = profile?.notifications_cleared_at ?? '2000-01-01T00:00:00Z'
+  let badgeQuery = supabase
     .from('orders')
     .select('purchase_type')
     .eq('status', 'nuevo')
+    .gt('created_at', clearedAt)
+
+  const { data: newCounts } = await badgeQuery
 
   const badgeCounts: Record<string, number> = {}
   let totalNew = 0
