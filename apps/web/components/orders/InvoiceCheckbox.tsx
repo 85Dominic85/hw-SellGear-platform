@@ -6,13 +6,15 @@ import { createClient } from '@/lib/supabase/client'
 interface InvoiceCheckboxProps {
   orderId: string
   currentValue: boolean
+  readOnly?: boolean
 }
 
-export default function InvoiceCheckbox({ orderId, currentValue }: InvoiceCheckboxProps) {
+export default function InvoiceCheckbox({ orderId, currentValue, readOnly }: InvoiceCheckboxProps) {
   const [invoiced, setInvoiced] = useState(currentValue)
   const [saving, setSaving] = useState(false)
 
   const handleToggle = async () => {
+    if (readOnly) return
     const newValue = !invoiced
     setInvoiced(newValue)
     setSaving(true)
@@ -27,6 +29,14 @@ export default function InvoiceCheckbox({ orderId, currentValue }: InvoiceCheckb
     if (error) {
       setInvoiced(!newValue) // revert on error
     }
+  }
+
+  if (readOnly) {
+    return (
+      <span className={`text-sm ${invoiced ? 'font-medium text-green-700' : 'text-gray-500'}`}>
+        {invoiced ? 'Facturado' : 'Sin facturar'}
+      </span>
+    )
   }
 
   return (

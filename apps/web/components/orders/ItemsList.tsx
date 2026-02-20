@@ -9,6 +9,7 @@ import { formatCurrency } from '@/lib/utils'
 interface ItemsListProps {
   orderId: string
   items: OrderItem[]
+  readOnly?: boolean
 }
 
 interface NewItem {
@@ -20,7 +21,7 @@ interface NewItem {
 
 const EMPTY_ITEM: NewItem = { product_name: '', qty: 1, unit_price: '', notes: '' }
 
-export default function ItemsList({ orderId, items }: ItemsListProps) {
+export default function ItemsList({ orderId, items, readOnly }: ItemsListProps) {
   const router = useRouter()
   const [adding, setAdding] = useState(false)
   const [newItem, setNewItem] = useState<NewItem>(EMPTY_ITEM)
@@ -82,7 +83,7 @@ export default function ItemsList({ orderId, items }: ItemsListProps) {
         <h3 className="text-sm font-semibold text-gray-900">
           Artículos ({items.length})
         </h3>
-        {!adding && (
+        {!adding && !readOnly && (
           <button
             onClick={() => setAdding(true)}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200 transition-colors hover:bg-gray-50"
@@ -129,7 +130,7 @@ export default function ItemsList({ orderId, items }: ItemsListProps) {
               <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                 Notas
               </th>
-              <th className="px-4 py-2.5" />
+              {!readOnly && <th className="px-4 py-2.5" />}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -143,28 +144,30 @@ export default function ItemsList({ orderId, items }: ItemsListProps) {
                   {formatCurrency(item.unit_price)}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-500">{item.notes ?? '—'}</td>
-                <td className="px-4 py-3 text-right">
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    disabled={deletingId === item.id}
-                    className="rounded p-1 text-gray-300 opacity-0 transition-all group-hover:opacity-100 hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed"
-                    title="Eliminar artículo"
-                  >
-                    <svg
-                      className="h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                {!readOnly && (
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      disabled={deletingId === item.id}
+                      className="rounded p-1 text-gray-300 opacity-0 transition-all group-hover:opacity-100 hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed"
+                      title="Eliminar artículo"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                  </button>
-                </td>
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
 

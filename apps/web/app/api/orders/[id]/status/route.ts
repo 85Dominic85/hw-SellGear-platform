@@ -55,7 +55,15 @@ export async function POST(
     .eq('id', user.id)
     .single()
 
-  const role = profile?.role ?? 'creator'
+  const role = profile?.role ?? 'viewer'
+
+  // 4b. Viewers cannot change status at all
+  if (role === 'viewer') {
+    return NextResponse.json(
+      { error: 'Los usuarios viewer no pueden modificar pedidos.' },
+      { status: 403 }
+    )
+  }
 
   // 5. Validate transition is allowed
   const allowedTransitions = STATUS_TRANSITIONS[currentStatus] ?? []

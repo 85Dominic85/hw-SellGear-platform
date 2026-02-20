@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminUser } from '@/lib/auth'
 import type { UserRole } from '@/types/database'
 
-const VALID_ROLES: UserRole[] = ['creator', 'hardware', 'manager', 'admin']
+const VALID_ROLES: UserRole[] = ['viewer', 'creator', 'hardware', 'manager', 'admin']
 
 async function verifyAdmin() {
   const supabase = await createClient()
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
       id: authData.user.id,
       email,
       full_name: full_name || null,
-      role: role || 'creator',
+      role: role || 'viewer',
       department: department || null,
     })
 

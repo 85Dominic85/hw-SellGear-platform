@@ -27,6 +27,7 @@ export default async function OrderDetailPage({
     data: { user: currentUser },
   } = await supabase.auth.getUser()
   let isAdmin = false
+  let isViewer = false
   if (currentUser) {
     const { data: profile } = await supabase
       .from('user_profiles')
@@ -34,6 +35,7 @@ export default async function OrderDetailPage({
       .eq('id', currentUser.id)
       .single()
     isAdmin = isAdminUser(profile?.email ?? currentUser.email, profile?.role)
+    isViewer = profile?.role === 'viewer'
   }
 
   // Load order with all relations
@@ -129,7 +131,7 @@ export default async function OrderDetailPage({
               <div>
                 <dt className="text-xs text-gray-500">Factura</dt>
                 <dd className="mt-1">
-                  <InvoiceCheckbox orderId={order.id} currentValue={order.invoiced} />
+                  <InvoiceCheckbox orderId={order.id} currentValue={order.invoiced} readOnly={isViewer} />
                 </dd>
               </div>
               <div>
@@ -213,10 +215,10 @@ export default async function OrderDetailPage({
           </div>
 
           {/* Items */}
-          <ItemsList orderId={order.id} items={items} />
+          <ItemsList orderId={order.id} items={items} readOnly={isViewer} />
 
           {/* Comments */}
-          <CommentsList orderId={order.id} comments={comments} />
+          <CommentsList orderId={order.id} comments={comments} readOnly={isViewer} />
 
           {/* Status history */}
           <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -270,15 +272,17 @@ export default async function OrderDetailPage({
           </div>
         </div>
 
-        {/* Sidebar — 1/3 */}
-        <div className="space-y-4">
-          <StatusChangePanel orderId={order.id} currentStatus={order.status as OrderStatus} />
-          <SupplierSelect orderId={order.id} currentSupplier={order.supplier} />
-          <SlackNotifyButton orderId={order.id} />
-          {isAdmin && (
-            <DeleteOrderButton orderId={order.id} operationId={order.operation_id} />
-          )}
-        </div>
+        {/* Sidebar — 1/3 (oculta para viewers) */}
+        {!isViewer && (
+          <div className="space-y-4">
+            <StatusChangePanel orderId={order.id} currentStatus={order.status as OrderStatus} />
+            <SupplierSelect orderId={order.id} currentSupplier={order.supplier} />
+            <SlackNotifyButton orderId={order.id} />
+            {isAdmin && (
+              <DeleteOrderButton orderId={order.id} operationId={order.operation_id} />
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

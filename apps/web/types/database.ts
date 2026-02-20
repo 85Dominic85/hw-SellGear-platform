@@ -18,7 +18,7 @@ export type PurchaseType =
   | 'transferencias_saas'
   | 'otro'
 
-export type UserRole = 'creator' | 'hardware' | 'manager' | 'admin'
+export type UserRole = 'viewer' | 'creator' | 'hardware' | 'manager' | 'admin'
 
 export interface UserProfile {
   id: string

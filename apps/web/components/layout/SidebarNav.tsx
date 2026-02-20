@@ -131,6 +131,7 @@ export default function SidebarNav({ userEmail, userRole, badgeCounts = {}, tota
   const isTodos = pathname === '/orders' && !currentType
   const isNew = pathname === '/orders/new'
   const showAdmin = isAdminUser(userEmail, userRole)
+  const isViewer = userRole === 'viewer'
 
   const handleClearNotifications = async () => {
     setClearing(true)
@@ -166,10 +167,12 @@ export default function SidebarNav({ userEmail, userRole, badgeCounts = {}, tota
           Todos los pedidos
           <Badge count={totalNew} />
         </Link>
-        <Link href="/orders/new" className={linkClass(isNew)}>
-          {NAV_ITEMS[1].icon}
-          Nuevo pedido
-        </Link>
+        {!isViewer && (
+          <Link href="/orders/new" className={linkClass(isNew)}>
+            {NAV_ITEMS[1].icon}
+            Nuevo pedido
+          </Link>
+        )}
       </div>
 
       {/* Categorias */}

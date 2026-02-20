@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import type { UserProfile, UserRole } from '@/types/database'
 
 const ROLE_LABELS: Record<UserRole, string> = {
+  viewer: 'Viewer',
   creator: 'Creador',
   hardware: 'Hardware',
   manager: 'Manager',
@@ -12,6 +13,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
 }
 
 const ROLE_COLORS: Record<UserRole, string> = {
+  viewer: 'bg-gray-100 text-gray-800',
   creator: 'bg-blue-100 text-blue-800',
   hardware: 'bg-purple-100 text-purple-800',
   manager: 'bg-green-100 text-green-800',
@@ -48,7 +50,7 @@ export default function AdminUsersPage() {
     email: '',
     password: '',
     full_name: '',
-    role: 'creator',
+    role: 'viewer',
     department: '',
   })
 
@@ -168,7 +170,7 @@ export default function AdminUsersPage() {
 
       setUsers((prev) => [data.user, ...prev])
       setCreating(false)
-      setNewUser({ email: '', password: '', full_name: '', role: 'creator', department: '' })
+      setNewUser({ email: '', password: '', full_name: '', role: 'viewer', department: '' })
       showFeedback('success', `Usuario ${data.user.email} creado correctamente`)
     } catch (err) {
       showFeedback('error', err instanceof Error ? err.message : 'Error al crear usuario')
@@ -514,7 +516,7 @@ export default function AdminUsersPage() {
               <button
                 onClick={() => {
                   setCreating(false)
-                  setNewUser({ email: '', password: '', full_name: '', role: 'creator', department: '' })
+                  setNewUser({ email: '', password: '', full_name: '', role: 'viewer', department: '' })
                 }}
                 disabled={saving}
                 className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
