@@ -8,6 +8,7 @@ import CommentsList from '@/components/orders/CommentsList'
 import ItemsList from '@/components/orders/ItemsList'
 import SupplierSelect from '@/components/orders/SupplierSelect'
 import SlackNotifyButton from '@/components/orders/SlackNotifyButton'
+import InvoiceCheckbox from '@/components/orders/InvoiceCheckbox'
 import type { OrderStatus, PurchaseType } from '@/types/database'
 
 export default async function OrderDetailPage({
@@ -103,6 +104,12 @@ export default async function OrderDetailPage({
                 <dt className="text-xs text-gray-500">Importe</dt>
                 <dd className="mt-0.5 text-sm font-medium text-gray-900">
                   {formatCurrency(order.amount)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-gray-500">Factura</dt>
+                <dd className="mt-1">
+                  <InvoiceCheckbox orderId={order.id} currentValue={order.invoiced} />
                 </dd>
               </div>
               <div>
