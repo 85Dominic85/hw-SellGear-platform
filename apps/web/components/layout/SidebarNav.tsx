@@ -3,6 +3,18 @@
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import type { UserRole } from '@/types/database'
+
+/** Emails con acceso admin hardcoded (fallback si el rol aún no está asignado en BD) */
+const ADMIN_EMAILS = [
+  'jj.gallego@qamarero.com',
+  'domingo.bueno@qamarero.com',
+]
+
+interface SidebarNavProps {
+  userEmail?: string | null
+  userRole?: UserRole | null
+}
 
 const NAV_ITEMS = [
   {
@@ -50,7 +62,7 @@ const CATEGORY_ITEMS = [
     ),
   },
   {
-    label: 'Hardware Financiación',
+    label: 'Hardware Financiacion',
     type: 'hardware_financiacion',
     icon: (
       <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -81,6 +93,19 @@ const CATEGORY_ITEMS = [
   },
 ]
 
+const ADMIN_ITEMS = [
+  {
+    label: 'Usuarios',
+    href: '/admin/users',
+    icon: (
+      <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+      </svg>
+    ),
+  },
+]
+
 const linkClass = (active: boolean) =>
   cn(
     'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
@@ -89,17 +114,24 @@ const linkClass = (active: boolean) =>
       : 'text-gray-400 hover:bg-white/10 hover:text-white'
   )
 
-export default function SidebarNav() {
+export function isAdminUser(email?: string | null, role?: UserRole | null): boolean {
+  if (role === 'admin') return true
+  if (email && ADMIN_EMAILS.includes(email.toLowerCase())) return true
+  return false
+}
+
+export default function SidebarNav({ userEmail, userRole }: SidebarNavProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const currentType = searchParams.get('type')
 
   const isTodos = pathname === '/orders' && !currentType
   const isNew = pathname === '/orders/new'
+  const showAdmin = isAdminUser(userEmail, userRole)
 
   return (
     <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
-      {/* Sección principal */}
+      {/* Seccion principal */}
       <div className="space-y-1">
         <p className="px-2 text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
           Pedidos
@@ -114,10 +146,10 @@ export default function SidebarNav() {
         </Link>
       </div>
 
-      {/* Categorías */}
+      {/* Categorias */}
       <div className="space-y-1">
         <p className="px-2 text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
-          Categorías
+          Categorias
         </p>
         {CATEGORY_ITEMS.map((item) => {
           const active = pathname === '/orders' && currentType === item.type
@@ -133,6 +165,28 @@ export default function SidebarNav() {
           )
         })}
       </div>
+
+      {/* Admin - solo visible para admins */}
+      {showAdmin && (
+        <div className="space-y-1">
+          <p className="px-2 text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
+            Administracion
+          </p>
+          {ADMIN_ITEMS.map((item) => {
+            const active = pathname.startsWith(item.href)
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={linkClass(active)}
+              >
+                {item.icon}
+                {item.label}
+              </Link>
+            )
+          })}
+        </div>
+      )}
     </nav>
   )
 }

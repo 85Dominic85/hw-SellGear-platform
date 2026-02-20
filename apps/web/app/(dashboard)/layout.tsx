@@ -56,7 +56,7 @@ export default async function DashboardLayout({
 
         {/* Navigation */}
         <Suspense fallback={<div className="flex-1" />}>
-          <SidebarNav />
+          <SidebarNav userEmail={profile?.email ?? user.email} userRole={profile?.role} />
         </Suspense>
 
         {/* User info + logout */}
