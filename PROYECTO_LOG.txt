@@ -1,7 +1,7 @@
 ================================================================================
   PROYECTO LOG — hw-SellGear-platform (MainOperation Platform)
   Creado: 2026-02-20
-  Última actualización: 2026-02-20 (sesion 2)
+  Última actualización: 2026-02-20 (sesion 3)
 ================================================================================
 
 --------------------------------------------------------------------------------
@@ -131,6 +131,8 @@ MCPs configurados (.mcp.json):
     ✅ Filtrado por estado (StatusFilter)
     ✅ Badge de estado visual (StatusBadge)
     ✅ Badges contadores de pedidos nuevos en sidebar (estilo iPhone)
+       - Boton "Limpiar" para resetear notificaciones por usuario
+       - Basado en notifications_cleared_at (persistente por usuario)
     ✅ Detalle de pedido (/orders/[id])
        - Lista de ítems (ItemsList)
        - Comentarios (CommentsList)
@@ -144,7 +146,9 @@ MCPs configurados (.mcp.json):
 
   ADMIN:
     ✅ Panel de administracion de usuarios (/admin/users)
+    ✅ Crear nuevos usuarios desde la app (email, contraseña, rol, depto)
     ✅ Edicion de rol, nombre y departamento
+    ✅ Eliminar usuarios (borra de auth.users + cascadea a perfil)
     ✅ Reset de contraseña por email
     ✅ Roles: creator, hardware, manager, admin
 
@@ -152,8 +156,10 @@ MCPs configurados (.mcp.json):
     ✅ PATCH  /api/orders/[id]/status       → Cambio de estado
     ✅ DELETE /api/orders/[id]              → Eliminar pedido (solo admin)
     ✅ POST   /api/orders/[id]/notify-slack → Notificacion a Slack
+    ✅ POST   /api/admin/users              → Crear usuario (admin client)
     ✅ GET/PUT/DELETE /api/admin/users/[id] → Gestion de usuarios
     ✅ POST   /api/admin/users/[id]/reset-password → Reset contraseña
+    ✅ POST   /api/notifications/clear      → Limpiar badges del usuario
 
   INTEGRACIONES:
     ✅ Edge Function: typeform-webhook (v4) - Typeform → Supabase
@@ -167,7 +173,9 @@ MCPs configurados (.mcp.json):
     ✅ Vercel configurado (Root Directory: apps/web)
     ✅ vercel.json en apps/web/
     ✅ Variables de entorno configuradas (.env.local, ejemplos en .env.*.example)
+    ✅ SUPABASE_SERVICE_ROLE_KEY configurada en Vercel (para admin API)
     ✅ MCP Supabase conectado al proyecto productivo
+    ✅ Cliente admin Supabase (lib/supabase/admin.ts) para operaciones privilegiadas
 
 --------------------------------------------------------------------------------
 6. HISTORIAL DE SESIONES Y MEJORAS
@@ -293,18 +301,65 @@ MCPs configurados (.mcp.json):
   Estado general: Plataforma operativa con ingesta desde Typeform, panel admin,
   gestion de proveedores, notificaciones Slack, y checkbox de facturacion.
 
+--- SESIÓN 2026-02-20 (sesión 3 — admin usuarios, delete, notificaciones) ---
+
+  CREACION DE USUARIOS DESDE LA APP:
+    - Creado cliente admin Supabase (lib/supabase/admin.ts) con service role key.
+    - Endpoint POST /api/admin/users: crea usuario en auth.users via
+      auth.admin.createUser() y perfil en user_profiles via upsert.
+    - Modal de creacion con campos: email, contraseña, nombre, rol, departamento.
+    - Boton "Nuevo usuario" en cabecera del panel de administracion.
+    - SUPABASE_SERVICE_ROLE_KEY configurada en .env.local y en Vercel.
+
+  FIX ELIMINACION DE USUARIOS:
+    - Antes solo borraba el perfil de user_profiles, dejando usuario huerfano
+      en auth.users. Corregido para usar auth.admin.deleteUser() que borra
+      de auth y cascadea al perfil por FK.
+    - Probado eliminando guillermo.mateos@qamarero.com para re-creacion.
+
+  ELIMINACION DE PEDIDOS POR ADMIN:
+    - API DELETE /api/orders/[id] con verificacion de admin.
+    - Componente DeleteOrderButton con confirmacion en dos pasos.
+    - Visible solo para admins en sidebar del detalle del pedido.
+
+  LIMPIAR NOTIFICACIONES (BADGES):
+    - Migracion: campo notifications_cleared_at en user_profiles.
+    - API POST /api/notifications/clear actualiza timestamp del usuario.
+    - Badges del sidebar solo cuentan pedidos "nuevo" creados despues del
+      ultimo clear del usuario (persistente por usuario).
+    - Boton "Limpiar" visible junto al titulo "Pedidos" cuando hay badges.
+    - Al hacer click, badges desaparecen. Nuevos pedidos los reactivan.
+
+  COMMITS DE ESTA SESION:
+    - 9309c0c: feat: añadir checkbox de factura en detalle de pedido
+    - 94706e4: feat: mejorar vista general y detalle de pedidos
+    - 40cfd8c: feat: permitir a admins eliminar pedidos desde la app
+    - e4c31c1: feat: permitir a admins crear nuevos usuarios desde la app
+    - 84ba658: fix: eliminar usuario de auth.users al borrar desde panel admin
+    - 3a9d9d0: feat: boton para limpiar notificaciones del sidebar
+
+  MIGRACIONES APLICADAS:
+    - add_invoiced_to_orders: campo invoiced (boolean) en orders
+    - add_notifications_cleared_at: campo notifications_cleared_at en user_profiles
+
+  Estado general: Panel admin completo (crear/editar/eliminar usuarios),
+  eliminacion de pedidos, y sistema de notificaciones con limpieza por usuario.
+
 --------------------------------------------------------------------------------
 7. PENDIENTE / BACKLOG
 --------------------------------------------------------------------------------
 
   COMPLETADO:
   [x] Edge Function: webhook Typeform → validacion → insercion en Supabase (v4)
-  [x] Panel de administracion / gestion de usuarios
+  [x] Panel de administracion / gestion de usuarios (crear/editar/eliminar)
   [x] Permisos por rol (admin, manager, hardware, creator)
   [x] Notificacion Slack manual desde detalle de pedido
   [x] Selector de proveedor en detalle de pedido
   [x] Campo facturado (checkbox) en lista y detalle
   [x] Eliminacion de pedidos por admin
+  [x] Creacion de usuarios desde la app (con admin client)
+  [x] Eliminacion completa de usuarios (auth.users + perfil)
+  [x] Limpiar notificaciones (badges) por usuario
 
   PENDIENTE:
   [ ] Configurar SLACK_WEBHOOK_URL en Vercel (cuando Slack este listo)
@@ -330,6 +385,9 @@ MCPs configurados (.mcp.json):
   Variables necesarias (.env.local):
     NEXT_PUBLIC_SUPABASE_URL=
     NEXT_PUBLIC_SUPABASE_ANON_KEY=
+    SUPABASE_SERVICE_ROLE_KEY=       # Necesaria para crear/eliminar usuarios
+    NEXT_PUBLIC_APP_URL=             # URL de la app (produccion o localhost)
+    SLACK_WEBHOOK_URL=               # Opcional: webhook de Slack
 
   Para tests:
     npm run test
