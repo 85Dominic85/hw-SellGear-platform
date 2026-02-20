@@ -9,6 +9,8 @@ import ItemsList from '@/components/orders/ItemsList'
 import SupplierSelect from '@/components/orders/SupplierSelect'
 import SlackNotifyButton from '@/components/orders/SlackNotifyButton'
 import InvoiceCheckbox from '@/components/orders/InvoiceCheckbox'
+import DeleteOrderButton from '@/components/orders/DeleteOrderButton'
+import { isAdminUser } from '@/lib/auth'
 import type { OrderStatus, PurchaseType } from '@/types/database'
 
 export default async function OrderDetailPage({
@@ -18,6 +20,20 @@ export default async function OrderDetailPage({
 }) {
   const { id } = await params
   const supabase = await createClient()
+
+  // Check if current user is admin
+  const {
+    data: { user: currentUser },
+  } = await supabase.auth.getUser()
+  let isAdmin = false
+  if (currentUser) {
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('email, role')
+      .eq('id', currentUser.id)
+      .single()
+    isAdmin = isAdminUser(profile?.email ?? currentUser.email, profile?.role)
+  }
 
   // Load order with all relations
   const { data: order } = await supabase
@@ -255,6 +271,9 @@ export default async function OrderDetailPage({
           <StatusChangePanel orderId={order.id} currentStatus={order.status as OrderStatus} />
           <SupplierSelect orderId={order.id} currentSupplier={order.supplier} />
           <SlackNotifyButton orderId={order.id} />
+          {isAdmin && (
+            <DeleteOrderButton orderId={order.id} operationId={order.operation_id} />
+          )}
         </div>
       </div>
     </div>
