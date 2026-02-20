@@ -1,0 +1,222 @@
+================================================================================
+  PROYECTO LOG — hw-SellGear-platform (MainOperation Platform)
+  Creado: 2026-02-20
+  Última actualización: 2026-02-20
+================================================================================
+
+--------------------------------------------------------------------------------
+1. QUÉ ES ESTE PROYECTO
+--------------------------------------------------------------------------------
+
+Plataforma web interna para la empresa Hardware que centraliza la gestión de
+pedidos/operaciones que actualmente se registran en un Google Sheet llamado
+"MainOperation".
+
+PROBLEMA QUE RESUELVE:
+  - La información llegaba por Slack/DMs/reuniones 1:1 sin estructura.
+  - Errores frecuentes por datos incompletos o mal introducidos.
+  - Dificultad para saber el estado real de un pedido rápidamente.
+  - El Google Sheet se vuelve insostenible a medida que crece el negocio.
+
+SOLUCIÓN:
+  - Supabase como fuente de verdad (base de datos PostgreSQL).
+  - Ingesta validada: Typeform → Webhook → Supabase.
+  - Flujo por estados, asignación de responsables, auditoría completa.
+  - Sincronización controlada hacia Google Sheets (unidireccional, Supabase → Sheets)
+    mientras exista dependencia del Excel.
+  - App web interna con login restringido a @qamarero.com.
+
+--------------------------------------------------------------------------------
+2. STACK TECNOLÓGICO
+--------------------------------------------------------------------------------
+
+  Frontend:   Next.js 16 + React 19 + TypeScript + Tailwind CSS v4
+  Backend:    Supabase (PostgreSQL + Auth + Storage + Edge Functions)
+  UI lib:     lucide-react, @tanstack/react-query
+  Testing:    Vitest
+  Deploy:     Vercel (Root Directory: apps/web)
+  Repo:       Git (branch principal: feature/mvp-foundation)
+  AI tooling: Claude Code con MCP de Supabase conectado
+
+ESTRUCTURA DEL REPO (monorepo ligero):
+  hw-SellGear-platform/
+  ├── apps/
+  │   └── web/              ← App Next.js principal
+  │       ├── app/          ← App Router (Next.js)
+  │       │   ├── (auth)/login/
+  │       │   ├── (dashboard)/orders/
+  │       │   └── api/      ← API Routes
+  │       ├── components/   ← Componentes React
+  │       │   ├── layout/
+  │       │   └── orders/
+  │       ├── lib/supabase/ ← Clientes Supabase (client/server/middleware)
+  │       └── types/        ← Tipos TypeScript (database.ts)
+  ├── supabase/
+  │   └── migrations/       ← Migraciones SQL
+  ├── docs/                 ← Documentación técnica del proyecto
+  ├── scripts/              ← Script migración histórica Sheets → Supabase
+  └── .claude/              ← Configuración Claude Code (agentes, skills, MCPs)
+
+--------------------------------------------------------------------------------
+3. MODELO DE DATOS (Supabase/PostgreSQL)
+--------------------------------------------------------------------------------
+
+  TABLA: orders
+    - operation_id (texto único, ej: OP-2025-001)
+    - customer_name, venue_name
+    - purchase_type, source_department
+    - amount
+    - bank_receipt_url
+    - ae_ref (referencia ejecutivo de cuentas)
+    - shipping_address
+    - status (enum controlado)
+    - notes
+    - phone, contact_email
+    - hubspot_ref, invoice_ref
+    - assigned_to
+    - sheet_tab, sheet_row (para referencia cruzada con Excel)
+
+  TABLA: order_items
+    - order_id (FK → orders)
+    - product_name
+    - qty
+
+  TABLA: status_history (auditoría)
+    - order_id, from_status, to_status
+    - changed_by, changed_at, comment
+
+  POLÍTICAS RLS: habilitadas para control de acceso por rol.
+  SEED: estados predefinidos cargados vía migración.
+
+MIGRACIONES EXISTENTES:
+  - 20260219000001_create_schema.sql   → Schema principal
+  - 20260219000002_rls_policies.sql    → Políticas RLS
+  - 20260219000003_seed_statuses.sql   → Estados iniciales
+
+--------------------------------------------------------------------------------
+4. INTEGRACIONES PLANIFICADAS
+--------------------------------------------------------------------------------
+
+  - Typeform → Webhook → Edge Function → Supabase (ingesta validada)
+  - Google Sheets API (sync Supabase → Sheets, unidireccional)
+  - Slack Webhook (notificaciones en eventos clave)
+  - HubSpot (referencia cruzada, campo hubspot_ref)
+
+MCPs configurados (.mcp.json):
+  - Supabase MCP (conectado al proyecto: gbuifpsgcvxmuwzoyush)
+  - Gmail MCP
+  - Google Sheets MCP
+  - Slack MCP
+
+--------------------------------------------------------------------------------
+5. FUNCIONALIDADES IMPLEMENTADAS (al 2026-02-20)
+--------------------------------------------------------------------------------
+
+  AUTH:
+    ✅ Login con email + password restringido a dominio @qamarero.com
+    ✅ Callback OAuth (app/api/auth/callback/route.ts)
+    ✅ Middleware Supabase para protección de rutas (proxy.ts para Next.js 16)
+
+  DASHBOARD / PEDIDOS:
+    ✅ Listado de pedidos (OrdersTable)
+    ✅ Barra de búsqueda (SearchBar)
+    ✅ Filtrado por estado (StatusFilter)
+    ✅ Badge de estado visual (StatusBadge)
+    ✅ Detalle de pedido (/orders/[id])
+       - Lista de ítems (ItemsList)
+       - Comentarios (CommentsList)
+       - Cambio de estado con nota (StatusChangePanel)
+       - Botón de sincronización a Sheets (SyncButton)
+    ✅ Formulario nuevo pedido (/orders/new)
+    ✅ Sidebar con categorías de pedidos por tipo (SidebarNav)
+
+  API ROUTES:
+    ✅ PATCH /api/orders/[id]/status  → Cambio de estado
+    ✅ POST  /api/orders/[id]/sync    → Sync individual a Google Sheets
+
+  SCRIPTS:
+    ✅ scripts/migrate-from-sheets.ts → Migración histórica Sheets → Supabase
+
+  INFRAESTRUCTURA:
+    ✅ Vercel configurado (Root Directory: apps/web)
+    ✅ vercel.json en apps/web/
+    ✅ Variables de entorno configuradas (.env.local, ejemplos en .env.*.example)
+    ✅ MCP Supabase conectado al proyecto productivo
+
+--------------------------------------------------------------------------------
+6. HISTORIAL DE SESIONES Y MEJORAS
+--------------------------------------------------------------------------------
+
+--- SESIÓN 2026-02-20 (sesión inicial de registro) ---
+  Consulta realizada:
+    - Crear este archivo PROYECTO_LOG.txt para mantener contexto acumulativo
+      entre sesiones de trabajo con Claude Code.
+
+  Commits relevantes en esta etapa del proyecto:
+    - 6be286d: Schema Supabase + RLS + Edge Functions (MVP foundation)
+    - 4f34166: CLAUDE.md, README setup y documentación del proyecto
+    - 4993931: App Next.js MVP (auth + inbox + detalle + nuevo pedido)
+    - feab929: Script migración histórica Google Sheets → Supabase
+    - 5a76eda: MCP Supabase conectado al proyecto gbuifpsgcvxmuwzoyush
+    - e6883e5: Auth email+password restringido a @qamarero.com
+    - dac953e: Configuración Vercel + fix proxy (Next.js 16)
+    - ab88fa4: Sidebar con categorías de pedidos por tipo
+    - a264160: Añadir .claude/settings.json a nivel de proyecto
+
+  Estado general: MVP funcional desplegado en Vercel y conectado a Supabase.
+
+--------------------------------------------------------------------------------
+7. PENDIENTE / BACKLOG
+--------------------------------------------------------------------------------
+
+  [ ] Edge Function: webhook de Typeform → validación → inserción en Supabase
+  [ ] Edge Function: sincronización masiva Supabase → Google Sheets
+  [ ] Notificaciones Slack en cambios de estado relevantes
+  [ ] Tests de integración (typeform-webhook, sheets-sync)
+  [ ] Migración histórica completa desde Google Sheets
+  [ ] Panel de administración / gestión de usuarios
+  [ ] Permisos por rol (admin, AE, operaciones)
+  [ ] Búsqueda avanzada (por fecha, importe, cliente)
+  [ ] Exportación de datos
+  [ ] Login Google Workspace (OAuth con Google, restricción a dominio empresa)
+
+--------------------------------------------------------------------------------
+8. CÓMO ARRANCAR EL PROYECTO EN LOCAL
+--------------------------------------------------------------------------------
+
+  cd apps/web
+  npm install
+  cp .env.local.example .env.local   # Rellenar variables Supabase
+  npm run dev                         # http://localhost:3000
+
+  Variables necesarias (.env.local):
+    NEXT_PUBLIC_SUPABASE_URL=
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=
+
+  Para tests:
+    npm run test
+
+--------------------------------------------------------------------------------
+9. REFERENCIAS ÚTILES
+--------------------------------------------------------------------------------
+
+  Supabase Project ID:  gbuifpsgcvxmuwzoyush
+  Branch git activo:    feature/mvp-foundation
+  Deploy:               Vercel (enlazar con dashboard de Vercel para URL)
+  Docs técnicas:        /docs/ (overview, requirements, architecture, data-model,
+                        workflows, integrations, migration, security-rls, backlog)
+  Claude config:        /.claude/ (agents, skills, mcps, commands, PROMPT_MVP.md)
+
+--------------------------------------------------------------------------------
+INSTRUCCIONES PARA USO DE ESTE ARCHIVO
+--------------------------------------------------------------------------------
+
+  Al iniciar cada nueva sesión con Claude Code:
+    1. Leer este archivo para tener contexto completo del proyecto.
+    2. Al terminar la sesión, añadir una entrada en la sección 6 (Historial)
+       con fecha, consultas realizadas y cambios aplicados.
+    3. Actualizar sección 5 si se implementaron nuevas funcionalidades.
+    4. Actualizar sección 7 si se completaron o añadieron tareas al backlog.
+    5. Actualizar "Última actualización" al inicio del archivo.
+
+================================================================================
