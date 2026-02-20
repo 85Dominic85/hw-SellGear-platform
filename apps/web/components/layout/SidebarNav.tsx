@@ -14,6 +14,8 @@ const ADMIN_EMAILS = [
 interface SidebarNavProps {
   userEmail?: string | null
   userRole?: UserRole | null
+  badgeCounts?: Record<string, number>
+  totalNew?: number
 }
 
 const NAV_ITEMS = [
@@ -120,7 +122,16 @@ export function isAdminUser(email?: string | null, role?: UserRole | null): bool
   return false
 }
 
-export default function SidebarNav({ userEmail, userRole }: SidebarNavProps) {
+function Badge({ count }: { count: number }) {
+  if (count <= 0) return null
+  return (
+    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white">
+      {count > 99 ? '99+' : count}
+    </span>
+  )
+}
+
+export default function SidebarNav({ userEmail, userRole, badgeCounts = {}, totalNew = 0 }: SidebarNavProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const currentType = searchParams.get('type')
@@ -139,6 +150,7 @@ export default function SidebarNav({ userEmail, userRole }: SidebarNavProps) {
         <Link href="/orders" className={linkClass(isTodos)}>
           {NAV_ITEMS[0].icon}
           Todos los pedidos
+          <Badge count={totalNew} />
         </Link>
         <Link href="/orders/new" className={linkClass(isNew)}>
           {NAV_ITEMS[1].icon}
@@ -161,6 +173,7 @@ export default function SidebarNav({ userEmail, userRole }: SidebarNavProps) {
             >
               {item.icon}
               {item.label}
+              <Badge count={badgeCounts[item.type] ?? 0} />
             </Link>
           )
         })}

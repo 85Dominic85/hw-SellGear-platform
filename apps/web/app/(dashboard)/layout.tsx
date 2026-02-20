@@ -24,6 +24,22 @@ export default async function DashboardLayout({
     .eq('id', user.id)
     .single()
 
+  // Count new orders per purchase_type for sidebar badges
+  const { data: newCounts } = await supabase
+    .from('orders')
+    .select('purchase_type')
+    .eq('status', 'nuevo')
+
+  const badgeCounts: Record<string, number> = {}
+  let totalNew = 0
+  if (newCounts) {
+    for (const row of newCounts) {
+      const pt = row.purchase_type ?? 'otro'
+      badgeCounts[pt] = (badgeCounts[pt] ?? 0) + 1
+      totalNew++
+    }
+  }
+
   const displayName = profile?.full_name ?? user.email ?? 'Usuario'
   const displayRole = profile?.role ?? '—'
 
@@ -56,7 +72,7 @@ export default async function DashboardLayout({
 
         {/* Navigation */}
         <Suspense fallback={<div className="flex-1" />}>
-          <SidebarNav userEmail={profile?.email ?? user.email} userRole={profile?.role} />
+          <SidebarNav userEmail={profile?.email ?? user.email} userRole={profile?.role} badgeCounts={badgeCounts} totalNew={totalNew} />
         </Suspense>
 
         {/* User info + logout */}
