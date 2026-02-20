@@ -1,6 +1,10 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminUser } from '@/lib/auth'
+import type { UserRole } from '@/types/database'
+
+const VALID_ROLES: UserRole[] = ['creator', 'hardware', 'manager', 'admin']
 
 async function verifyAdmin() {
   const supabase = await createClient()
@@ -41,4 +45,71 @@ export async function GET() {
   }
 
   return NextResponse.json({ users })
+}
+
+export async function POST(request: NextRequest) {
+  const auth = await verifyAdmin()
+  if ('error' in auth) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status })
+  }
+
+  const body = await request.json()
+  const { email, password, full_name, role, department } = body
+
+  if (!email || !password) {
+    return NextResponse.json(
+      { error: 'Email y contraseña son obligatorios' },
+      { status: 400 }
+    )
+  }
+
+  if (password.length < 6) {
+    return NextResponse.json(
+      { error: 'La contraseña debe tener al menos 6 caracteres' },
+      { status: 400 }
+    )
+  }
+
+  if (role && !VALID_ROLES.includes(role)) {
+    return NextResponse.json({ error: 'Rol no valido' }, { status: 400 })
+  }
+
+  const adminClient = createAdminClient()
+
+  // Crear usuario en auth
+  const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { full_name: full_name || null },
+  })
+
+  if (authError) {
+    return NextResponse.json({ error: authError.message }, { status: 500 })
+  }
+
+  // Insertar perfil (el trigger on_auth_user_created puede haberlo creado ya,
+  // asi que usamos upsert)
+  const { error: profileError } = await adminClient
+    .from('user_profiles')
+    .upsert({
+      id: authData.user.id,
+      email,
+      full_name: full_name || null,
+      role: role || 'creator',
+      department: department || null,
+    })
+
+  if (profileError) {
+    return NextResponse.json({ error: profileError.message }, { status: 500 })
+  }
+
+  // Devolver el perfil completo
+  const { data: profile } = await adminClient
+    .from('user_profiles')
+    .select('*')
+    .eq('id', authData.user.id)
+    .single()
+
+  return NextResponse.json({ user: profile }, { status: 201 })
 }
