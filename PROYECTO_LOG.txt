@@ -1,7 +1,7 @@
 ================================================================================
   PROYECTO LOG — hw-SellGear-platform (MainOperation Platform)
   Creado: 2026-02-20
-  Última actualización: 2026-02-20
+  Última actualización: 2026-02-20 (sesion 2)
 ================================================================================
 
 --------------------------------------------------------------------------------
@@ -66,6 +66,8 @@ ESTRUCTURA DEL REPO (monorepo ligero):
     - customer_name, venue_name
     - purchase_type, source_department
     - amount
+    - invoiced (boolean, marca si esta facturado)
+    - supplier (texto, proveedor asignado)
     - bank_receipt_url
     - ae_ref (referencia ejecutivo de cuentas)
     - shipping_address
@@ -89,9 +91,13 @@ ESTRUCTURA DEL REPO (monorepo ligero):
   SEED: estados predefinidos cargados vía migración.
 
 MIGRACIONES EXISTENTES:
-  - 20260219000001_create_schema.sql   → Schema principal
-  - 20260219000002_rls_policies.sql    → Políticas RLS
-  - 20260219000003_seed_statuses.sql   → Estados iniciales
+  - 20260219000001_create_schema.sql        → Schema principal
+  - 20260219000002_rls_policies.sql         → Políticas RLS
+  - 20260219000003_seed_statuses.sql        → Estados iniciales
+  - add_admin_role_and_policies             → Enum 'admin' en user_role
+  - admin_rls_policies                      → RLS full access para admins
+  - add_supplier_to_orders                  → Campo supplier en orders
+  - add_invoiced_to_orders                  → Campo invoiced (boolean) en orders
 
 --------------------------------------------------------------------------------
 4. INTEGRACIONES PLANIFICADAS
@@ -119,20 +125,40 @@ MCPs configurados (.mcp.json):
 
   DASHBOARD / PEDIDOS:
     ✅ Listado de pedidos (OrdersTable)
+       - Columnas: ID, Cliente, Local, Tipo, Importe, Fact., Estado, Fecha, Ref AE
+       - Checkbox facturado inline (solo admin/manager pueden editarlo)
     ✅ Barra de búsqueda (SearchBar)
     ✅ Filtrado por estado (StatusFilter)
     ✅ Badge de estado visual (StatusBadge)
+    ✅ Badges contadores de pedidos nuevos en sidebar (estilo iPhone)
     ✅ Detalle de pedido (/orders/[id])
        - Lista de ítems (ItemsList)
        - Comentarios (CommentsList)
        - Cambio de estado con nota (StatusChangePanel)
-       - Botón de sincronización a Sheets (SyncButton)
+       - Selector de proveedor (SupplierSelect)
+       - Boton notificacion a Slack (SlackNotifyButton)
+       - Checkbox facturado (InvoiceCheckbox)
+       - Boton eliminar pedido (DeleteOrderButton, solo admins)
     ✅ Formulario nuevo pedido (/orders/new)
     ✅ Sidebar con categorías de pedidos por tipo (SidebarNav)
 
+  ADMIN:
+    ✅ Panel de administracion de usuarios (/admin/users)
+    ✅ Edicion de rol, nombre y departamento
+    ✅ Reset de contraseña por email
+    ✅ Roles: creator, hardware, manager, admin
+
   API ROUTES:
-    ✅ PATCH /api/orders/[id]/status  → Cambio de estado
-    ✅ POST  /api/orders/[id]/sync    → Sync individual a Google Sheets
+    ✅ PATCH  /api/orders/[id]/status       → Cambio de estado
+    ✅ DELETE /api/orders/[id]              → Eliminar pedido (solo admin)
+    ✅ POST   /api/orders/[id]/notify-slack → Notificacion a Slack
+    ✅ GET/PUT/DELETE /api/admin/users/[id] → Gestion de usuarios
+    ✅ POST   /api/admin/users/[id]/reset-password → Reset contraseña
+
+  INTEGRACIONES:
+    ✅ Edge Function: typeform-webhook (v4) - Typeform → Supabase
+    ✅ Webhook Typeform configurado (form: comprasQamarero, ID: gl7G4Xs2)
+    ✅ Boton Slack en detalle de pedido (requiere SLACK_WEBHOOK_URL)
 
   SCRIPTS:
     ✅ scripts/migrate-from-sheets.ts → Migración histórica Sheets → Supabase
@@ -165,20 +191,132 @@ MCPs configurados (.mcp.json):
 
   Estado general: MVP funcional desplegado en Vercel y conectado a Supabase.
 
+--- SESIÓN 2026-02-20 (sesión 2 — mejoras operativas y integraciones) ---
+
+  LIMPIEZA DE BRANCHES:
+    - Branch claude/add-admin-panel-menu-R9w8Z ya mergeado, eliminado del remoto.
+    - Confirmado branch unico: feature/mvp-foundation.
+
+  INTEGRACIÓN TYPEFORM → SUPABASE:
+    - Creada Edge Function typeform-webhook para recibir datos del formulario
+      comprasQamarero (ID: gl7G4Xs2) e insertarlos en la tabla orders.
+    - v1: Problema con regex de caracteres acentuados (ó, é) que no sobrevivian
+      al encoding de Edge Functions. customer_name y phone quedaban vacios.
+    - v2: Fix regex usando "." en lugar de chars acentuados.
+    - v3: Mapeo completo de los 30+ campos del formulario (tipo compra, forma
+      de pago, producto, importes, direccion, notas, justificante bancario, etc).
+    - v4: FIX CRITICO — Typeform NO incluye "title" en answers[].field, solo
+      en form_response.definition.fields. Se añadio enrichAnswers() que resuelve
+      los titulos desde definition antes del matching regex. Añadido logging
+      detallado para debugging.
+    - Webhook configurado via API Typeform con personal access token.
+    - Probado con payloads simulados y con envios reales. Funcionando correctamente.
+
+  BADGES CONTADORES EN SIDEBAR:
+    - Añadidos contadores estilo iPhone (circulo rojo) en cada categoria del
+      sidebar mostrando cuantos pedidos estan en estado "nuevo".
+    - Query en layout.tsx agrupa por purchase_type donde status='nuevo'.
+    - Badge con "99+" si supera 99.
+
+  FIX PANEL DE ADMINISTRACION:
+    - Error "Application error: a server-side exception has occurred" al entrar
+      en /admin/users. Causa: isAdminUser estaba en SidebarNav.tsx (marcado
+      'use client') pero se importaba desde server components.
+    - Solucion: extraer isAdminUser a lib/auth.ts (modulo compartido sin
+      directiva). Actualizar imports en SidebarNav, admin/layout y 3 API routes.
+
+  MIGRACION ROL ADMIN:
+    - El valor 'admin' no existia en el enum user_role de la BD (la migracion
+      local nunca se habia aplicado).
+    - Aplicada migracion: ALTER TYPE user_role ADD VALUE 'admin'.
+    - Aplicadas politicas RLS para acceso completo de admins.
+    - Usuarios domingo.bueno y jj.gallego actualizados a rol admin.
+    - Fix del error "Cannot coerce the result to a single JSON object" al
+      editar usuarios (RLS bloqueaba sin rol admin).
+
+  SELECTOR DE PROVEEDOR:
+    - Añadido campo supplier (text) a tabla orders via migracion.
+    - Componente SupplierSelect en sidebar del detalle de pedido.
+    - Opciones: Aqprox, JassWay, Pedro Porto, PosiFlex, Mayorista Canario.
+    - Auto-guardado al seleccionar.
+
+  ACTUALIZACION MASIVA DE ESTADOS:
+    - Todos los pedidos anteriores al 09/02/2026 marcados como "completado".
+    - Excepto los 10 ultimos de cada categoria (purchase_type) para revision
+      manual. Usando window function ROW_NUMBER() OVER (PARTITION BY sheet_tab).
+
+  SUSTITUCION GOOGLE SHEETS POR SLACK:
+    - Eliminado boton SyncButton (sincronizacion Google Sheets).
+    - Creado SlackNotifyButton: envia informacion del pedido + historial de
+      estados al canal de Slack via webhook.
+    - API route /api/orders/[id]/notify-slack con Slack Block Kit.
+    - Requiere variable de entorno SLACK_WEBHOOK_URL (pendiente de configurar).
+
+  FIX REDIRECT LOCALHOST EN RESET PASSWORD:
+    - El reset de contraseña redirigía a localhost:3000.
+    - Cambiado redirectTo a NEXT_PUBLIC_APP_URL con fallback a URL de produccion.
+    - Site URL de Supabase Auth cambiado por el owner de la organizacion a la
+      URL de produccion (hw-sell-gear-platform-tsm1.vercel.app).
+
+  CAMPO FACTURA (CHECKBOX):
+    - Migracion: columna invoiced (boolean, default false) en orders.
+    - InvoiceCheckbox: componente toggle en detalle del pedido (tras Importe).
+    - InvoiceCell: checkbox inline en la vista general de pedidos (columna Fact.)
+      solo editable por admin y manager. Resto de roles lo ve como texto.
+
+  MEJORAS VISTA GENERAL DE PEDIDOS:
+    - Eliminados campos "Creado por" y "Asignado a" del detalle del pedido.
+    - Columna "Venue" renombrada a "Local".
+    - Columna "Asignado a" sustituida por "Ref AE".
+    - Simplificada query de pedidos (sin joins innecesarios de creator/assignee).
+    - Tipo Order actualizado con campos supplier e invoiced.
+
+  ELIMINACION DE PEDIDOS POR ADMIN:
+    - API DELETE /api/orders/[id] con verificacion de admin.
+    - Componente DeleteOrderButton con confirmacion en dos pasos.
+    - Visible solo para admins en sidebar del detalle.
+    - FK con CASCADE eliminan items, historial y comentarios automaticamente.
+
+  COMMITS DE ESTA SESION:
+    - 2b0a141: feat: añadir badges contadores de pedidos nuevos en sidebar
+    - 5a599fe: fix: extraer isAdminUser a lib/auth para evitar error server/client
+    - 5dbc972: feat: añadir selector de proveedor en detalle de pedido
+    - 96103ac: feat: reemplazar boton Google Sheets por notificacion a Slack
+    - fd991f2: fix: corregir redirectTo de localhost a URL de produccion
+    - 9309c0c: feat: añadir checkbox de factura en detalle de pedido
+    - 94706e4: feat: mejorar vista general y detalle de pedidos
+    - 40cfd8c: feat: permitir a admins eliminar pedidos desde la app
+
+  EDGE FUNCTIONS DESPLEGADAS:
+    - typeform-webhook v4 (activa, verify_jwt=false)
+
+  Estado general: Plataforma operativa con ingesta desde Typeform, panel admin,
+  gestion de proveedores, notificaciones Slack, y checkbox de facturacion.
+
 --------------------------------------------------------------------------------
 7. PENDIENTE / BACKLOG
 --------------------------------------------------------------------------------
 
-  [ ] Edge Function: webhook de Typeform → validación → inserción en Supabase
-  [ ] Edge Function: sincronización masiva Supabase → Google Sheets
-  [ ] Notificaciones Slack en cambios de estado relevantes
-  [ ] Tests de integración (typeform-webhook, sheets-sync)
-  [ ] Migración histórica completa desde Google Sheets
-  [ ] Panel de administración / gestión de usuarios
-  [ ] Permisos por rol (admin, AE, operaciones)
-  [ ] Búsqueda avanzada (por fecha, importe, cliente)
-  [ ] Exportación de datos
-  [ ] Login Google Workspace (OAuth con Google, restricción a dominio empresa)
+  COMPLETADO:
+  [x] Edge Function: webhook Typeform → validacion → insercion en Supabase (v4)
+  [x] Panel de administracion / gestion de usuarios
+  [x] Permisos por rol (admin, manager, hardware, creator)
+  [x] Notificacion Slack manual desde detalle de pedido
+  [x] Selector de proveedor en detalle de pedido
+  [x] Campo facturado (checkbox) en lista y detalle
+  [x] Eliminacion de pedidos por admin
+
+  PENDIENTE:
+  [ ] Configurar SLACK_WEBHOOK_URL en Vercel (cuando Slack este listo)
+  [ ] Notificaciones Slack automaticas en cambios de estado
+  [ ] Edge Function: sincronizacion masiva Supabase → Google Sheets
+  [ ] Tests de integracion (typeform-webhook, API routes)
+  [ ] Migracion historica completa desde Google Sheets
+  [ ] Busqueda avanzada (por fecha, importe, cliente)
+  [ ] Exportacion de datos (CSV/Excel)
+  [ ] Login Google Workspace (OAuth con Google, restriccion a dominio empresa)
+  [ ] Edicion inline de pedidos desde la vista general
+  [ ] Paginacion en listado de pedidos (actualmente limite 100)
 
 --------------------------------------------------------------------------------
 8. CÓMO ARRANCAR EL PROYECTO EN LOCAL
