@@ -1,7 +1,7 @@
 ================================================================================
   PROYECTO LOG — hw-SellGear-platform (MainOperation Platform)
   Creado: 2026-02-20
-  Última actualización: 2026-02-20 (sesion 4)
+  Última actualización: 2026-02-24 (sesion 5)
 ================================================================================
 
 --------------------------------------------------------------------------------
@@ -69,6 +69,8 @@ ESTRUCTURA DEL REPO (monorepo ligero):
     - invoiced (boolean, marca si esta facturado)
     - supplier (texto, proveedor asignado)
     - bank_receipt_url
+    - requester_name (nombre del solicitante interno)
+    - requester_email (email del solicitante, para notificaciones)
     - ae_ref (referencia ejecutivo de cuentas)
     - shipping_address
     - status (enum: nuevo, pendiente, solicitado_a_proveedor, pagado, falta_informacion, bloqueado)
@@ -125,6 +127,7 @@ MIGRACIONES EXISTENTES:
   - recreate_status_dependent_policies      → Recrea politicas RLS tras cambio de enum
   - add_viewer_role_enum                    → Añade 'viewer' a enum user_role
   - viewer_role_default_and_policies        → Default viewer + RLS SELECT para viewers
+  - add_requester_fields_to_orders          → Campos requester_name y requester_email
 
 --------------------------------------------------------------------------------
 4. INTEGRACIONES PLANIFICADAS
@@ -142,7 +145,7 @@ MCPs configurados (.mcp.json):
   - Slack MCP
 
 --------------------------------------------------------------------------------
-5. FUNCIONALIDADES IMPLEMENTADAS (al 2026-02-20)
+5. FUNCIONALIDADES IMPLEMENTADAS (al 2026-02-24)
 --------------------------------------------------------------------------------
 
   AUTH:
@@ -170,6 +173,9 @@ MCPs configurados (.mcp.json):
        - Boton eliminar pedido (DeleteOrderButton, solo admins)
        - Auto-transicion: nuevo → pendiente al visualizar (AutoMarkSeen)
     ✅ Formulario nuevo pedido (/orders/new, oculto para viewers)
+       - Seccion solicitante (nombre + email para notificaciones)
+       - Campo justificante bancario (URL)
+       - Submit via API server-side (POST /api/orders, bypass RLS)
     ✅ Sidebar con categorías de pedidos por tipo (SidebarNav)
 
   SISTEMA DE ESTADOS:
@@ -205,6 +211,7 @@ MCPs configurados (.mcp.json):
     ✅ Roles disponibles: viewer, creator, hardware, manager, admin
 
   API ROUTES:
+    ✅ POST   /api/orders                    → Crear pedido (server-side, admin client)
     ✅ POST   /api/orders/[id]/status       → Cambio de estado (bloquea viewers)
     ✅ POST   /api/orders/[id]/mark-seen    → Auto-transicion nuevo → pendiente
     ✅ DELETE /api/orders/[id]              → Eliminar pedido (solo admin)
@@ -476,6 +483,68 @@ MCPs configurados (.mcp.json):
   Auto-transicion nuevo→pendiente implementada. Rol viewer operativo: los AE/AM
   pueden ver todo pero no modificar nada. Default para nuevos registros es viewer.
 
+--- SESIÓN 2026-02-24 (sesión 5 — formulario pedidos para AE/AM) ---
+
+  CONTEXTO:
+    - Los AE, AM y resto de personas que venden equipos necesitan crear pedidos
+      desde la app web. El formulario /orders/new solo funcionaba para rol 'creator'
+      (por RLS), y le faltaban campos del Typeform (justificante bancario).
+    - Se necesitaba un campo de "solicitante" (nombre + email) para notificarle
+      por correo si algo falla en el proceso.
+
+  MIGRACIÓN SQL: CAMPOS SOLICITANTE
+    - Añadidos requester_name (TEXT, nullable) y requester_email (TEXT, nullable)
+      a la tabla orders.
+    - Sin índices nuevos (campos informativos, no se filtran por ellos).
+    - Pedidos existentes y los de Typeform no tienen estos datos (nullable).
+
+  NUEVA API ROUTE: POST /api/orders
+    - Endpoint server-side para creación de pedidos usando admin client
+      (createAdminClient, bypasses RLS). Cualquier usuario autenticado puede crear.
+    - Flujo: autenticar via session → validar body (customer_name obligatorio,
+      formato email y URL) → calcular sheet_tab desde purchase_type → insertar
+      orden con source='manual', status='nuevo' → insertar items → insertar
+      entrada inicial en status_history.
+    - Misma lógica de sheet_tab que typeform-webhook (SHEET_TAB_MAP).
+    - Devuelve { id, operation_id }.
+
+  FORMULARIO /orders/new REESCRITO
+    - Nueva sección "Solicitante" (primera posición):
+      - requester_name: texto, "Nombre del solicitante"
+      - requester_email: email, "Email del solicitante"
+    - Nuevo campo "Justificante bancario (URL)" en sección "Detalles del pedido"
+      (type=url, placeholder drive.google.com).
+    - Submit cambiado de inserción directa Supabase client → fetch('/api/orders').
+    - Eliminados imports de createClient del cliente y llamada a auth.getUser().
+    - Mismos estilos: inputClass, labelClass, cards rounded-xl border.
+
+  DETALLE DE PEDIDO: CAMPOS NUEVOS
+    - Solicitante: order.requester_name (condicional, si existe)
+    - Email solicitante: order.requester_email con enlace mailto: (condicional)
+    - Justificante bancario: order.bank_receipt_url con enlace externo (condicional)
+    - Posición: después de "Departamento", antes de "Fecha de creación".
+
+  TIPOS TYPESCRIPT ACTUALIZADOS:
+    - Interface Order: añadidos requester_name y requester_email (string | null)
+
+  ARCHIVOS MODIFICADOS:
+    - apps/web/types/database.ts (2 campos nuevos en Order)
+    - apps/web/app/api/orders/route.ts (NUEVO — API POST)
+    - apps/web/app/(dashboard)/orders/new/page.tsx (reescrito)
+    - apps/web/app/(dashboard)/orders/[id]/page.tsx (3 campos nuevos en detalle)
+
+  COMMITS DE ESTA SESION:
+    - 89a9e22: feat: formulario de pedidos para AE/AM con campos solicitante y justificante
+
+  MIGRACIONES APLICADAS:
+    - add_requester_fields_to_orders: requester_name y requester_email en orders
+
+  BUILD: Exitoso sin errores. Todas las rutas compiladas correctamente.
+
+  Estado general: Formulario de pedidos operativo para cualquier usuario autenticado
+  (AE/AM incluidos). Campos solicitante y justificante bancario disponibles.
+  Submit server-side via API route con admin client (bypass RLS).
+
 --------------------------------------------------------------------------------
 7. PENDIENTE / BACKLOG
 --------------------------------------------------------------------------------
@@ -494,6 +563,8 @@ MCPs configurados (.mcp.json):
   [x] Creacion de usuarios desde la app (con admin client)
   [x] Eliminacion completa de usuarios (auth.users + perfil)
   [x] Limpiar notificaciones (badges) por usuario
+  [x] Formulario pedidos para AE/AM (campos solicitante + justificante bancario)
+  [x] API server-side para crear pedidos (bypass RLS, cualquier usuario autenticado)
 
   PENDIENTE:
   [ ] Configurar SLACK_WEBHOOK_URL en Vercel (cuando Slack este listo)
