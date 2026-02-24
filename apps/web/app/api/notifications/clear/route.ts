@@ -11,14 +11,38 @@ export async function POST() {
     return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
   }
 
-  const { error } = await supabase
-    .from('user_profiles')
-    .update({ notifications_cleared_at: new Date().toISOString() })
-    .eq('id', user.id)
+  // Get all orders with status 'nuevo'
+  const { data: nuevoOrders } = await supabase
+    .from('orders')
+    .select('id')
+    .eq('status', 'nuevo')
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!nuevoOrders || nuevoOrders.length === 0) {
+    return NextResponse.json({ success: true, cleared: 0 })
   }
 
-  return NextResponse.json({ success: true })
+  const ids = nuevoOrders.map((o) => o.id)
+
+  // Bulk transition nuevo → pendiente
+  const { error: updateError } = await supabase
+    .from('orders')
+    .update({ status: 'pendiente', updated_at: new Date().toISOString() })
+    .in('id', ids)
+
+  if (updateError) {
+    return NextResponse.json({ error: updateError.message }, { status: 500 })
+  }
+
+  // Insert status_history entries for traceability
+  const historyEntries = ids.map((orderId) => ({
+    order_id: orderId,
+    from_status: 'nuevo',
+    to_status: 'pendiente',
+    changed_by: user.id,
+    comment: 'Marcado como pendiente (limpiar notificaciones)',
+  }))
+
+  await supabase.from('status_history').insert(historyEntries)
+
+  return NextResponse.json({ success: true, cleared: ids.length })
 }
