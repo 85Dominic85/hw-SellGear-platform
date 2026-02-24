@@ -682,15 +682,19 @@ MCPs configurados (.mcp.json):
       AutoMarkSeen pero masivo. Comportamiento coherente y predecible.
     - Eliminada dependencia de notifications_cleared_at del layout query.
 
-  SUPABASE REALTIME:
+  SUPABASE REALTIME + POLLING:
     - Habilitado Realtime en tabla orders (ALTER PUBLICATION supabase_realtime
       ADD TABLE public.orders).
-    - Componente RealtimeRefresh: invisible, se monta en el layout. Abre canal
-      WebSocket con Supabase, escucha INSERT y UPDATE en orders, dispara
-      router.refresh() con debounce 500ms.
+    - Componente RealtimeRefresh: invisible, se monta en el layout. Doble mecanismo:
+      1. Realtime (instantaneo): canal WebSocket escucha INSERT/UPDATE en orders,
+         dispara router.refresh() con debounce 500ms.
+      2. Polling (fallback): router.refresh() cada 30s como respaldo en caso de
+         que el WebSocket falle o el navegador tenga codigo cacheado.
     - Resultado: badges del sidebar, listado de pedidos y detalle se actualizan
       automaticamente cuando alguien crea/modifica un pedido. Sin F5.
     - RLS respetada: cada usuario solo recibe eventos de pedidos que puede ver.
+    - NOTA: tras deploy inicial, requiere hard-refresh (Ctrl+Shift+R) del navegador
+      para cargar el nuevo JS con la suscripcion Realtime.
 
   ARCHIVOS MODIFICADOS:
     - apps/web/components/orders/SupplierSelect.tsx (SUPPLIERS como objetos, PC Mira, onSupplierChange)
@@ -707,15 +711,23 @@ MCPs configurados (.mcp.json):
     - ea11382: feat: actualizar boton email al cambiar proveedor y mostrar todos los campos
     - f7c9554: fix: corregir notificaciones — badges basados en status, no timestamp
     - 58401c6: feat: auto-refresh con Supabase Realtime al crear/modificar pedidos
+    - 7f533e9: docs: actualizar PROYECTO_LOG con sesion 7
+    - 189483b: feat: añadir polling cada 30s como fallback al Realtime
 
   MIGRACIONES APLICADAS:
     - enable_realtime_orders: ALTER PUBLICATION supabase_realtime ADD TABLE orders
 
   BUILD: Exitoso sin errores. Todas las rutas compiladas correctamente.
 
+  PENDIENTE DE VERIFICAR EN PROXIMA SESION:
+    - Confirmar que Realtime + polling funcionan correctamente en produccion
+      (hacer hard-refresh del navegador y probar con un pedido nuevo via Typeform).
+    - El pedido HW-202602-1597 (test via Typeform) esta en status='nuevo' y
+      deberia mostrar badge=1 tras refrescar.
+
   Estado general: Email a proveedor operativo via modal de plantilla copiable.
   Notificaciones corregidas (badges basados en status, limpiar hace bulk transition).
-  Supabase Realtime habilitado: la app se actualiza sola cuando hay cambios.
+  Supabase Realtime + polling habilitado: la app se actualiza sola cuando hay cambios.
 
 --------------------------------------------------------------------------------
 7. PENDIENTE / BACKLOG
@@ -743,7 +755,7 @@ MCPs configurados (.mcp.json):
   [x] Boton "Preparar email" a proveedor (modal plantilla copiable)
   [x] PC Mira añadido como proveedor con emails de contacto
   [x] Fix notificaciones: badges basados en status, no timestamp
-  [x] Supabase Realtime: auto-refresh al crear/modificar pedidos
+  [x] Supabase Realtime + polling 30s: auto-refresh al crear/modificar pedidos
 
   PENDIENTE:
   [ ] Edge Function: sincronizacion masiva Supabase → Google Sheets
