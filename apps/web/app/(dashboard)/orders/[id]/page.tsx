@@ -6,8 +6,7 @@ import StatusBadge from '@/components/orders/StatusBadge'
 import StatusChangePanel from '@/components/orders/StatusChangePanel'
 import CommentsList from '@/components/orders/CommentsList'
 import ItemsList from '@/components/orders/ItemsList'
-import SupplierSelect from '@/components/orders/SupplierSelect'
-import SupplierEmailButton from '@/components/orders/SupplierEmailButton'
+import SupplierSection from '@/components/orders/SupplierSection'
 import SlackNotifyButton from '@/components/orders/SlackNotifyButton'
 import InvoiceCheckbox from '@/components/orders/InvoiceCheckbox'
 import DeleteOrderButton from '@/components/orders/DeleteOrderButton'
@@ -311,9 +310,9 @@ export default async function OrderDetailPage({
         {!isViewer && (
           <div className="space-y-4">
             <StatusChangePanel orderId={order.id} currentStatus={order.status as OrderStatus} />
-            <SupplierSelect orderId={order.id} currentSupplier={order.supplier} />
-            <SupplierEmailButton
-              supplier={order.supplier}
+            <SupplierSection
+              orderId={order.id}
+              currentSupplier={order.supplier}
               operationId={order.operation_id}
               customerName={order.customer_name}
               venueName={order.venue_name}

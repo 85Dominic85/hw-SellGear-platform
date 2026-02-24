@@ -19,15 +19,17 @@ export function getSupplierEmails(name: string): readonly string[] {
 interface SupplierSelectProps {
   orderId: string
   currentSupplier: string | null
+  onSupplierChange?: (supplier: string) => void
 }
 
-export default function SupplierSelect({ orderId, currentSupplier }: SupplierSelectProps) {
+export default function SupplierSelect({ orderId, currentSupplier, onSupplierChange }: SupplierSelectProps) {
   const [supplier, setSupplier] = useState(currentSupplier ?? '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
   const handleChange = async (value: string) => {
     setSupplier(value)
+    onSupplierChange?.(value)
     setSaving(true)
     setSaved(false)
 

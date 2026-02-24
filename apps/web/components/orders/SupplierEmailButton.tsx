@@ -68,33 +68,31 @@ export default function SupplierEmailButton({
   const to = emails.join(', ')
   const subject = `Solicitud pedido ${operationId} — ${customerName}`
 
+  const na = '—'
+
   const bodyLines: string[] = [
     'Hola,',
     '',
     'Os escribimos para solicitar el siguiente pedido:',
     '',
     `Referencia: ${operationId}`,
-    `Cliente: ${customerName}`,
+    `Cliente: ${customerName || na}`,
+    `Local: ${venueName || na}`,
+    `Teléfono: ${phone || na}`,
+    `Email contacto: ${contactEmail || na}`,
   ]
 
-  if (venueName) bodyLines.push(`Local: ${venueName}`)
-  if (phone) bodyLines.push(`Teléfono: ${phone}`)
-  if (contactEmail) bodyLines.push(`Email contacto: ${contactEmail}`)
-
+  bodyLines.push('', 'Productos:')
   if (items.length > 0) {
-    bodyLines.push('', 'Productos:')
     for (const item of items) {
       bodyLines.push(`- ${item.qty}x ${item.product_name}`)
     }
+  } else {
+    bodyLines.push(`(sin artículos)`)
   }
 
-  if (shippingAddress) {
-    bodyLines.push('', `Dirección de envío: ${shippingAddress}`)
-  }
-
-  if (notes) {
-    bodyLines.push('', `Notas: ${notes}`)
-  }
+  bodyLines.push('', `Dirección de envío: ${shippingAddress || na}`)
+  bodyLines.push('', `Notas: ${notes || na}`)
 
   bodyLines.push('', 'Gracias,', 'Equipo Hardware')
 
