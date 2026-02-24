@@ -3,13 +3,18 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-const SUPPLIERS = [
-  'Aqprox',
-  'JassWay',
-  'Pedro Porto',
-  'PosiFlex',
-  'Mayorista Canario',
+export const SUPPLIERS = [
+  { name: 'Aqprox', emails: ['anazaragoza@mylar.es'] },
+  { name: 'JassWay', emails: ['joseluis@jassway.es'] },
+  { name: 'Pedro Porto', emails: ['jose.romero@pedroporto.pt'] },
+  { name: 'PosiFlex', emails: ['mario.guillem@posiflex.es', 'miriam.ballester@posiflex.es'] },
+  { name: 'PC Mira', emails: ['ramon.martinez@pcmira.com', 'lidia.alonso@pcmira.com'] },
+  { name: 'Mayorista Canario', emails: [] },
 ] as const
+
+export function getSupplierEmails(name: string): readonly string[] {
+  return SUPPLIERS.find((s) => s.name === name)?.emails ?? []
+}
 
 interface SupplierSelectProps {
   orderId: string
@@ -52,8 +57,8 @@ export default function SupplierSelect({ orderId, currentSupplier }: SupplierSel
       >
         <option value="">Sin proveedor</option>
         {SUPPLIERS.map((s) => (
-          <option key={s} value={s}>
-            {s}
+          <option key={s.name} value={s.name}>
+            {s.name}
           </option>
         ))}
       </select>
