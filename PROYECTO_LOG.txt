@@ -1,7 +1,7 @@
 ================================================================================
   PROYECTO LOG — hw-SellGear-platform (MainOperation Platform)
   Creado: 2026-02-20
-  Última actualización: 2026-02-24 (sesion 6)
+  Última actualización: 2026-02-24 (sesion 7)
 ================================================================================
 
 --------------------------------------------------------------------------------
@@ -128,6 +128,7 @@ MIGRACIONES EXISTENTES:
   - add_viewer_role_enum                    → Añade 'viewer' a enum user_role
   - viewer_role_default_and_policies        → Default viewer + RLS SELECT para viewers
   - add_requester_fields_to_orders          → Campos requester_name y requester_email
+  - enable_realtime_orders                  → Realtime habilitado en tabla orders
 
 --------------------------------------------------------------------------------
 4. INTEGRACIONES PLANIFICADAS
@@ -161,13 +162,15 @@ MCPs configurados (.mcp.json):
     ✅ Filtrado por estado (StatusFilter)
     ✅ Badge de estado visual (StatusBadge)
     ✅ Badges contadores de pedidos nuevos en sidebar (estilo iPhone)
-       - Boton "Limpiar" para resetear notificaciones por usuario
-       - Basado en notifications_cleared_at (persistente por usuario)
+       - Basado en status='nuevo' (sin filtro de timestamp)
+       - Boton "Limpiar" hace bulk nuevo→pendiente (con historial)
+       - Auto-refresh via Supabase Realtime (sin necesidad de F5)
     ✅ Detalle de pedido (/orders/[id])
        - Lista de ítems (ItemsList, readOnly para viewers)
        - Comentarios (CommentsList, readOnly para viewers)
        - Cambio de estado con nota (StatusChangePanel, oculto para viewers)
        - Selector de proveedor (SupplierSelect, oculto para viewers)
+       - Boton "Preparar email" al proveedor (modal con plantilla copiable)
        - Boton notificacion a Slack (SlackNotifyButton, oculto para viewers)
        - Checkbox facturado (InvoiceCheckbox, readOnly para viewers)
        - Boton eliminar pedido (DeleteOrderButton, solo admins)
@@ -219,7 +222,7 @@ MCPs configurados (.mcp.json):
     ✅ POST   /api/admin/users              → Crear usuario (default: viewer)
     ✅ GET/PUT/DELETE /api/admin/users/[id] → Gestion de usuarios
     ✅ POST   /api/admin/users/[id]/reset-password → Reset contraseña
-    ✅ POST   /api/notifications/clear      → Limpiar badges del usuario
+    ✅ POST   /api/notifications/clear      → Bulk nuevo→pendiente (limpiar badges)
 
   INTEGRACIONES:
     ✅ Edge Function: typeform-webhook (v4) - Typeform → Supabase
@@ -237,6 +240,23 @@ MCPs configurados (.mcp.json):
 
   SCRIPTS:
     ✅ scripts/migrate-from-sheets.ts → Migración histórica Sheets → Supabase
+
+  REALTIME:
+    ✅ Supabase Realtime habilitado en tabla orders (postgres_changes)
+    ✅ Componente RealtimeRefresh en layout: escucha INSERT/UPDATE en orders
+       y dispara router.refresh() con debounce 500ms
+    ✅ Badges y listado se actualizan automaticamente sin refrescar pagina
+
+  EMAIL PROVEEDOR:
+    ✅ SUPPLIERS refactorizado como objetos con emails de contacto
+    ✅ PC Mira añadido como proveedor (ramon.martinez, lidia.alonso)
+    ✅ Boton "Preparar email a [Proveedor]" en sidebar del detalle
+       - Abre modal con Para, Asunto y Cuerpo pre-rellenados
+       - Cada campo copiable individualmente + boton "Copiar todo"
+       - Incluye todos los datos del cliente (campos vacios muestran guion)
+       - No aparece si no hay proveedor o si no tiene emails (Mayorista Canario)
+    ✅ SupplierSection: wrapper client que comparte estado entre selector y boton
+       - Cambiar proveedor actualiza el boton de email al instante (sin refresh)
 
   INFRAESTRUCTURA:
     ✅ Vercel configurado (Root Directory: apps/web)
@@ -314,7 +334,8 @@ MCPs configurados (.mcp.json):
   SELECTOR DE PROVEEDOR:
     - Añadido campo supplier (text) a tabla orders via migracion.
     - Componente SupplierSelect en sidebar del detalle de pedido.
-    - Opciones: Aqprox, JassWay, Pedro Porto, PosiFlex, Mayorista Canario.
+    - Opciones: Aqprox, JassWay, Pedro Porto, PosiFlex, PC Mira, Mayorista Canario.
+    - Cada proveedor tiene emails de contacto asociados (excepto Mayorista Canario).
     - Auto-guardado al seleccionar.
 
   ACTUALIZACION MASIVA DE ESTADOS:
@@ -394,10 +415,9 @@ MCPs configurados (.mcp.json):
   LIMPIAR NOTIFICACIONES (BADGES):
     - Migracion: campo notifications_cleared_at en user_profiles.
     - API POST /api/notifications/clear actualiza timestamp del usuario.
-    - Badges del sidebar solo cuentan pedidos "nuevo" creados despues del
-      ultimo clear del usuario (persistente por usuario).
     - Boton "Limpiar" visible junto al titulo "Pedidos" cuando hay badges.
-    - Al hacer click, badges desaparecen. Nuevos pedidos los reactivan.
+    - NOTA: sistema basado en timestamp reemplazado en sesion 7 por sistema
+      basado en status (badges = status='nuevo', limpiar = bulk nuevo→pendiente).
 
   COMMITS DE ESTA SESION:
     - 9309c0c: feat: añadir checkbox de factura en detalle de pedido
@@ -634,6 +654,69 @@ MCPs configurados (.mcp.json):
   notificacion: pedido manual, cambio de estado, y Typeform webhook. Formato
   compacto y consistente en todas. Boton manual reutiliza Edge Function.
 
+--- SESION 2026-02-24 (sesion 7 — email proveedor, fix notificaciones, Realtime) ---
+
+  BOTON EMAIL A PROVEEDOR:
+    - Proveedores refactorizados de array de strings a objetos con emails:
+      Aqprox (1), JassWay (1), Pedro Porto (1), PosiFlex (2), PC Mira (2),
+      Mayorista Canario (0). Helper getSupplierEmails() exportado.
+    - PC Mira añadido como proveedor nuevo.
+    - Primera iteracion: boton mailto: que abria cliente de correo.
+    - Iteracion final: modal "Preparar email" con campos Para/Asunto/Cuerpo
+      pre-rellenados, copiables individualmente o todo junto. Mas flexible
+      que mailto: porque permite pegar en cualquier gestor de correo.
+    - Plantilla incluye TODOS los campos del cliente aunque esten vacios
+      (muestran guion en vez de omitirse).
+    - SupplierSection: wrapper client que comparte estado entre SupplierSelect
+      y SupplierEmailButton. Al cambiar proveedor, el boton de email se
+      actualiza al instante sin necesidad de refrescar la pagina.
+
+  FIX NOTIFICACIONES (BADGES):
+    - BUG: tras pulsar "Limpiar", no aparecian mas notificaciones. Causa:
+      el badge filtraba status='nuevo' AND created_at > notifications_cleared_at.
+      Tras limpiar (timestamp 20-Feb), los 24 pedidos importados (19-Feb) con
+      status='nuevo' quedaban ocultos permanentemente.
+    - FIX: eliminado filtro de timestamp. Badge ahora cuenta simplemente
+      pedidos con status='nuevo'. "Limpiar" hace bulk UPDATE de todos los
+      pedidos nuevo → pendiente (con entradas en status_history), igual que
+      AutoMarkSeen pero masivo. Comportamiento coherente y predecible.
+    - Eliminada dependencia de notifications_cleared_at del layout query.
+
+  SUPABASE REALTIME:
+    - Habilitado Realtime en tabla orders (ALTER PUBLICATION supabase_realtime
+      ADD TABLE public.orders).
+    - Componente RealtimeRefresh: invisible, se monta en el layout. Abre canal
+      WebSocket con Supabase, escucha INSERT y UPDATE en orders, dispara
+      router.refresh() con debounce 500ms.
+    - Resultado: badges del sidebar, listado de pedidos y detalle se actualizan
+      automaticamente cuando alguien crea/modifica un pedido. Sin F5.
+    - RLS respetada: cada usuario solo recibe eventos de pedidos que puede ver.
+
+  ARCHIVOS MODIFICADOS:
+    - apps/web/components/orders/SupplierSelect.tsx (SUPPLIERS como objetos, PC Mira, onSupplierChange)
+    - apps/web/components/orders/SupplierEmailButton.tsx (NUEVO → modal plantilla email)
+    - apps/web/components/orders/SupplierSection.tsx (NUEVO — wrapper estado compartido)
+    - apps/web/components/layout/RealtimeRefresh.tsx (NUEVO — auto-refresh Realtime)
+    - apps/web/app/(dashboard)/orders/[id]/page.tsx (SupplierSection en vez de Select+Button)
+    - apps/web/app/(dashboard)/layout.tsx (quitar filtro timestamp, añadir RealtimeRefresh)
+    - apps/web/app/api/notifications/clear/route.ts (reescrito: bulk nuevo→pendiente)
+
+  COMMITS DE ESTA SESION:
+    - 8c1d39a: feat: boton mailto para enviar email predefinido a proveedor
+    - 357d8c9: feat: reemplazar mailto por modal constructor de plantilla email
+    - ea11382: feat: actualizar boton email al cambiar proveedor y mostrar todos los campos
+    - f7c9554: fix: corregir notificaciones — badges basados en status, no timestamp
+    - 58401c6: feat: auto-refresh con Supabase Realtime al crear/modificar pedidos
+
+  MIGRACIONES APLICADAS:
+    - enable_realtime_orders: ALTER PUBLICATION supabase_realtime ADD TABLE orders
+
+  BUILD: Exitoso sin errores. Todas las rutas compiladas correctamente.
+
+  Estado general: Email a proveedor operativo via modal de plantilla copiable.
+  Notificaciones corregidas (badges basados en status, limpiar hace bulk transition).
+  Supabase Realtime habilitado: la app se actualiza sola cuando hay cambios.
+
 --------------------------------------------------------------------------------
 7. PENDIENTE / BACKLOG
 --------------------------------------------------------------------------------
@@ -657,6 +740,10 @@ MCPs configurados (.mcp.json):
   [x] Notificaciones Slack automaticas (crear pedido, cambio estado, Typeform)
   [x] Edge Function notify-slack v3 con formato compacto y filtros de ruido
   [x] SLACK_WEBHOOK_URL configurada en Supabase Edge Functions
+  [x] Boton "Preparar email" a proveedor (modal plantilla copiable)
+  [x] PC Mira añadido como proveedor con emails de contacto
+  [x] Fix notificaciones: badges basados en status, no timestamp
+  [x] Supabase Realtime: auto-refresh al crear/modificar pedidos
 
   PENDIENTE:
   [ ] Edge Function: sincronizacion masiva Supabase → Google Sheets
