@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import SidebarNav from '@/components/layout/SidebarNav'
+import RealtimeRefresh from '@/components/layout/RealtimeRefresh'
 
 export default async function DashboardLayout({
   children,
@@ -116,6 +117,7 @@ export default async function DashboardLayout({
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto">{children}</main>
+      <RealtimeRefresh />
     </div>
   )
 }
