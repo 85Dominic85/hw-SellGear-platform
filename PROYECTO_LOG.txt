@@ -767,6 +767,15 @@ MCPs configurados (.mcp.json):
   [ ] Edicion inline de pedidos desde la vista general
   [ ] Paginacion en listado de pedidos (actualmente limite 100)
   [ ] Proteger /orders/new con redirect server-side para viewers (ahora solo UI)
+  [ ] DMs privados Slack al creador del pedido (notificacion personal de actualizaciones)
+      - Requiere: Slack App con Bot Token (xoxb-), scopes: chat:write, im:write,
+        users:read, users:read.email. Un admin de Slack debe crear la app e instalarla.
+      - Flujo: email creador → users.lookupByEmail → chat.postMessage(channel: userId)
+      - Viable para pedidos manual (created_by) y Typeform (requester_email).
+        Legacy import sin datos de creador → sin DM.
+      - Cache email→Slack ID en tabla slack_user_cache para evitar lookups repetidos.
+      - El webhook al canal se mantiene (equipo). DM es adicional (creador).
+      - Estudio de viabilidad completado en sesion 7 (2026-02-24). Aparcado.
 
 --------------------------------------------------------------------------------
 8. CÓMO ARRANCAR EL PROYECTO EN LOCAL
