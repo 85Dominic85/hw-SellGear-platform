@@ -46,6 +46,8 @@ export interface Order {
   sheet_tab: string | null
   amount: number | null
   bank_receipt_url: string | null
+  requester_name: string | null
+  requester_email: string | null
   ae_ref: string | null
   hubspot_ref: string | null
   invoice_ref: string | null

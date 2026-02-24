@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
 import type { PurchaseType } from '@/types/database'
 import { PURCHASE_TYPE_LABELS } from '@/lib/utils'
 
@@ -15,28 +14,34 @@ interface ItemRow {
 const EMPTY_ITEM: ItemRow = { product_name: '', qty: 1 }
 
 interface FormData {
+  requester_name: string
+  requester_email: string
   customer_name: string
   venue_name: string
   contact_email: string
   phone: string
   purchase_type: PurchaseType | ''
   amount: string
-  shipping_address: string
   ae_ref: string
   hubspot_ref: string
+  bank_receipt_url: string
+  shipping_address: string
   notes: string
 }
 
 const EMPTY_FORM: FormData = {
+  requester_name: '',
+  requester_email: '',
   customer_name: '',
   venue_name: '',
   contact_email: '',
   phone: '',
   purchase_type: '',
   amount: '',
-  shipping_address: '',
   ae_ref: '',
   hubspot_ref: '',
+  bank_receipt_url: '',
+  shipping_address: '',
   notes: '',
 }
 
@@ -75,62 +80,46 @@ export default function NewOrderPage() {
     setSaving(true)
     setError(null)
 
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      setError('Debes estar autenticado.')
-      setSaving(false)
-      return
-    }
-
-    // Create the order
-    const { data: newOrder, error: insertError } = await supabase
-      .from('orders')
-      .insert({
-        customer_name: form.customer_name.trim(),
-        venue_name: form.venue_name.trim() || null,
-        contact_email: form.contact_email.trim() || null,
-        phone: form.phone.trim() || null,
-        purchase_type: (form.purchase_type || null) as PurchaseType | null,
-        amount: form.amount ? parseFloat(form.amount) : null,
-        shipping_address: form.shipping_address.trim() || null,
-        ae_ref: form.ae_ref.trim() || null,
-        hubspot_ref: form.hubspot_ref.trim() || null,
-        notes: form.notes.trim() || null,
-        created_by: user.id,
-        status: 'nuevo',
-        source: 'manual',
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requester_name: form.requester_name.trim() || null,
+          requester_email: form.requester_email.trim() || null,
+          customer_name: form.customer_name.trim(),
+          venue_name: form.venue_name.trim() || null,
+          contact_email: form.contact_email.trim() || null,
+          phone: form.phone.trim() || null,
+          purchase_type: form.purchase_type || null,
+          amount: form.amount ? parseFloat(form.amount) : null,
+          ae_ref: form.ae_ref.trim() || null,
+          hubspot_ref: form.hubspot_ref.trim() || null,
+          bank_receipt_url: form.bank_receipt_url.trim() || null,
+          shipping_address: form.shipping_address.trim() || null,
+          notes: form.notes.trim() || null,
+          items: items
+            .filter((item) => item.product_name.trim())
+            .map((item) => ({
+              product_name: item.product_name.trim(),
+              qty: item.qty,
+            })),
+        }),
       })
-      .select('id')
-      .single()
 
-    if (insertError || !newOrder) {
-      setError(insertError?.message ?? 'Error al crear el pedido.')
-      setSaving(false)
-      return
-    }
+      const data = await res.json()
 
-    // Insert items (filter out blank rows)
-    const validItems = items.filter((item) => item.product_name.trim())
-    if (validItems.length > 0) {
-      const { error: itemsError } = await supabase.from('order_items').insert(
-        validItems.map((item) => ({
-          order_id: newOrder.id,
-          product_name: item.product_name.trim(),
-          qty: item.qty,
-        }))
-      )
-
-      if (itemsError) {
-        // Order was created — redirect anyway but log the items error
-        console.error('Error inserting order items:', itemsError.message)
+      if (!res.ok) {
+        setError(data.error ?? 'Error al crear el pedido.')
+        setSaving(false)
+        return
       }
-    }
 
-    router.push(`/orders/${newOrder.id}`)
+      router.push(`/orders/${data.id}`)
+    } catch {
+      setError('Error de conexión al crear el pedido.')
+      setSaving(false)
+    }
   }
 
   const inputClass =
@@ -152,6 +141,33 @@ export default function NewOrderPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="max-w-3xl space-y-6">
+        {/* Requester */}
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-4 text-sm font-semibold text-gray-900">Solicitante</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>Nombre del solicitante</label>
+              <input
+                type="text"
+                value={form.requester_name}
+                onChange={(e) => setField('requester_name', e.target.value)}
+                placeholder="Nombre de quien solicita el pedido"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Email del solicitante</label>
+              <input
+                type="email"
+                value={form.requester_email}
+                onChange={(e) => setField('requester_email', e.target.value)}
+                placeholder="Para notificaciones si hay incidencias"
+                className={inputClass}
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Customer details */}
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <h2 className="mb-4 text-sm font-semibold text-gray-900">
@@ -256,6 +272,16 @@ export default function NewOrderPage() {
                 value={form.hubspot_ref}
                 onChange={(e) => setField('hubspot_ref', e.target.value)}
                 placeholder="HS-XXXXX"
+                className={inputClass}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={labelClass}>Justificante bancario (URL)</label>
+              <input
+                type="url"
+                value={form.bank_receipt_url}
+                onChange={(e) => setField('bank_receipt_url', e.target.value)}
+                placeholder="https://drive.google.com/..."
                 className={inputClass}
               />
             </div>

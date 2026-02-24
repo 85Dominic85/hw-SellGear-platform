@@ -163,6 +163,40 @@ export default async function OrderDetailPage({
                   {order.source_department ?? '—'}
                 </dd>
               </div>
+              {order.requester_name && (
+                <div>
+                  <dt className="text-xs text-gray-500">Solicitante</dt>
+                  <dd className="mt-0.5 text-sm text-gray-900">{order.requester_name}</dd>
+                </div>
+              )}
+              {order.requester_email && (
+                <div>
+                  <dt className="text-xs text-gray-500">Email solicitante</dt>
+                  <dd className="mt-0.5 text-sm text-gray-900">
+                    <a
+                      href={`mailto:${order.requester_email}`}
+                      className="text-blue-600 hover:underline"
+                    >
+                      {order.requester_email}
+                    </a>
+                  </dd>
+                </div>
+              )}
+              {order.bank_receipt_url && (
+                <div>
+                  <dt className="text-xs text-gray-500">Justificante bancario</dt>
+                  <dd className="mt-0.5 text-sm text-gray-900">
+                    <a
+                      href={order.bank_receipt_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      Ver justificante
+                    </a>
+                  </dd>
+                </div>
+              )}
               <div>
                 <dt className="text-xs text-gray-500">Fecha de creación</dt>
                 <dd className="mt-0.5 text-sm text-gray-900">
