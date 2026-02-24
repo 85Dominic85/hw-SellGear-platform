@@ -1,55 +1,53 @@
 // =============================================================
 // Edge Function: notify-slack
-// Envía mensajes al canal privado de Hardware en Slack.
-// Eventos: new_order, status_change, falta_info
+// Envía mensajes compactos al canal privado de Hardware en Slack.
+// Eventos: new_order, status_change
 // =============================================================
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 
 interface SlackPayload {
-  event: 'new_order' | 'status_change' | 'falta_info'
+  event: 'new_order' | 'status_change'
   order_id: string
   operation_id: string
   customer_name: string
+  venue_name?: string | null
+  requester_name?: string | null
   status: string
-  from_status?: string
-  changed_by?: string
-  comment?: string
+  from_status?: string | null
+  changed_by?: string | null
+  comment?: string | null
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  nuevo:               '🆕 Nuevo',
-  en_revision:         '🔍 En revisión',
-  falta_info:          '⚠️ Falta info',
-  aprobado:            '✅ Aprobado',
-  pedido_a_proveedor:  '📦 Pedido a proveedor',
-  en_transito:         '🚚 En tránsito',
-  recibido:            '📬 Recibido',
-  preparacion:         '🔧 Preparación/Envío',
-  completado:          '🎉 Completado',
-  cancelado:           '❌ Cancelado',
+  nuevo:                  'Nuevo',
+  pendiente:              'Pendiente',
+  solicitado_a_proveedor: 'Solicitado a proveedor',
+  pagado:                 'Pagado',
+  falta_informacion:      'Falta informacion',
+  bloqueado:              'Bloqueado',
 }
 
 function buildMessage(payload: SlackPayload, appUrl: string): object {
   const orderUrl = `${appUrl}/orders/${payload.order_id}`
-  const statusLabel = STATUS_LABELS[payload.status] ?? payload.status
+  const link = `<${orderUrl}|${payload.operation_id}>`
 
   if (payload.event === 'new_order') {
+    const lines = [
+      `*:inbox_tray: Nuevo pedido ${link}*`,
+      '',
+      `*Cliente:* ${payload.customer_name}`,
+      ...(payload.venue_name ? [`*Local:* ${payload.venue_name}`] : []),
+      ...(payload.requester_name ? [`*Solicitante:* ${payload.requester_name}`] : []),
+    ]
+
     return {
-      text: `*Nuevo pedido recibido:* ${payload.operation_id}`,
+      text: `Nuevo pedido ${payload.operation_id}`,
       blocks: [
         {
-          type: 'header',
-          text: { type: 'plain_text', text: '📥 Nuevo pedido', emoji: true },
-        },
-        {
           type: 'section',
-          fields: [
-            { type: 'mrkdwn', text: `*ID:*\n<${orderUrl}|${payload.operation_id}>` },
-            { type: 'mrkdwn', text: `*Cliente:*\n${payload.customer_name}` },
-            { type: 'mrkdwn', text: `*Estado:*\n${statusLabel}` },
-          ],
+          text: { type: 'mrkdwn', text: lines.join('\n') },
         },
         {
           type: 'actions',
@@ -66,39 +64,35 @@ function buildMessage(payload: SlackPayload, appUrl: string): object {
     }
   }
 
-  if (payload.event === 'falta_info') {
-    return {
-      text: `⚠️ Pedido ${payload.operation_id} necesita más información`,
-      blocks: [
-        {
-          type: 'section',
-          text: {
-            type: 'mrkdwn',
-            text: `⚠️ *Falta información* en el pedido <${orderUrl}|${payload.operation_id}> (${payload.customer_name})${payload.comment ? `\n> ${payload.comment}` : ''}`,
-          },
-        },
-      ],
-    }
-  }
-
   // status_change
   const fromLabel = payload.from_status ? (STATUS_LABELS[payload.from_status] ?? payload.from_status) : '—'
+  const toLabel = STATUS_LABELS[payload.status] ?? payload.status
+
+  const lines = [
+    `*:arrows_counterclockwise: ${link} · ${fromLabel} → ${toLabel}*`,
+    '',
+    `*Cliente:* ${payload.customer_name}`,
+    ...(payload.venue_name ? [`*Local:* ${payload.venue_name}`] : []),
+    ...(payload.requester_name ? [`*Solicitante:* ${payload.requester_name}`] : []),
+    ...(payload.changed_by ? [`*Por:* ${payload.changed_by}`] : []),
+    ...(payload.comment ? ['', `> ${payload.comment}`] : []),
+  ]
+
   return {
-    text: `Pedido ${payload.operation_id} → ${statusLabel}`,
+    text: `${payload.operation_id} → ${toLabel}`,
     blocks: [
       {
         type: 'section',
-        fields: [
-          { type: 'mrkdwn', text: `*Pedido:*\n<${orderUrl}|${payload.operation_id}>` },
-          { type: 'mrkdwn', text: `*Cliente:*\n${payload.customer_name}` },
-          { type: 'mrkdwn', text: `*Antes:*\n${fromLabel}` },
-          { type: 'mrkdwn', text: `*Ahora:*\n${statusLabel}` },
-          ...(payload.changed_by
-            ? [{ type: 'mrkdwn', text: `*Por:*\n${payload.changed_by}` }]
-            : []),
-          ...(payload.comment
-            ? [{ type: 'mrkdwn', text: `*Comentario:*\n${payload.comment}` }]
-            : []),
+        text: { type: 'mrkdwn', text: lines.join('\n') },
+      },
+      {
+        type: 'actions',
+        elements: [
+          {
+            type: 'button',
+            text: { type: 'plain_text', text: 'Ver pedido', emoji: true },
+            url: orderUrl,
+          },
         ],
       },
     ],
@@ -128,19 +122,30 @@ Deno.serve(async (req: Request) => {
     return new Response('Invalid JSON', { status: 400 })
   }
 
-  // Filtrar eventos irrelevantes (evitar spam)
-  const relevantEvents = ['new_order', 'status_change', 'falta_info']
-  if (!relevantEvents.includes(payload.event)) {
+  // Filtrar eventos irrelevantes
+  if (payload.event !== 'new_order' && payload.event !== 'status_change') {
     return new Response(JSON.stringify({ ok: true, skipped: true }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     })
   }
 
-  // No notificar cambios triviales (ej: de nuevo a nuevo)
+  // No notificar cambios triviales (mismo estado → mismo estado)
   if (
     payload.event === 'status_change' &&
     payload.from_status === payload.status
+  ) {
+    return new Response(JSON.stringify({ ok: true, skipped: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  // Silenciar auto-transición nuevo → pendiente (es automática, no acción humana)
+  if (
+    payload.event === 'status_change' &&
+    payload.from_status === 'nuevo' &&
+    payload.status === 'pendiente'
   ) {
     return new Response(JSON.stringify({ ok: true, skipped: true }), {
       status: 200,

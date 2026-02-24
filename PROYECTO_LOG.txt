@@ -1,7 +1,7 @@
 ================================================================================
   PROYECTO LOG — hw-SellGear-platform (MainOperation Platform)
   Creado: 2026-02-20
-  Última actualización: 2026-02-24 (sesion 5)
+  Última actualización: 2026-02-24 (sesion 6)
 ================================================================================
 
 --------------------------------------------------------------------------------
@@ -224,7 +224,16 @@ MCPs configurados (.mcp.json):
   INTEGRACIONES:
     ✅ Edge Function: typeform-webhook (v4) - Typeform → Supabase
     ✅ Webhook Typeform configurado (form: comprasQamarero, ID: gl7G4Xs2)
-    ✅ Boton Slack en detalle de pedido (requiere SLACK_WEBHOOK_URL)
+    ✅ Edge Function: notify-slack (v3) - Notificaciones automaticas a Slack
+       - Eventos: new_order (pedido creado), status_change (cambio de estado)
+       - Mensajes compactos con labels en negrita y boton "Ver pedido"
+       - Silencia auto-transicion nuevo→pendiente (ruido, no accion humana)
+       - Silencia cambios triviales (mismo estado → mismo estado)
+       - Secrets configurados: SLACK_WEBHOOK_URL, NEXT_PUBLIC_APP_URL
+    ✅ Notificacion Slack automatica al crear pedido manual (POST /api/orders)
+    ✅ Notificacion Slack automatica al cambiar estado (POST /api/orders/[id]/status)
+    ✅ Notificacion Slack automatica desde Typeform webhook (venue_name incluido)
+    ✅ Boton Slack manual en detalle de pedido (redirige a Edge Function)
 
   SCRIPTS:
     ✅ scripts/migrate-from-sheets.ts → Migración histórica Sheets → Supabase
@@ -545,6 +554,86 @@ MCPs configurados (.mcp.json):
   (AE/AM incluidos). Campos solicitante y justificante bancario disponibles.
   Submit server-side via API route con admin client (bypass RLS).
 
+--- SESION 2026-02-24 (sesion 6 — integracion Slack automatica) ---
+
+  CONTEXTO:
+    - Existia codigo de Slack (Edge Function notify-slack, boton manual, llamada
+      fire-and-forget en status change), pero tenia 3 problemas criticos:
+      1. La Edge Function usaba estados antiguos (en_revision, aprobado, completado...)
+      2. El payload de status/route.ts no coincidia con lo que esperaba la EF
+         (faltaban event, operation_id, customer_name)
+      3. SLACK_WEBHOOK_URL no estaba configurada en secrets de Edge Functions
+    - Objetivo: notificaciones automaticas compactas en Slack al crear pedido
+      o cambiar estado, con formato visual (labels en negrita, saltos de linea,
+      boton "Ver pedido").
+
+  EDGE FUNCTION notify-slack REESCRITA (v3):
+    - STATUS_LABELS actualizado a los 6 estados actuales: nuevo, pendiente,
+      solicitado_a_proveedor, pagado, falta_informacion, bloqueado.
+    - Nuevo payload: añadidos venue_name y requester_name.
+    - Formato compacto con Slack Block Kit mrkdwn:
+      - Nuevo pedido: emoji inbox_tray + link al pedido + Cliente/Local/Solicitante
+        en lineas separadas con labels en negrita + boton "Ver pedido" (primary)
+      - Cambio de estado: emoji arrows_counterclockwise + link + transicion
+        (Antes → Ahora) + Cliente/Local/Solicitante/Por en lineas con labels
+        en negrita + comentario (si hay) en blockquote + boton "Ver pedido"
+    - Filtros de ruido:
+      - Auto-transicion nuevo → pendiente: silenciada (es automatica al abrir ficha)
+      - Cambio trivial mismo estado → mismo estado: silenciado
+    - Eliminado evento 'falta_info' (ya no se usa como evento separado).
+    - Desplegada via MCP deploy_edge_function, probada con curl.
+
+  CORREGIDO PAYLOAD EN status/route.ts:
+    - Select de orders ampliado: +operation_id, customer_name, venue_name, requester_name
+    - Select de user_profiles ampliado: +full_name (para resolver changed_by a nombre)
+    - Payload corregido: event='status_change', todos los campos necesarios,
+      changed_by resuelto a profile.full_name en vez de user.id
+    - Fetch cambiado a fire-and-forget (sin await, con .catch)
+
+  NOTIFICACION SLACK AL CREAR PEDIDO MANUAL:
+    - Añadida llamada fire-and-forget a notify-slack en POST /api/orders
+      (despues de insertar order + status_history).
+    - Payload: event='new_order', datos del pedido recien creado.
+
+  TYPEFORM WEBHOOK: venue_name AÑADIDO:
+    - Añadido venue_name: order.venue_name al payload de notify-slack
+      en typeform-webhook/index.ts.
+
+  BOTON MANUAL SLACK SIMPLIFICADO:
+    - Reescrito /api/orders/[id]/notify-slack/route.ts.
+    - Ya no construye su propio mensaje verbose con historial.
+    - Ahora llama a la Edge Function con event='new_order' (formato de tarjeta
+      compacta), garantizando formato consistente en todas las vias.
+    - Añadida autenticacion (antes no verificaba usuario).
+    - Eliminadas dependencias de PURCHASE_TYPE_LABELS, formatCurrency, tipos.
+
+  SECRETS CONFIGURADOS:
+    - SLACK_WEBHOOK_URL en Supabase Edge Functions (dashboard)
+    - NEXT_PUBLIC_APP_URL en Supabase Edge Functions (dashboard)
+    - No se necesita SLACK_WEBHOOK_URL en .env.local/Vercel: el boton manual
+      ahora llama a la Edge Function, no al webhook directamente.
+
+  ARCHIVOS MODIFICADOS:
+    - supabase/functions/notify-slack/index.ts (reescrito — estados, formato, filtros)
+    - apps/web/app/api/orders/[id]/status/route.ts (payload corregido)
+    - apps/web/app/api/orders/route.ts (notificacion Slack al crear)
+    - apps/web/app/api/orders/[id]/notify-slack/route.ts (simplificado a Edge Function)
+    - supabase/functions/typeform-webhook/index.ts (venue_name en payload Slack)
+
+  EDGE FUNCTIONS DESPLEGADAS:
+    - notify-slack v3 (activa, verify_jwt=true)
+
+  BUILD: Exitoso sin errores. Todas las rutas compiladas correctamente.
+
+  PRUEBAS REALIZADAS:
+    - curl a Edge Function con evento new_order → mensaje recibido en Slack
+    - curl a Edge Function con evento status_change → mensaje recibido en Slack
+    - Formato visual verificado: labels en negrita, saltos de linea, boton funcional
+
+  Estado general: Notificaciones Slack completamente operativas. Tres vias de
+  notificacion: pedido manual, cambio de estado, y Typeform webhook. Formato
+  compacto y consistente en todas. Boton manual reutiliza Edge Function.
+
 --------------------------------------------------------------------------------
 7. PENDIENTE / BACKLOG
 --------------------------------------------------------------------------------
@@ -565,10 +654,11 @@ MCPs configurados (.mcp.json):
   [x] Limpiar notificaciones (badges) por usuario
   [x] Formulario pedidos para AE/AM (campos solicitante + justificante bancario)
   [x] API server-side para crear pedidos (bypass RLS, cualquier usuario autenticado)
+  [x] Notificaciones Slack automaticas (crear pedido, cambio estado, Typeform)
+  [x] Edge Function notify-slack v3 con formato compacto y filtros de ruido
+  [x] SLACK_WEBHOOK_URL configurada en Supabase Edge Functions
 
   PENDIENTE:
-  [ ] Configurar SLACK_WEBHOOK_URL en Vercel (cuando Slack este listo)
-  [ ] Notificaciones Slack automaticas en cambios de estado
   [ ] Edge Function: sincronizacion masiva Supabase → Google Sheets
   [ ] Tests de integracion (typeform-webhook, API routes)
   [ ] Migracion historica completa desde Google Sheets
@@ -593,7 +683,6 @@ MCPs configurados (.mcp.json):
     NEXT_PUBLIC_SUPABASE_ANON_KEY=
     SUPABASE_SERVICE_ROLE_KEY=       # Necesaria para crear/eliminar usuarios
     NEXT_PUBLIC_APP_URL=             # URL de la app (produccion o localhost)
-    SLACK_WEBHOOK_URL=               # Opcional: webhook de Slack
 
   Para tests:
     npm run test

@@ -38,7 +38,7 @@ export async function POST(
   // 3. Load the current order
   const { data: order, error: orderError } = await supabase
     .from('orders')
-    .select('id, status, created_by')
+    .select('id, status, created_by, operation_id, customer_name, venue_name, requester_name')
     .eq('id', id)
     .single()
 
@@ -51,7 +51,7 @@ export async function POST(
   // 4. Load user profile for role check
   const { data: profile } = await supabase
     .from('user_profiles')
-    .select('role')
+    .select('role, full_name')
     .eq('id', user.id)
     .single()
 
@@ -118,20 +118,25 @@ export async function POST(
   // 9. Call Edge Function notify-slack (fire and forget)
   try {
     const edgeFunctionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/notify-slack`
-    await fetch(edgeFunctionUrl, {
+    fetch(edgeFunctionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
       },
       body: JSON.stringify({
+        event: 'status_change',
         order_id: id,
+        operation_id: order.operation_id,
+        customer_name: order.customer_name,
+        venue_name: order.venue_name,
+        requester_name: order.requester_name,
+        status: newStatus,
         from_status: currentStatus,
-        to_status: newStatus,
-        changed_by: user.id,
+        changed_by: profile?.full_name ?? null,
         comment,
       }),
-    })
+    }).catch((e) => console.error('notify-slack fetch error:', e))
   } catch (slackError) {
     // Non-fatal — Slack notification failure should not block the response
     console.error('Error calling notify-slack edge function:', slackError)

@@ -149,5 +149,28 @@ export async function POST(request: NextRequest) {
     console.error('Error inserting status_history:', historyError.message)
   }
 
+  // 8. Call Edge Function notify-slack (fire and forget)
+  try {
+    const edgeFunctionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/notify-slack`
+    fetch(edgeFunctionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({
+        event: 'new_order',
+        order_id: newOrder.id,
+        operation_id: newOrder.operation_id,
+        customer_name: customerName,
+        venue_name: typeof body.venue_name === 'string' ? body.venue_name.trim() || null : null,
+        requester_name: typeof body.requester_name === 'string' ? body.requester_name.trim() || null : null,
+        status: 'nuevo',
+      }),
+    }).catch((e) => console.error('notify-slack fetch error:', e))
+  } catch (slackError) {
+    console.error('Error calling notify-slack edge function:', slackError)
+  }
+
   return NextResponse.json({ id: newOrder.id, operation_id: newOrder.operation_id })
 }

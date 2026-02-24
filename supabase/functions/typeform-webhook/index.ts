@@ -293,6 +293,7 @@ Deno.serve(async (req: Request) => {
           order_id: order.id,
           operation_id: order.operation_id,
           customer_name: order.customer_name,
+          venue_name: order.venue_name,
           status: order.status,
         }),
       }).catch((e) => console.error('notify-slack error:', e)),
