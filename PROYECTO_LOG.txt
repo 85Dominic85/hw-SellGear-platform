@@ -1,7 +1,7 @@
 ================================================================================
   PROYECTO LOG — hw-SellGear-platform (MainOperation Platform)
   Creado: 2026-02-20
-  Última actualización: 2026-02-24 (sesion 7)
+  Última actualización: 2026-02-26 (sesion 8)
 ================================================================================
 
 --------------------------------------------------------------------------------
@@ -146,7 +146,7 @@ MCPs configurados (.mcp.json):
   - Slack MCP
 
 --------------------------------------------------------------------------------
-5. FUNCIONALIDADES IMPLEMENTADAS (al 2026-02-24)
+5. FUNCIONALIDADES IMPLEMENTADAS (al 2026-02-26)
 --------------------------------------------------------------------------------
 
   AUTH:
@@ -165,6 +165,7 @@ MCPs configurados (.mcp.json):
        - Basado en status='nuevo' (sin filtro de timestamp)
        - Boton "Limpiar" hace bulk nuevo→pendiente (con historial)
        - Auto-refresh via Supabase Realtime (sin necesidad de F5)
+    ✅ Popup detalle rapido (icono ojo) en tabla: direccion, articulos, notas
     ✅ Detalle de pedido (/orders/[id])
        - Lista de ítems (ItemsList, readOnly para viewers)
        - Comentarios (CommentsList, readOnly para viewers)
@@ -729,6 +730,29 @@ MCPs configurados (.mcp.json):
   Notificaciones corregidas (badges basados en status, limpiar hace bulk transition).
   Supabase Realtime + polling habilitado: la app se actualiza sola cuando hay cambios.
 
+--- SESION 2026-02-26 (sesion 8 — popup detalle rapido, tag estable, backlog QoL) ---
+
+  POPUP DETALLE RAPIDO (ICONO OJO):
+    - Añadido icono de ojo en cada fila de la tabla de pedidos (OrdersTable).
+    - Al hacer hover/click muestra popup con: direccion de envio, articulos del
+      pedido y notas. Permite revisar datos clave sin entrar a la ficha completa.
+    - Implementado y pusheado en commit cd52589.
+
+  TAG DE RESPALDO v1.0-mvp-stable:
+    - Creado tag git v1.0-mvp-stable como punto de referencia estable del MVP.
+    - Marca el estado funcional completo antes de empezar mejoras QoL.
+
+  ANALISIS DE MEJORAS QoL:
+    - Revision exhaustiva de todos los flujos de la app para identificar fricciones.
+    - 10 mejoras propuestas organizadas por prioridad y añadidas al backlog
+      (seccion 7): reducir clicks, mejorar visibilidad, automatizar flujos.
+
+  COMMITS DE ESTA SESION:
+    - cd52589: feat: añadir popup de detalle rapido con icono ojo en tabla de pedidos
+
+  Estado general: MVP estable con tag v1.0-mvp-stable. Popup detalle rapido
+  implementado. Backlog ampliado con 10 mejoras QoL priorizadas para futuras sesiones.
+
 --------------------------------------------------------------------------------
 7. PENDIENTE / BACKLOG
 --------------------------------------------------------------------------------
@@ -756,15 +780,14 @@ MCPs configurados (.mcp.json):
   [x] PC Mira añadido como proveedor con emails de contacto
   [x] Fix notificaciones: badges basados en status, no timestamp
   [x] Supabase Realtime + polling 30s: auto-refresh al crear/modificar pedidos
+  [x] Popup detalle rapido (icono ojo) en tabla de pedidos
 
   PENDIENTE:
   [ ] Edge Function: sincronizacion masiva Supabase → Google Sheets
   [ ] Tests de integracion (typeform-webhook, API routes)
   [ ] Migracion historica completa desde Google Sheets
   [ ] Busqueda avanzada (por fecha, importe, cliente)
-  [ ] Exportacion de datos (CSV/Excel)
   [ ] Login Google Workspace (OAuth con Google, restriccion a dominio empresa)
-  [ ] Edicion inline de pedidos desde la vista general
   [ ] Paginacion en listado de pedidos (actualmente limite 100)
   [ ] Proteger /orders/new con redirect server-side para viewers (ahora solo UI)
   [ ] DMs privados Slack al creador del pedido (notificacion personal de actualizaciones)
@@ -776,6 +799,24 @@ MCPs configurados (.mcp.json):
       - Cache email→Slack ID en tabla slack_user_cache para evitar lookups repetidos.
       - El webhook al canal se mantiene (equipo). DM es adicional (creador).
       - Estudio de viabilidad completado en sesion 7 (2026-02-24). Aparcado.
+
+  MEJORAS QoL (identificadas en sesion 8, 2026-02-26):
+
+    Reducir clicks / interacciones:
+    [ ] Edicion inline en ficha del pedido (direccion, email, notas, importe)
+    [ ] Cambio de estado rapido desde badge en la tabla (sin entrar a ficha)
+    [ ] Acciones en lote (seleccionar varios pedidos → cambiar estado / asignar proveedor)
+    [ ] Auto-calculo de importe total sumando order_items (qty × unit_price)
+
+    Mejorar visibilidad de informacion:
+    [ ] Columna proveedor en tabla principal
+    [ ] Indicador "dias en estado" (tiempo sin movimiento)
+    [ ] Dashboard resumen (metricas: pedidos por estado, importe pendiente, estancados)
+
+    Automatizar flujos manuales:
+    [ ] Alerta Slack de pedidos estancados (>N dias en falta_informacion/bloqueado)
+    [ ] Auto-asignacion de proveedor por tipo de compra
+    [ ] Exportacion de pedidos filtrados a CSV/Excel
 
 --------------------------------------------------------------------------------
 8. CÓMO ARRANCAR EL PROYECTO EN LOCAL
