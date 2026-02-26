@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import type { Order, UserRole } from '@/types/database'
+import type { Order, OrderItem, UserRole } from '@/types/database'
 import { formatCurrency, formatDate, PURCHASE_TYPE_LABELS } from '@/lib/utils'
 import StatusBadge from './StatusBadge'
 import { createClient } from '@/lib/supabase/client'
+import { Eye, X, MapPin, Package, FileText, Phone, Mail } from 'lucide-react'
 
 interface OrdersTableProps {
   orders: Order[]
@@ -65,8 +66,151 @@ function InvoiceCell({ orderId, value, canEdit }: { orderId: string; value: bool
   )
 }
 
+function OrderDetailPopup({ order, onClose }: { order: Order; onClose: () => void }) {
+  const popupRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
+        onClose()
+      }
+    }
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [onClose])
+
+  const items = order.order_items ?? []
+  const hasContact = order.shipping_address || order.contact_email || order.phone
+  const hasItems = items.length > 0
+  const hasNotes = !!order.notes
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div
+        ref={popupRef}
+        className="relative mx-4 w-full max-w-lg rounded-xl bg-white shadow-2xl ring-1 ring-gray-200"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+          <div>
+            <h3 className="text-base font-semibold text-gray-900">
+              Detalle de envio
+            </h3>
+            <p className="mt-0.5 text-xs text-gray-500 font-mono">{order.operation_id}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="max-h-[60vh] overflow-y-auto px-5 py-4 space-y-5">
+          {/* Contacto / Dirección */}
+          <section>
+            <div className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+              <MapPin className="h-4 w-4 text-blue-500" />
+              Direccion de contacto
+            </div>
+            {hasContact ? (
+              <div className="space-y-1.5 rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                {order.shipping_address && (
+                  <p>{order.shipping_address}</p>
+                )}
+                {order.contact_email && (
+                  <p className="flex items-center gap-2">
+                    <Mail className="h-3.5 w-3.5 text-gray-400" />
+                    {order.contact_email}
+                  </p>
+                )}
+                {order.phone && (
+                  <p className="flex items-center gap-2">
+                    <Phone className="h-3.5 w-3.5 text-gray-400" />
+                    {order.phone}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm italic text-gray-400">Sin datos de contacto</p>
+            )}
+          </section>
+
+          {/* Artículos */}
+          <section>
+            <div className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+              <Package className="h-4 w-4 text-purple-500" />
+              Articulos ({items.length})
+            </div>
+            {hasItems ? (
+              <div className="overflow-hidden rounded-lg border border-gray-200">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Producto</th>
+                      <th className="px-3 py-2 text-center text-xs font-medium text-gray-500">Ud.</th>
+                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Precio</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {items.map((item: OrderItem) => (
+                      <tr key={item.id}>
+                        <td className="px-3 py-2 text-gray-700">{item.product_name}</td>
+                        <td className="px-3 py-2 text-center text-gray-500">{item.qty}</td>
+                        <td className="px-3 py-2 text-right text-gray-500">
+                          {item.unit_price != null ? formatCurrency(item.unit_price) : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm italic text-gray-400">Sin articulos registrados</p>
+            )}
+          </section>
+
+          {/* Notas */}
+          <section>
+            <div className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+              <FileText className="h-4 w-4 text-amber-500" />
+              Notas
+            </div>
+            {hasNotes ? (
+              <div className="rounded-lg bg-gray-50 px-4 py-3 text-sm whitespace-pre-wrap text-gray-600">
+                {order.notes}
+              </div>
+            ) : (
+              <p className="text-sm italic text-gray-400">Sin notas</p>
+            )}
+          </section>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-gray-100 px-5 py-3 text-right">
+          <Link
+            href={`/orders/${order.id}`}
+            className="text-sm font-medium text-blue-600 hover:text-blue-700"
+          >
+            Ver ficha completa →
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function OrdersTable({ orders, userRole }: OrdersTableProps) {
   const canEditInvoice = userRole === 'admin' || userRole === 'manager'
+  const [detailOrder, setDetailOrder] = useState<Order | null>(null)
 
   if (orders.length === 0) {
     return (
@@ -109,6 +253,9 @@ export default function OrdersTable({ orders, userRole }: OrdersTableProps) {
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                 Tipo
+              </th>
+              <th className="px-2 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">
+                <span className="sr-only">Detalle</span>
               </th>
               <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
                 Importe
@@ -162,6 +309,20 @@ export default function OrdersTable({ orders, userRole }: OrdersTableProps) {
                     </span>
                   </Link>
                 </td>
+                <td className="whitespace-nowrap px-2 py-3 text-center">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setDetailOrder(order)
+                    }}
+                    className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                    title="Ver detalle de envio"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </button>
+                </td>
                 <td className="whitespace-nowrap px-4 py-3 text-right">
                   <Link href={`/orders/${order.id}`} className="block">
                     <span className="text-sm font-medium text-gray-900">
@@ -196,6 +357,13 @@ export default function OrdersTable({ orders, userRole }: OrdersTableProps) {
           </tbody>
         </table>
       </div>
+
+      {detailOrder && (
+        <OrderDetailPopup
+          order={detailOrder}
+          onClose={() => setDetailOrder(null)}
+        />
+      )}
     </div>
   )
 }
