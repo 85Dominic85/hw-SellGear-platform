@@ -1,18 +1,19 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { formatCurrency, formatDate, PURCHASE_TYPE_LABELS } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 import StatusBadge from '@/components/orders/StatusBadge'
 import StatusChangePanel from '@/components/orders/StatusChangePanel'
 import CommentsList from '@/components/orders/CommentsList'
 import ItemsList from '@/components/orders/ItemsList'
 import SupplierSection from '@/components/orders/SupplierSection'
 import SlackNotifyButton from '@/components/orders/SlackNotifyButton'
-import InvoiceCheckbox from '@/components/orders/InvoiceCheckbox'
 import DeleteOrderButton from '@/components/orders/DeleteOrderButton'
 import AutoMarkSeen from '@/components/orders/AutoMarkSeen'
+import EditableHeader from '@/components/orders/EditableHeader'
+import OrderDetailFields from '@/components/orders/OrderDetailFields'
 import { isAdminUser } from '@/lib/auth'
-import type { OrderStatus, PurchaseType } from '@/types/database'
+import type { OrderStatus, UserRole } from '@/types/database'
 
 export default async function OrderDetailPage({
   params,
@@ -28,6 +29,7 @@ export default async function OrderDetailPage({
   } = await supabase.auth.getUser()
   let isAdmin = false
   let isViewer = false
+  let canEdit = false
   if (currentUser) {
     const { data: profile } = await supabase
       .from('user_profiles')
@@ -36,6 +38,8 @@ export default async function OrderDetailPage({
       .single()
     isAdmin = isAdminUser(profile?.email ?? currentUser.email, profile?.role)
     isViewer = profile?.role === 'viewer'
+    const role = profile?.role as UserRole | undefined
+    canEdit = isAdmin || (!!role && ['admin', 'manager', 'hardware'].includes(role))
   }
 
   // Load order with all relations
@@ -90,14 +94,14 @@ export default async function OrderDetailPage({
         </nav>
 
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900">{order.customer_name}</h1>
-              <StatusBadge status={order.status as OrderStatus} />
-            </div>
-            {order.venue_name && (
-              <p className="mt-1 text-sm text-gray-500">{order.venue_name}</p>
-            )}
+          <div className="flex items-start gap-3">
+            <EditableHeader
+              orderId={order.id}
+              customerName={order.customer_name}
+              venueName={order.venue_name}
+              canEdit={canEdit}
+            />
+            <StatusBadge status={order.status as OrderStatus} />
           </div>
         </div>
       </div>
@@ -107,146 +111,7 @@ export default async function OrderDetailPage({
         {/* Main content — 2/3 */}
         <div className="space-y-6 lg:col-span-2">
           {/* Details grid */}
-          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h3 className="mb-4 text-sm font-semibold text-gray-900">Detalles del pedido</h3>
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
-              <div>
-                <dt className="text-xs text-gray-500">ID de operación</dt>
-                <dd className="mt-0.5 font-mono text-sm font-medium text-gray-900">
-                  {order.operation_id}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-gray-500">Tipo de compra</dt>
-                <dd className="mt-0.5 text-sm text-gray-900">
-                  {order.purchase_type ? PURCHASE_TYPE_LABELS[order.purchase_type as PurchaseType] : '—'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-gray-500">Importe</dt>
-                <dd className="mt-0.5 text-sm font-medium text-gray-900">
-                  {formatCurrency(order.amount)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-gray-500">Factura</dt>
-                <dd className="mt-1">
-                  <InvoiceCheckbox orderId={order.id} currentValue={order.invoiced} readOnly={isViewer} />
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-gray-500">Email de contacto</dt>
-                <dd className="mt-0.5 text-sm text-gray-900">
-                  {order.contact_email ? (
-                    <a
-                      href={`mailto:${order.contact_email}`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      {order.contact_email}
-                    </a>
-                  ) : (
-                    '—'
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-gray-500">Teléfono</dt>
-                <dd className="mt-0.5 text-sm text-gray-900">{order.phone ?? '—'}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-gray-500">Origen</dt>
-                <dd className="mt-0.5 text-sm text-gray-900 capitalize">{order.source}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-gray-500">Departamento</dt>
-                <dd className="mt-0.5 text-sm text-gray-900">
-                  {order.source_department ?? '—'}
-                </dd>
-              </div>
-              {order.requester_name && (
-                <div>
-                  <dt className="text-xs text-gray-500">Solicitante</dt>
-                  <dd className="mt-0.5 text-sm text-gray-900">{order.requester_name}</dd>
-                </div>
-              )}
-              {order.requester_email && (
-                <div>
-                  <dt className="text-xs text-gray-500">Email solicitante</dt>
-                  <dd className="mt-0.5 text-sm text-gray-900">
-                    <a
-                      href={`mailto:${order.requester_email}`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      {order.requester_email}
-                    </a>
-                  </dd>
-                </div>
-              )}
-              {order.bank_receipt_url && (
-                <div>
-                  <dt className="text-xs text-gray-500">Justificante bancario</dt>
-                  <dd className="mt-0.5 text-sm text-gray-900">
-                    <a
-                      href={order.bank_receipt_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
-                    >
-                      Ver justificante
-                    </a>
-                  </dd>
-                </div>
-              )}
-              <div>
-                <dt className="text-xs text-gray-500">Fecha de creación</dt>
-                <dd className="mt-0.5 text-sm text-gray-900">
-                  {formatDate(order.created_at)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-gray-500">Última actualización</dt>
-                <dd className="mt-0.5 text-sm text-gray-900">
-                  {formatDate(order.updated_at)}
-                </dd>
-              </div>
-              {order.ae_ref && (
-                <div>
-                  <dt className="text-xs text-gray-500">Ref AE</dt>
-                  <dd className="mt-0.5 font-mono text-sm text-gray-900">{order.ae_ref}</dd>
-                </div>
-              )}
-              {order.hubspot_ref && (
-                <div>
-                  <dt className="text-xs text-gray-500">Ref HubSpot</dt>
-                  <dd className="mt-0.5 font-mono text-sm text-gray-900">
-                    {order.hubspot_ref}
-                  </dd>
-                </div>
-              )}
-              {order.invoice_ref && (
-                <div>
-                  <dt className="text-xs text-gray-500">Ref factura</dt>
-                  <dd className="mt-0.5 font-mono text-sm text-gray-900">
-                    {order.invoice_ref}
-                  </dd>
-                </div>
-              )}
-              {order.shipping_address && (
-                <div className="col-span-2 sm:col-span-3">
-                  <dt className="text-xs text-gray-500">Dirección de envío</dt>
-                  <dd className="mt-0.5 text-sm text-gray-900">{order.shipping_address}</dd>
-                </div>
-              )}
-              {order.notes && (
-                <div className="col-span-2 sm:col-span-3">
-                  <dt className="text-xs text-gray-500">Notas</dt>
-                  <dd className="mt-0.5 whitespace-pre-wrap text-sm text-gray-900">
-                    {order.notes}
-                  </dd>
-                </div>
-              )}
-            </dl>
-          </div>
+          <OrderDetailFields order={order} canEdit={canEdit} isViewer={isViewer} />
 
           {/* Items */}
           <ItemsList orderId={order.id} items={items} readOnly={isViewer} />
