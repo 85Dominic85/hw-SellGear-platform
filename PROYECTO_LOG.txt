@@ -1,7 +1,7 @@
 ================================================================================
   PROYECTO LOG — hw-SellGear-platform (MainOperation Platform)
   Creado: 2026-02-20
-  Última actualización: 2026-02-26 (sesion 8)
+  Última actualización: 2026-02-27 (sesion 9)
 ================================================================================
 
 --------------------------------------------------------------------------------
@@ -753,6 +753,100 @@ MCPs configurados (.mcp.json):
   Estado general: MVP estable con tag v1.0-mvp-stable. Popup detalle rapido
   implementado. Backlog ampliado con 10 mejoras QoL priorizadas para futuras sesiones.
 
+--- SESION 2026-02-27 (sesion 9 — edicion inline de campos en ficha de pedido) ---
+
+  CONTEXTO:
+    - La ficha de detalle del pedido (/orders/[id]) mostraba todos los campos como
+      texto estatico. No habia forma de editar datos del pedido (customer_name, phone,
+      shipping_address, etc.) desde la app, excepto invoiced, supplier y status que
+      ya tenian componentes dedicados.
+    - Objetivo: permitir a admin, manager y hardware editar cada campo individualmente
+      con click-to-edit inline via boton lapiz.
+
+  ENFOQUE: API ROUTE PATCH + COMPONENTE EDITABLEFIELD
+    - Manager solo tiene SELECT en RLS (no puede UPDATE directo) → necesita bypass
+      via admin client. Usar la misma API route para los 3 roles da consistencia.
+    - Validacion server-side con whitelist de campos editables.
+
+  NUEVOS COMPONENTES:
+    - EditableField.tsx: componente client generico reutilizable para edicion inline.
+      Soporta tipos: text, email, url, number, select, textarea. Icono lapiz visible
+      al hover (solo el boton activa edicion, no el texto del campo). Optimistic update,
+      feedback visual (spinner, checkmark verde 2s, texto "Error" rojo si falla).
+      Enter para guardar, Escape para cancelar, Ctrl+Enter en textarea. Select auto-save.
+      Textarea con botones Guardar/Cancelar. Click fuera cancela.
+    - EditableHeader.tsx: edicion inline del header — customer_name como h1 y
+      venue_name como subtitle. Mismo patron de fetch PATCH con boton lapiz.
+    - OrderDetailFields.tsx: client component que reemplaza el grid <dl> estatico.
+      Cada campo editable usa EditableField con su tipo. Campos no editables
+      (operation_id, source, created_at, updated_at) quedan como texto. InvoiceCheckbox
+      se mantiene como componente propio. Para roles editores, campos vacios se muestran
+      siempre con placeholder "Sin valor" clicable para rellenar.
+
+  API PATCH /api/orders/[id]:
+    - Nuevo handler PATCH junto al DELETE existente.
+    - verifyEditor(): acepta admin, manager y hardware (403 para viewer/creator).
+    - Whitelist de 15 campos editables: customer_name, venue_name, purchase_type,
+      amount, contact_email, phone, source_department, requester_name, requester_email,
+      bank_receipt_url, ae_ref, hubspot_ref, invoice_ref, shipping_address, notes.
+    - Validaciones: customer_name no vacio, purchase_type en enum, amount numerico,
+      emails con @, bank_receipt_url URL valida. Strings se triman, vacios → null.
+    - Usa createAdminClient() (service role key) que bypasa RLS.
+    - Un campo por request: { [fieldName]: value } → { ok: true, field, value }.
+
+  MODIFICACION page.tsx:
+    - Calcula canEdit: isAdmin || role in ['admin', 'manager', 'hardware'].
+    - Header estatico reemplazado por EditableHeader.
+    - Grid <dl> estatico (140 lineas) reemplazado por OrderDetailFields.
+    - Eliminados imports no usados (formatCurrency, PURCHASE_TYPE_LABELS, InvoiceCheckbox, PurchaseType).
+
+  DECISION UX: EDICION SOLO DESDE BOTON LAPIZ
+    - Primera iteracion: click en el texto del campo activaba edicion.
+    - Feedback del usuario: puede dar lugar a ediciones accidentales.
+    - Fix: solo el icono Pencil (visible al hover) activa el modo edicion.
+      El texto del campo ya no es clicable para editar.
+
+  CAMPOS EDITABLES Y TIPOS:
+    | Campo              | Tipo     | Notas                          |
+    | customer_name      | text     | Requerido (no puede ser vacio) |
+    | venue_name         | text     | Nullable                       |
+    | purchase_type      | select   | Opciones: PURCHASE_TYPE_LABELS |
+    | amount             | number   | step=0.01, formatCurrency      |
+    | contact_email      | email    | mailto: link en display        |
+    | phone              | text     |                                |
+    | source_department  | text     |                                |
+    | requester_name     | text     |                                |
+    | requester_email    | email    | mailto: link en display        |
+    | bank_receipt_url   | url      | Link "Ver justificante"        |
+    | ae_ref             | text     | monospace                      |
+    | hubspot_ref        | text     | monospace                      |
+    | invoice_ref        | text     | monospace                      |
+    | shipping_address   | textarea | fullWidth                      |
+    | notes              | textarea | fullWidth                      |
+
+  ARCHIVOS CREADOS:
+    - apps/web/components/orders/EditableField.tsx
+    - apps/web/components/orders/EditableHeader.tsx
+    - apps/web/components/orders/OrderDetailFields.tsx
+
+  ARCHIVOS MODIFICADOS:
+    - apps/web/app/api/orders/[id]/route.ts (PATCH handler + verifyEditor)
+    - apps/web/app/(dashboard)/orders/[id]/page.tsx (canEdit, EditableHeader, OrderDetailFields)
+
+  COMMITS DE ESTA SESION:
+    - 1fec987: feat: añadir edicion inline de campos en ficha de pedido
+    - 91fe683: fix: edicion inline solo desde boton lapiz, no desde el texto del campo
+
+  NO SE NECESITO MIGRACION SQL/RLS:
+    - La API route usa createAdminClient() (service role key) que bypasa RLS.
+    - La autorizacion se controla server-side con verifyEditor().
+
+  BUILD: Exitoso sin errores. Todas las rutas compiladas correctamente.
+
+  Estado general: Edicion inline operativa para admin, manager y hardware. 15 campos
+  editables desde la ficha de pedido. Viewer y creator solo lectura. Campos vacios
+  visibles con placeholder para roles editores. Feedback visual completo.
+
 --------------------------------------------------------------------------------
 7. PENDIENTE / BACKLOG
 --------------------------------------------------------------------------------
@@ -781,6 +875,7 @@ MCPs configurados (.mcp.json):
   [x] Fix notificaciones: badges basados en status, no timestamp
   [x] Supabase Realtime + polling 30s: auto-refresh al crear/modificar pedidos
   [x] Popup detalle rapido (icono ojo) en tabla de pedidos
+  [x] Edicion inline en ficha del pedido (15 campos, boton lapiz, API PATCH)
 
   PENDIENTE:
   [ ] Edge Function: sincronizacion masiva Supabase → Google Sheets
@@ -803,7 +898,7 @@ MCPs configurados (.mcp.json):
   MEJORAS QoL (identificadas en sesion 8, 2026-02-26):
 
     Reducir clicks / interacciones:
-    [ ] Edicion inline en ficha del pedido (direccion, email, notas, importe)
+    [x] Edicion inline en ficha del pedido (direccion, email, notas, importe)
     [ ] Cambio de estado rapido desde badge en la tabla (sin entrar a ficha)
     [ ] Acciones en lote (seleccionar varios pedidos → cambiar estado / asignar proveedor)
     [ ] Auto-calculo de importe total sumando order_items (qty × unit_price)
