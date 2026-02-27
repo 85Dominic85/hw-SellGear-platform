@@ -246,15 +246,20 @@ export default function EditableField({
             )}
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={startEditing}
-            className={`group flex items-center gap-1.5 text-left text-sm text-gray-900 ${monospace ? 'font-mono' : ''} ${fieldType === 'textarea' ? 'whitespace-pre-wrap' : ''}`}
-          >
-            <span>{renderDisplay()}</span>
-            <Pencil className="h-3.5 w-3.5 flex-shrink-0 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100" />
+          <div className="group flex items-center gap-1.5">
+            <span className={`text-sm text-gray-900 ${monospace ? 'font-mono' : ''} ${fieldType === 'textarea' ? 'whitespace-pre-wrap' : ''}`}>
+              {renderDisplay()}
+            </span>
+            <button
+              type="button"
+              onClick={startEditing}
+              className="flex-shrink-0 rounded p-0.5 text-gray-400 opacity-0 transition-opacity hover:text-gray-600 group-hover:opacity-100"
+              title="Editar"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
             {feedbackIcon()}
-          </button>
+          </div>
         )}
       </dd>
     </div>

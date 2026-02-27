@@ -144,12 +144,17 @@ function InlineHeaderField({
 
   return (
     <div ref={containerRef} className="group flex items-center gap-2">
-      <button type="button" onClick={startEditing} className="text-left">
-        <Tag className={className}>
-          {isEmpty ? <span className="text-gray-400 italic">{placeholder}</span> : displayValue}
-        </Tag>
+      <Tag className={className}>
+        {isEmpty ? <span className="text-gray-400 italic">{placeholder}</span> : displayValue}
+      </Tag>
+      <button
+        type="button"
+        onClick={startEditing}
+        className="flex-shrink-0 rounded p-0.5 text-gray-400 opacity-0 transition-opacity hover:text-gray-600 group-hover:opacity-100"
+        title="Editar"
+      >
+        <Pencil className="h-4 w-4" />
       </button>
-      <Pencil className="h-4 w-4 flex-shrink-0 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100" />
       {feedbackIcon()}
     </div>
   )
