@@ -59,6 +59,10 @@ export interface Order {
   typeform_response_id: string | null
   supplier: string | null
   invoiced: boolean
+  prepared: boolean
+  shipped: boolean
+  shipping_label_url: string | null
+  tracking_number: string | null
   // joins
   order_items?: OrderItem[]
   creator?: UserProfile

@@ -69,6 +69,8 @@ const EDITABLE_FIELDS = new Set([
   'invoice_ref',
   'shipping_address',
   'notes',
+  'tracking_number',
+  'shipping_label_url',
 ])
 
 const VALID_PURCHASE_TYPES = new Set([
@@ -139,12 +141,12 @@ export async function PATCH(
     } else {
       value = null
     }
-  } else if (field === 'bank_receipt_url') {
+  } else if (field === 'bank_receipt_url' || field === 'shipping_label_url') {
     if (value !== null && typeof value === 'string' && value.trim()) {
       try {
         new URL(value)
       } catch {
-        return NextResponse.json({ error: 'bank_receipt_url debe ser una URL valida' }, { status: 400 })
+        return NextResponse.json({ error: `${field} debe ser una URL valida` }, { status: 400 })
       }
       value = value.trim()
     } else {

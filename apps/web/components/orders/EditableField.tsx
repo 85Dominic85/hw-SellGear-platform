@@ -176,7 +176,7 @@ export default function EditableField({
     return (
       <div className={fullWidth ? 'col-span-2 sm:col-span-3' : ''}>
         <dt className="text-xs text-gray-500">{label}</dt>
-        <dd className={`mt-0.5 text-sm text-gray-900 ${monospace ? 'font-mono' : ''} ${fieldType === 'textarea' ? 'whitespace-pre-wrap' : ''}`}>
+        <dd className={`mt-0.5 text-sm text-gray-900 break-all ${monospace ? 'font-mono' : ''} ${fieldType === 'textarea' ? 'whitespace-pre-wrap' : ''}`}>
           {formatDisplay ? formatDisplay(displayValue) : String(displayValue)}
         </dd>
       </div>
@@ -247,7 +247,7 @@ export default function EditableField({
           </div>
         ) : (
           <div className="group flex items-center gap-1.5">
-            <span className={`text-sm text-gray-900 ${monospace ? 'font-mono' : ''} ${fieldType === 'textarea' ? 'whitespace-pre-wrap' : ''}`}>
+            <span className={`text-sm text-gray-900 break-all ${monospace ? 'font-mono' : ''} ${fieldType === 'textarea' ? 'whitespace-pre-wrap' : ''}`}>
               {renderDisplay()}
             </span>
             <button

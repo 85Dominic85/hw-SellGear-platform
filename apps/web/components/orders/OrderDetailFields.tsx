@@ -2,6 +2,8 @@
 
 import EditableField from './EditableField'
 import InvoiceCheckbox from './InvoiceCheckbox'
+import OrderCheckbox from './OrderCheckbox'
+import ShippingLabelViewer from './ShippingLabelViewer'
 import { formatCurrency, formatDate, PURCHASE_TYPE_LABELS } from '@/lib/utils'
 import type { PurchaseType } from '@/types/database'
 
@@ -23,6 +25,10 @@ interface OrderData {
   ae_ref: string | null
   hubspot_ref: string | null
   invoice_ref: string | null
+  prepared: boolean
+  shipped: boolean
+  shipping_label_url: string | null
+  tracking_number: string | null
   shipping_address: string | null
   notes: string | null
 }
@@ -199,7 +205,7 @@ export default function OrderDetailFields({ order, canEdit, isViewer }: OrderDet
           monospace
         />
 
-        {/* hubspot_ref — editable text monospace */}
+        {/* hubspot_ref — editable url, shown as link */}
         <EditableField
           orderId={order.id}
           fieldName="hubspot_ref"
@@ -207,7 +213,18 @@ export default function OrderDetailFields({ order, canEdit, isViewer }: OrderDet
           fieldType="text"
           canEdit={canEdit}
           label="Ref HubSpot"
-          monospace
+          formatDisplay={(v) =>
+            v ? (
+              <a
+                href={String(v)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                Ver HubSpot
+              </a>
+            ) : null
+          }
         />
 
         {/* invoice_ref — editable text monospace */}
@@ -219,6 +236,62 @@ export default function OrderDetailFields({ order, canEdit, isViewer }: OrderDet
           canEdit={canEdit}
           label="Ref factura"
           monospace
+        />
+
+        {/* prepared — checkbox */}
+        <div>
+          <dt className="text-xs text-gray-500">Preparado</dt>
+          <dd className="mt-1">
+            <OrderCheckbox
+              orderId={order.id}
+              fieldName="prepared"
+              currentValue={order.prepared}
+              labelChecked="Preparado"
+              labelUnchecked="Sin preparar"
+              readOnly={isViewer}
+              colorClass={{ border: 'border-blue-500', bg: 'bg-blue-500', text: 'text-blue-700' }}
+            />
+          </dd>
+        </div>
+
+        {/* shipped — checkbox */}
+        <div>
+          <dt className="text-xs text-gray-500">Enviado</dt>
+          <dd className="mt-1">
+            <OrderCheckbox
+              orderId={order.id}
+              fieldName="shipped"
+              currentValue={order.shipped}
+              labelChecked="Enviado"
+              labelUnchecked="Sin enviar"
+              readOnly={isViewer}
+              colorClass={{ border: 'border-purple-500', bg: 'bg-purple-500', text: 'text-purple-700' }}
+            />
+          </dd>
+        </div>
+
+        {/* tracking_number — editable text */}
+        <EditableField
+          orderId={order.id}
+          fieldName="tracking_number"
+          value={order.tracking_number}
+          fieldType="text"
+          canEdit={canEdit}
+          label="Tracking number"
+          monospace
+        />
+
+        {/* shipping_label_url — editable url + viewer */}
+        <EditableField
+          orderId={order.id}
+          fieldName="shipping_label_url"
+          value={order.shipping_label_url}
+          fieldType="url"
+          canEdit={canEdit}
+          label="Etiqueta de envio"
+          formatDisplay={(v) =>
+            v ? <ShippingLabelViewer url={String(v)} /> : null
+          }
         />
 
         {/* shipping_address — editable textarea full width */}
