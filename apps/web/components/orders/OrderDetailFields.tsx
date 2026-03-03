@@ -1,6 +1,7 @@
 'use client'
 
 import EditableField from './EditableField'
+import FileUploadField from './FileUploadField'
 import InvoiceCheckbox from './InvoiceCheckbox'
 import OrderCheckbox from './OrderCheckbox'
 import ShippingLabelViewer from './ShippingLabelViewer'
@@ -227,15 +228,14 @@ export default function OrderDetailFields({ order, canEdit, isViewer }: OrderDet
           }
         />
 
-        {/* invoice_ref — editable text monospace */}
-        <EditableField
+        {/* invoice_ref — file upload */}
+        <FileUploadField
           orderId={order.id}
           fieldName="invoice_ref"
           value={order.invoice_ref}
-          fieldType="text"
           canEdit={canEdit}
           label="Ref factura"
-          monospace
+          linkLabel="Ver factura"
         />
 
         {/* prepared — checkbox */}
@@ -281,17 +281,15 @@ export default function OrderDetailFields({ order, canEdit, isViewer }: OrderDet
           monospace
         />
 
-        {/* shipping_label_url — editable url + viewer */}
-        <EditableField
+        {/* shipping_label_url — file upload + viewer */}
+        <FileUploadField
           orderId={order.id}
           fieldName="shipping_label_url"
           value={order.shipping_label_url}
-          fieldType="url"
           canEdit={canEdit}
           label="Etiqueta de envio"
-          formatDisplay={(v) =>
-            v ? <ShippingLabelViewer url={String(v)} /> : null
-          }
+          linkLabel="Ver etiqueta"
+          viewerComponent={ShippingLabelViewer}
         />
 
         {/* shipping_address — editable textarea full width */}

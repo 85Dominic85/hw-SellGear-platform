@@ -141,7 +141,7 @@ export async function PATCH(
     } else {
       value = null
     }
-  } else if (field === 'bank_receipt_url' || field === 'shipping_label_url') {
+  } else if (field === 'bank_receipt_url' || field === 'shipping_label_url' || field === 'invoice_ref') {
     if (value !== null && typeof value === 'string' && value.trim()) {
       try {
         new URL(value)

@@ -1,7 +1,7 @@
 ================================================================================
   PROYECTO LOG — hw-SellGear-platform (MainOperation Platform)
   Creado: 2026-02-20
-  Última actualización: 2026-03-03 (sesion 10)
+  Última actualización: 2026-03-03 (sesion 11)
 ================================================================================
 
 --------------------------------------------------------------------------------
@@ -820,7 +820,7 @@ MCPs configurados (.mcp.json):
     | bank_receipt_url   | url      | Link "Ver justificante"        |
     | ae_ref             | text     | monospace                      |
     | hubspot_ref        | text     | monospace                      |
-    | invoice_ref        | text     | monospace                      |
+    | invoice_ref        | file     | FileUploadField (upload PDF)   |
     | shipping_address   | textarea | fullWidth                      |
     | notes              | textarea | fullWidth                      |
 
@@ -874,6 +874,60 @@ MCPs configurados (.mcp.json):
   Estado general: venue_name destacado visualmente en la ficha de pedido con azul,
   tamaño lg y font-medium. Mejora la legibilidad y la identificacion rapida del local.
 
+--- SESION 2026-03-03 (sesion 11 — upload de archivos para factura y etiqueta) ---
+
+  CONTEXTO:
+    - Los campos invoice_ref (Ref factura) y shipping_label_url (Etiqueta de envio)
+      solo aceptaban URLs escritas a mano. El usuario necesitaba poder adjuntar
+      archivos (PDF + imagenes) directamente desde el navegador.
+    - No existia infraestructura de Storage en el proyecto — se creo desde cero.
+
+  MIGRACION SQL — BUCKET order-attachments:
+    - Bucket publico "order-attachments" creado en Supabase Storage.
+    - Politicas RLS: INSERT y DELETE para authenticated, SELECT publico.
+    - Las URLs son accesibles directamente (para iframe, links y ShippingLabelViewer).
+    - Ruta de archivos: {orderId}/{fieldName}/{timestamp}_{filename}.
+
+  NUEVO COMPONENTE FileUploadField.tsx:
+    - Componente client reutilizable para upload de archivos a Supabase Storage.
+    - Acepta: .pdf, .png, .jpg, .jpeg (max 10 MB).
+    - Boton adjuntar (Paperclip) visible en hover, mismo estilo que EditableField.
+    - <input type="file"> hidden, activado por el boton.
+    - Upload directo a Supabase Storage via browser client (createClient).
+    - Guarda la URL publica en el campo via PATCH API /api/orders/{id}.
+    - Feedback visual: spinner subiendo, check verde 2s, texto "Error" rojo 3s.
+    - Boton eliminar (X) que borra de Storage y pone null en el campo.
+    - Prop viewerComponent para renderizar visor adicional (ShippingLabelViewer).
+    - Read-only (viewer): solo muestra link, sin botones upload/delete.
+    - Nombre de archivo sanitizado (caracteres especiales → _).
+
+  CAMBIOS EN OrderDetailFields.tsx:
+    - invoice_ref: de EditableField (text monospace) → FileUploadField con
+      linkLabel="Ver factura". Ahora acepta upload de PDF/imagen.
+    - shipping_label_url: de EditableField (url) → FileUploadField con
+      linkLabel="Ver etiqueta" + viewerComponent=ShippingLabelViewer.
+      El popup iframe sigue funcionando con las URLs de Storage.
+
+  CAMBIOS EN API PATCH route.ts:
+    - invoice_ref añadido a la validacion URL junto con bank_receipt_url y
+      shipping_label_url. Ahora almacena URLs de Storage en vez de texto libre.
+
+  ARCHIVOS CREADOS:
+    - apps/web/components/orders/FileUploadField.tsx
+
+  ARCHIVOS MODIFICADOS:
+    - apps/web/components/orders/OrderDetailFields.tsx (import + 2 campos)
+    - apps/web/app/api/orders/[id]/route.ts (validacion URL para invoice_ref)
+
+  COMMITS DE ESTA SESION:
+    - [pendiente]: feat: upload de archivos para invoice_ref y shipping_label_url
+
+  BUILD: Exitoso sin errores. Todas las rutas compiladas correctamente.
+
+  Estado general: Los campos factura y etiqueta de envio ahora soportan upload
+  directo de archivos PDF e imagenes. Supabase Storage configurado con bucket
+  publico y politicas RLS. Viewer mantiene popup iframe funcional.
+
 --------------------------------------------------------------------------------
 7. PENDIENTE / BACKLOG
 --------------------------------------------------------------------------------
@@ -903,6 +957,7 @@ MCPs configurados (.mcp.json):
   [x] Supabase Realtime + polling 30s: auto-refresh al crear/modificar pedidos
   [x] Popup detalle rapido (icono ojo) en tabla de pedidos
   [x] Edicion inline en ficha del pedido (15 campos, boton lapiz, API PATCH)
+  [x] Upload de archivos (factura y etiqueta) a Supabase Storage desde la ficha
 
   PENDIENTE:
   [ ] Edge Function: sincronizacion masiva Supabase → Google Sheets
