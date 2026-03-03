@@ -1,7 +1,7 @@
 ================================================================================
   PROYECTO LOG — hw-SellGear-platform (MainOperation Platform)
   Creado: 2026-02-20
-  Última actualización: 2026-02-27 (sesion 9)
+  Última actualización: 2026-03-03 (sesion 10)
 ================================================================================
 
 --------------------------------------------------------------------------------
@@ -846,6 +846,33 @@ MCPs configurados (.mcp.json):
   Estado general: Edicion inline operativa para admin, manager y hardware. 15 campos
   editables desde la ficha de pedido. Viewer y creator solo lectura. Campos vacios
   visibles con placeholder para roles editores. Feedback visual completo.
+
+--- SESION 2026-03-03 (sesion 10 — mejora visual venue_name en ficha de pedido) ---
+
+  CONTEXTO:
+    - El nombre del local (venue_name) en la ficha de pedido aparecia como texto
+      pequeño y gris (text-sm text-gray-500) debajo del nombre del cliente.
+    - Se queria darle mas protagonismo visual para facilitar la identificacion rapida.
+
+  CAMBIO VISUAL venue_name:
+    - Clase CSS del venue_name en modo lectura cambiada de:
+      "mt-1 text-sm text-gray-500" → "mt-1 text-lg font-medium text-blue-600"
+    - Clase CSS del input de edicion inline (cuando Tag=p) cambiada de:
+      "text-sm" → "text-lg font-medium"
+    - Resultado: venue_name se muestra en azul, tamaño lg (18px), semi-bold.
+      Consistencia visual entre modo lectura y edicion.
+
+  ARCHIVOS MODIFICADOS:
+    - apps/web/components/orders/EditableHeader.tsx (2 lineas: clase lectura + clase input)
+
+  COMMITS DE ESTA SESION:
+    - 5166fb5: style: destacar venue_name en ficha de pedido con azul y tamaño medio
+    - [pendiente]: style: ampliar tamaño venue_name a text-lg
+
+  BUILD: Sin cambios estructurales, solo CSS.
+
+  Estado general: venue_name destacado visualmente en la ficha de pedido con azul,
+  tamaño lg y font-medium. Mejora la legibilidad y la identificacion rapida del local.
 
 --------------------------------------------------------------------------------
 7. PENDIENTE / BACKLOG

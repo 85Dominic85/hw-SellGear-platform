@@ -129,7 +129,7 @@ function InlineHeaderField({
           value={String(localValue)}
           onChange={(e) => setLocalValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          className={`${Tag === 'h1' ? 'text-2xl font-bold' : 'text-base font-medium'} w-full rounded border border-gray-300 px-2 py-1 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
+          className={`${Tag === 'h1' ? 'text-2xl font-bold' : 'text-lg font-medium'} w-full rounded border border-gray-300 px-2 py-1 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
         />
       </div>
     )
@@ -183,7 +183,7 @@ export default function EditableHeader({
         value={venueName}
         canEdit={canEdit}
         as="p"
-        className="mt-1 text-base font-medium text-blue-600"
+        className="mt-1 text-lg font-medium text-blue-600"
         placeholder="Sin venue"
       />
     </div>
