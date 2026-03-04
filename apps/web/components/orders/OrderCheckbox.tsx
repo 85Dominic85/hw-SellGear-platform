@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 interface OrderCheckboxProps {
@@ -34,6 +34,8 @@ export default function OrderCheckbox({
 }: OrderCheckboxProps) {
   const [checked, setChecked] = useState(currentValue)
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => { setChecked(currentValue) }, [currentValue])
 
   const handleToggle = async () => {
     if (readOnly) return

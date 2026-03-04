@@ -17,6 +17,8 @@ function InvoiceCell({ orderId, value, canEdit }: { orderId: string; value: bool
   const [invoiced, setInvoiced] = useState(value)
   const [saving, setSaving] = useState(false)
 
+  useEffect(() => { setInvoiced(value) }, [value])
+
   const handleToggle = async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()

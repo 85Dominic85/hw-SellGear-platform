@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import SupplierSelect from './SupplierSelect'
 import SupplierEmailButton from './SupplierEmailButton'
 
@@ -35,6 +35,8 @@ export default function SupplierSection({
   items,
 }: SupplierSectionProps) {
   const [supplier, setSupplier] = useState(currentSupplier ?? '')
+
+  useEffect(() => { setSupplier(currentSupplier ?? '') }, [currentSupplier])
 
   return (
     <>

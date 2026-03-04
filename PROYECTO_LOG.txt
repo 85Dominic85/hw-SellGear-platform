@@ -1,7 +1,7 @@
 ================================================================================
   PROYECTO LOG — hw-SellGear-platform (MainOperation Platform)
   Creado: 2026-02-20
-  Última actualización: 2026-03-03 (sesion 11)
+  Última actualización: 2026-03-04 (sesion 12)
 ================================================================================
 
 --------------------------------------------------------------------------------
@@ -928,6 +928,61 @@ MCPs configurados (.mcp.json):
   directo de archivos PDF e imagenes. Supabase Storage configurado con bucket
   publico y politicas RLS. Viewer mantiene popup iframe funcional.
 
+--- SESION 2026-03-04 (sesion 12 — fix sincronizacion checkboxes entre admins/managers) ---
+
+  CONTEXTO:
+    - Cuando un admin marcaba el checkbox "facturado", el cambio se persistia en
+      Supabase pero otros admins/managers no veian el cambio en su UI.
+    - Dos causas raiz identificadas: bug de React (useState sin sync con props
+      nuevos tras router.refresh) y politica RLS que no permitia UPDATE a managers.
+
+  BUG REACT — useState SIN SINCRONIZAR CON PROPS:
+    - Los componentes checkbox usaban useState(initialValue) que solo se inicializa
+      en el primer mount. Cuando Realtime disparaba router.refresh() y llegaban
+      props nuevos desde el servidor, useState ignoraba el valor actualizado.
+    - Solucion: añadir useEffect(() => { setState(prop) }, [prop]) en 5 componentes.
+    - Componentes corregidos:
+      * InvoiceCheckbox.tsx (checkbox facturado en ficha)
+      * OrdersTable.tsx → InvoiceCell (checkbox facturado en tabla)
+      * OrderCheckbox.tsx (checkbox generico reutilizable)
+      * SupplierSelect.tsx (selector de proveedor — mismo bug detectado en revision)
+      * SupplierSection.tsx (wrapper de proveedor — mismo bug)
+    - Componentes ya correctos (tenian useEffect): EditableField, EditableHeader,
+      SearchBar.
+
+  MIGRACION RLS — MANAGER UPDATE:
+    - Politica anterior: manager solo tenia SELECT en orders.
+    - Nueva politica: "orders: manager update all" → FOR UPDATE con
+      USING (get_my_role() = 'manager').
+    - Ahora managers pueden actualizar cualquier campo de orders (invoiced,
+      proveedor, etc.).
+    - Archivo: supabase/migrations/20260304000001_manager_update_policy.sql
+
+  VERIFICACION RLS COMPLETA (orders):
+    - admin: ALL (SELECT/INSERT/UPDATE/DELETE)
+    - manager: SELECT + UPDATE
+    - hardware: ALL
+    - creator: SELECT propio + UPDATE propio (status nuevo/falta_info) + INSERT
+    - viewer: SELECT
+
+  ARCHIVOS MODIFICADOS:
+    - apps/web/components/orders/InvoiceCheckbox.tsx (useEffect sync)
+    - apps/web/components/orders/OrdersTable.tsx (useEffect sync en InvoiceCell)
+    - apps/web/components/orders/OrderCheckbox.tsx (useEffect sync)
+    - apps/web/components/orders/SupplierSelect.tsx (useEffect sync)
+    - apps/web/components/orders/SupplierSection.tsx (useEffect sync)
+
+  ARCHIVOS CREADOS:
+    - supabase/migrations/20260304000001_manager_update_policy.sql
+
+  COMMITS DE ESTA SESION:
+    - [pendiente]: fix: sincronizacion checkboxes y permisos manager UPDATE
+
+  BUILD: Exitoso sin errores. Todas las rutas compiladas correctamente.
+
+  Estado general: Los checkboxes y selectores ahora se sincronizan correctamente
+  entre todos los usuarios via Realtime. Managers pueden editar campos de orders.
+
 --------------------------------------------------------------------------------
 7. PENDIENTE / BACKLOG
 --------------------------------------------------------------------------------
@@ -958,6 +1013,7 @@ MCPs configurados (.mcp.json):
   [x] Popup detalle rapido (icono ojo) en tabla de pedidos
   [x] Edicion inline en ficha del pedido (15 campos, boton lapiz, API PATCH)
   [x] Upload de archivos (factura y etiqueta) a Supabase Storage desde la ficha
+  [x] Fix sincronizacion checkboxes entre admins/managers (useState + RLS manager UPDATE)
 
   PENDIENTE:
   [ ] Edge Function: sincronizacion masiva Supabase → Google Sheets

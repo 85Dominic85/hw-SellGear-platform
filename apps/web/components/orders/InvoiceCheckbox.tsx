@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 interface InvoiceCheckboxProps {
@@ -12,6 +12,8 @@ interface InvoiceCheckboxProps {
 export default function InvoiceCheckbox({ orderId, currentValue, readOnly }: InvoiceCheckboxProps) {
   const [invoiced, setInvoiced] = useState(currentValue)
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => { setInvoiced(currentValue) }, [currentValue])
 
   const handleToggle = async () => {
     if (readOnly) return

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 export const SUPPLIERS = [
@@ -25,6 +25,8 @@ interface SupplierSelectProps {
 export default function SupplierSelect({ orderId, currentSupplier, onSupplierChange }: SupplierSelectProps) {
   const [supplier, setSupplier] = useState(currentSupplier ?? '')
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => { setSupplier(currentSupplier ?? '') }, [currentSupplier])
   const [saved, setSaved] = useState(false)
 
   const handleChange = async (value: string) => {
