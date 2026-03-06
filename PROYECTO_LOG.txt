@@ -1,7 +1,7 @@
 ================================================================================
   PROYECTO LOG — hw-SellGear-platform (MainOperation Platform)
   Creado: 2026-02-20
-  Última actualización: 2026-03-04 (sesion 12)
+  Última actualización: 2026-03-06 (sesion 13)
 ================================================================================
 
 --------------------------------------------------------------------------------
@@ -32,7 +32,7 @@ SOLUCIÓN:
 
   Frontend:   Next.js 16 + React 19 + TypeScript + Tailwind CSS v4
   Backend:    Supabase (PostgreSQL + Auth + Storage + Edge Functions)
-  UI lib:     lucide-react, @tanstack/react-query
+  UI lib:     lucide-react, @tanstack/react-query, recharts
   Testing:    Vitest
   Deploy:     Vercel (Root Directory: apps/web)
   Repo:       Git (branch principal: feature/mvp-foundation)
@@ -983,6 +983,84 @@ MCPs configurados (.mcp.json):
   Estado general: Los checkboxes y selectores ahora se sincronizan correctamente
   entre todos los usuarios via Realtime. Managers pueden editar campos de orders.
 
+--- SESION 2026-03-06 (sesion 13 — Dashboard de Metricas y KPIs) ---
+
+  CONTEXTO:
+    - No existia ninguna vista de analitica en la plataforma.
+    - El equipo necesitaba visibilidad sobre rendimiento operativo: pedidos procesados,
+      que se vende, comparativas temporales y exportacion de datos.
+    - Base de datos real: ~1611 pedidos, ~1613 order_items.
+
+  FUNCIONES SQL (SECURITY DEFINER, search_path = public):
+    - get_dashboard_metrics(p_from, p_to, p_purchase_type?): agrega server-side
+      total_orders, total_revenue, avg_order_value, completed_rate (% pagado),
+      orders_by_date, by_purchase_type, by_status, by_product (top 15).
+    - get_dashboard_comparison(p_from, p_to, p_purchase_type?): calcula periodo
+      anterior automaticamente (misma duracion) para comparativas delta %.
+    - Migraciones: dashboard_metrics_functions + fix_dashboard_functions_search_path.
+
+  API ROUTES:
+    - GET /api/metrics: auth + rol (admin/manager/hardware), llama a ambas RPC,
+      params from/to/purchase_type. Retorna { metrics, comparison }.
+    - GET /api/metrics/export: misma auth, consulta pedidos raw del periodo,
+      genera CSV (operation_id, fecha, cliente, venue, tipo, importe, estado,
+      proveedor, productos). Content-Disposition: attachment.
+
+  COMPONENTES UI (11 nuevos en components/metrics/):
+    - ChartCard: wrapper con titulo + estilo card reutilizable.
+    - KpiCard: tarjeta KPI con valor, label, icono, delta % con flecha verde/roja.
+    - KpiRow: fila responsive 2x2 (movil) / 4x1 (desktop) de 4 KPIs.
+    - PeriodSelector: pills (esta semana/mes/trimestre/anterior/custom con date inputs).
+    - PurchaseTypeFilter: select dropdown con "Todos" + 5 purchase_types.
+    - ExportButton: boton CSV (descarga) + boton Imprimir (window.print).
+    - OrdersTimeChart: ComposedChart recharts (BarChart pedidos + Line ingresos)
+      con toggle semanal/diario. Dual Y-axis.
+    - PurchaseTypeChart: PieChart donut distribucion por tipo de venta con colores
+      brand (blue, violet, cyan, amber, gray).
+    - ProductBreakdown: BarChart horizontal top 10 productos por cantidad vendida.
+    - StatusDistChart: PieChart donut distribucion por estado con colores STATUS_COLORS.
+    - MetricsDashboard: orquestador client component, maneja estado de filtros,
+      fetches client-side al cambiar periodo/tipo, layout grid responsive.
+
+  PAGINA Y NAVEGACION:
+    - apps/web/app/(dashboard)/metrics/page.tsx: server component con auth guard,
+      fetch inicial mes actual via supabase.rpc(), redirect a /orders si sin permisos.
+    - SidebarNav.tsx: nueva seccion "Analitica" entre Categorias y Administracion,
+      visible para admin/manager/hardware, icono de grafico de barras.
+    - Control acceso: admin/manager/hardware → Si. creator/viewer → redirect /orders.
+
+  DEPENDENCIA NUEVA:
+    - recharts: libreria de graficos React, tree-shakeable, compatible React 19.
+
+  PRINT CSS (globals.css):
+    - @media print: oculta nav/aside/.print:hidden, fondo blanco, main full-width.
+
+  ARCHIVOS CREADOS (17):
+    - supabase/migrations/…_dashboard_metrics_functions.sql
+    - supabase/migrations/…_fix_dashboard_functions_search_path.sql
+    - apps/web/types/metrics.ts
+    - apps/web/lib/metrics.ts
+    - apps/web/app/api/metrics/route.ts
+    - apps/web/app/api/metrics/export/route.ts
+    - apps/web/app/(dashboard)/metrics/page.tsx
+    - apps/web/components/metrics/ (11 componentes: MetricsDashboard, KpiCard,
+      KpiRow, PeriodSelector, PurchaseTypeFilter, ExportButton, ChartCard,
+      OrdersTimeChart, PurchaseTypeChart, ProductBreakdown, StatusDistChart)
+
+  ARCHIVOS MODIFICADOS:
+    - apps/web/components/layout/SidebarNav.tsx (seccion Analitica)
+    - apps/web/app/globals.css (reglas @media print)
+    - apps/web/package.json (recharts)
+
+  COMMITS DE ESTA SESION:
+    - feat: dashboard de metricas y KPIs con graficos recharts
+
+  BUILD: Exitoso sin errores. Ruta /metrics registrada correctamente.
+
+  Estado general: Dashboard operativo con datos reales (1611 pedidos, 1.17M EUR).
+  KPIs con comparativa periodo anterior, graficos temporales, distribuciones por
+  tipo/estado/producto, exportacion CSV y vista impresion.
+
 --------------------------------------------------------------------------------
 7. PENDIENTE / BACKLOG
 --------------------------------------------------------------------------------
@@ -1014,6 +1092,8 @@ MCPs configurados (.mcp.json):
   [x] Edicion inline en ficha del pedido (15 campos, boton lapiz, API PATCH)
   [x] Upload de archivos (factura y etiqueta) a Supabase Storage desde la ficha
   [x] Fix sincronizacion checkboxes entre admins/managers (useState + RLS manager UPDATE)
+  [x] Dashboard resumen (metricas: pedidos por estado, importe pendiente, estancados)
+  [x] Exportacion de pedidos filtrados a CSV/Excel
 
   PENDIENTE:
   [ ] Edge Function: sincronizacion masiva Supabase → Google Sheets
@@ -1044,12 +1124,12 @@ MCPs configurados (.mcp.json):
     Mejorar visibilidad de informacion:
     [ ] Columna proveedor en tabla principal
     [ ] Indicador "dias en estado" (tiempo sin movimiento)
-    [ ] Dashboard resumen (metricas: pedidos por estado, importe pendiente, estancados)
+    [x] Dashboard resumen (metricas: pedidos por estado, importe pendiente, estancados)
 
     Automatizar flujos manuales:
     [ ] Alerta Slack de pedidos estancados (>N dias en falta_informacion/bloqueado)
     [ ] Auto-asignacion de proveedor por tipo de compra
-    [ ] Exportacion de pedidos filtrados a CSV/Excel
+    [x] Exportacion de pedidos filtrados a CSV/Excel
 
 --------------------------------------------------------------------------------
 8. CÓMO ARRANCAR EL PROYECTO EN LOCAL
