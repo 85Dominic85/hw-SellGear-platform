@@ -1,6 +1,6 @@
 'use client'
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts'
 import ChartCard from './ChartCard'
 
 interface ProductBreakdownProps {
@@ -28,7 +28,9 @@ export default function ProductBreakdown({ data }: ProductBreakdownProps) {
                 return item ? item.product_name : String(label)
               }}
             />
-            <Bar dataKey="total_qty" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+            <Bar dataKey="total_qty" fill="#8b5cf6" radius={[0, 4, 4, 0]}>
+              <LabelList dataKey="total_qty" position="right" fontSize={11} fill="#374151" />
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>

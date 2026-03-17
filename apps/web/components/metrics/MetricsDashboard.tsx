@@ -60,6 +60,12 @@ export default function MetricsDashboard({ initialMetrics, initialComparison }: 
   }, [preset, purchaseType, customFrom, customTo])
 
   const handlePresetChange = (newPreset: PeriodPreset) => {
+    if (newPreset === 'custom' && !customFrom && !customTo) {
+      const now = new Date()
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+      setCustomFrom(firstDay.toISOString().split('T')[0])
+      setCustomTo(now.toISOString().split('T')[0])
+    }
     setPreset(newPreset)
   }
 

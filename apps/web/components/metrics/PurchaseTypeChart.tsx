@@ -1,6 +1,7 @@
 'use client'
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
+import type { PieLabelRenderProps } from 'recharts'
 import { PURCHASE_TYPE_LABELS } from '@/lib/utils'
 import ChartCard from './ChartCard'
 
@@ -15,6 +16,26 @@ const TYPE_COLORS: Record<string, string> = {
   transferencias_saas: '#f59e0b',
   otro: '#6b7280',
   sin_tipo: '#d1d5db',
+}
+
+const RADIAN = Math.PI / 180
+
+function renderLabel(props: PieLabelRenderProps) {
+  const cx = Number(props.cx ?? 0)
+  const cy = Number(props.cy ?? 0)
+  const midAngle = Number(props.midAngle ?? 0)
+  const outerRadius = Number(props.outerRadius ?? 0)
+  const value = Number(props.value ?? 0)
+  const percent = Number(props.percent ?? 0)
+  const radius = outerRadius + 18
+  const x = cx + radius * Math.cos(-midAngle * RADIAN)
+  const y = cy + radius * Math.sin(-midAngle * RADIAN)
+  if (percent < 0.03) return null
+  return (
+    <text x={x} y={y} fill="#374151" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={11}>
+      {value} ({(percent * 100).toFixed(0)}%)
+    </text>
+  )
 }
 
 export default function PurchaseTypeChart({ data }: PurchaseTypeChartProps) {
@@ -37,6 +58,8 @@ export default function PurchaseTypeChart({ data }: PurchaseTypeChartProps) {
               innerRadius={50}
               outerRadius={80}
               paddingAngle={2}
+              label={renderLabel}
+              labelLine={true}
             >
               {chartData.map((entry) => (
                 <Cell key={entry.purchase_type} fill={TYPE_COLORS[entry.purchase_type] || '#6b7280'} />
