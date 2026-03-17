@@ -32,11 +32,16 @@ export default function MetricsDashboard({ initialMetrics, initialComparison }: 
     try {
       const params = new URLSearchParams({ from, to })
       if (type !== 'all') params.set('purchase_type', type)
-      const res = await fetch(`/api/metrics?${params.toString()}`)
-      if (!res.ok) return
+      const res = await fetch(`/api/metrics?${params.toString()}`, { cache: 'no-store' })
+      if (!res.ok) {
+        console.error('Metrics fetch failed:', res.status, await res.text())
+        return
+      }
       const data = await res.json()
       setMetrics(data.metrics)
       setComparison(data.comparison)
+    } catch (err) {
+      console.error('Metrics fetch error:', err)
     } finally {
       setLoading(false)
     }

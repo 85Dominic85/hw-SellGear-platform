@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import type { UserRole } from '@/types/database'
 
+export const dynamic = 'force-dynamic'
+
 const ALLOWED_ROLES: UserRole[] = ['admin', 'manager', 'hardware']
 
 export async function GET(request: NextRequest) {
