@@ -1,7 +1,7 @@
 ================================================================================
   PROYECTO LOG — hw-SellGear-platform (MainOperation Platform)
   Creado: 2026-02-20
-  Última actualización: 2026-03-06 (sesion 13)
+  Última actualización: 2026-03-17 (sesion 14)
 ================================================================================
 
 --------------------------------------------------------------------------------
@@ -1060,6 +1060,50 @@ MCPs configurados (.mcp.json):
   Estado general: Dashboard operativo con datos reales (1611 pedidos, 1.17M EUR).
   KPIs con comparativa periodo anterior, graficos temporales, distribuciones por
   tipo/estado/producto, exportacion CSV y vista impresion.
+
+--- SESION 2026-03-17 (sesion 14 — fix UX graficos metricas) ---
+
+  CONTEXTO:
+    - El dashboard de metricas (/metrics) tenia 3 problemas de UX reportados:
+      1) Filtro "Personalizado" mostraba date pickers vacios al seleccionar.
+      2) Barras de "Hardware Vendido" solo mostraban valores en tooltip hover.
+      3) Donuts (Tipo de Venta y Estado Pedidos) sin numeros/porcentajes visibles.
+
+  FIX 1 — FILTRO PERSONALIZADO (MetricsDashboard.tsx):
+    - Al cambiar a preset 'custom', si customFrom/customTo estan vacios,
+      se inicializan automaticamente con primer dia del mes actual → hoy.
+    - Esto evita que getRange() caiga al fallback por campos vacios.
+
+  FIX 2 — NUMEROS EN BARRAS (ProductBreakdown.tsx):
+    - Importado LabelList de recharts.
+    - Añadido <LabelList dataKey="total_qty" position="right"> dentro del <Bar>.
+    - Los numeros aparecen directamente al final de cada barra sin necesidad de hover.
+
+  FIX 3 — NUMEROS EN DONUT TIPO DE VENTA (PurchaseTypeChart.tsx):
+    - Creada funcion renderLabel que calcula posicion fuera del donut usando
+      trigonometria (cx, cy, midAngle, outerRadius + 18px offset).
+    - Muestra "{count} ({percent}%)" en cada slice.
+    - Slices con menos del 3% se ocultan para evitar solapamiento.
+    - Importado PieLabelRenderProps de recharts para tipado correcto.
+    - Añadido labelLine={true} para lineas conectoras.
+
+  FIX 4 — NUMEROS EN DONUT ESTADO PEDIDOS (StatusDistChart.tsx):
+    - Misma estrategia que Fix 3: renderLabel con count + porcentaje.
+    - Mismo umbral 3% para ocultar labels de slices pequeños.
+
+  ARCHIVOS MODIFICADOS (4):
+    - apps/web/components/metrics/MetricsDashboard.tsx (defaults customFrom/customTo)
+    - apps/web/components/metrics/ProductBreakdown.tsx (LabelList en Bar)
+    - apps/web/components/metrics/PurchaseTypeChart.tsx (renderLabel + labelLine)
+    - apps/web/components/metrics/StatusDistChart.tsx (renderLabel + labelLine)
+
+  COMMITS DE ESTA SESION:
+    - fix: filtro personalizado con fechas default y numeros visibles en graficos metricas
+
+  BUILD: Exitoso sin errores.
+
+  Estado general: Dashboard de metricas ahora muestra toda la informacion visible
+  sin necesidad de hover. Filtro personalizado funcional desde el primer click.
 
 --------------------------------------------------------------------------------
 7. PENDIENTE / BACKLOG
