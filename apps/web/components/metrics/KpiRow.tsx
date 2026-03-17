@@ -11,8 +11,11 @@ interface KpiRowProps {
 }
 
 export default function KpiRow({ metrics, comparison }: KpiRowProps) {
+  const revenueDelta = calcDelta(metrics.total_revenue, comparison.prev_total_revenue)
+  const ticketDelta = calcDelta(metrics.avg_order_value, comparison.prev_avg_order_value)
+
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       <KpiCard
         label="Pedidos totales"
         value={metrics.total_orders.toLocaleString('es-ES')}
@@ -24,28 +27,31 @@ export default function KpiRow({ metrics, comparison }: KpiRowProps) {
           </svg>
         }
       />
-      <KpiCard
-        label="Ingresos totales"
-        value={formatCurrency(metrics.total_revenue)}
-        delta={calcDelta(metrics.total_revenue, comparison.prev_total_revenue)}
-        icon={
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        }
-      />
-      <KpiCard
-        label="Ticket medio"
-        value={formatCurrency(metrics.avg_order_value)}
-        delta={calcDelta(metrics.avg_order_value, comparison.prev_avg_order_value)}
-        icon={
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-          </svg>
-        }
-      />
+      {/* Tarjeta combinada: Ingresos totales + Ticket medio */}
+      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-gray-500">Ingresos / Ticket medio</span>
+          <span className="text-gray-400">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </span>
+        </div>
+        <div className="flex items-baseline gap-3">
+          <p className="text-2xl font-bold text-gray-900">{formatCurrency(metrics.total_revenue)}</p>
+          <span className="text-sm text-gray-400">|</span>
+          <p className="text-base font-semibold text-gray-500">{formatCurrency(metrics.avg_order_value)}<span className="text-xs font-normal text-gray-400 ml-1">/ pedido</span></p>
+        </div>
+        <div className="mt-1 flex items-center gap-3">
+          {revenueDelta !== null && (
+            <DeltaBadge delta={revenueDelta} label="ingresos" />
+          )}
+          {ticketDelta !== null && (
+            <DeltaBadge delta={ticketDelta} label="ticket" />
+          )}
+        </div>
+      </div>
       <KpiCard
         label="Tasa completado"
         value={`${metrics.completed_rate}%`}
@@ -57,6 +63,26 @@ export default function KpiRow({ metrics, comparison }: KpiRowProps) {
           </svg>
         }
       />
+    </div>
+  )
+}
+
+function DeltaBadge({ delta, label }: { delta: number; label: string }) {
+  const positive = delta >= 0
+  return (
+    <div className="flex items-center gap-0.5">
+      {positive ? (
+        <svg className="h-3.5 w-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+        </svg>
+      ) : (
+        <svg className="h-3.5 w-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+        </svg>
+      )}
+      <span className={`text-xs font-medium ${positive ? 'text-green-600' : 'text-red-600'}`}>
+        {positive ? '+' : ''}{delta}% {label}
+      </span>
     </div>
   )
 }
