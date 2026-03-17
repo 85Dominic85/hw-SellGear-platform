@@ -1061,13 +1061,12 @@ MCPs configurados (.mcp.json):
   KPIs con comparativa periodo anterior, graficos temporales, distribuciones por
   tipo/estado/producto, exportacion CSV y vista impresion.
 
---- SESION 2026-03-17 (sesion 14 — fix UX graficos metricas) ---
+--- SESION 2026-03-17 (sesion 14 — fix UX metricas, caching y KPI combinada) ---
 
   CONTEXTO:
-    - El dashboard de metricas (/metrics) tenia 3 problemas de UX reportados:
-      1) Filtro "Personalizado" mostraba date pickers vacios al seleccionar.
-      2) Barras de "Hardware Vendido" solo mostraban valores en tooltip hover.
-      3) Donuts (Tipo de Venta y Estado Pedidos) sin numeros/porcentajes visibles.
+    - El dashboard de metricas (/metrics) tenia problemas de UX y un bug critico
+      donde los filtros de fecha no filtraban realmente (mostraba totales completos
+      independientemente del periodo seleccionado).
 
   FIX 1 — FILTRO PERSONALIZADO (MetricsDashboard.tsx):
     - Al cambiar a preset 'custom', si customFrom/customTo estan vacios,
@@ -1085,25 +1084,46 @@ MCPs configurados (.mcp.json):
     - Muestra "{count} ({percent}%)" en cada slice.
     - Slices con menos del 3% se ocultan para evitar solapamiento.
     - Importado PieLabelRenderProps de recharts para tipado correcto.
-    - Añadido labelLine={true} para lineas conectoras.
 
   FIX 4 — NUMEROS EN DONUT ESTADO PEDIDOS (StatusDistChart.tsx):
     - Misma estrategia que Fix 3: renderLabel con count + porcentaje.
-    - Mismo umbral 3% para ocultar labels de slices pequeños.
 
-  ARCHIVOS MODIFICADOS (4):
-    - apps/web/components/metrics/MetricsDashboard.tsx (defaults customFrom/customTo)
+  FIX 5 — CACHING: FILTROS DE FECHA NO FILTRABAN (bug critico):
+    - Causa raiz: Next.js cacheaba las llamadas fetch internas del Supabase client
+      en los Route Handlers, devolviendo siempre los mismos datos RPC.
+    - Supabase server client (lib/supabase/server.ts): añadido cache: 'no-store'
+      en global.fetch para evitar data cache de Next.js en todas las llamadas.
+    - API routes /api/metrics y /api/metrics/export: export dynamic = 'force-dynamic'.
+    - Client fetch (MetricsDashboard.tsx): cache: 'no-store' + error handling con
+      console.error para surfacear errores silenciosos.
+
+  FIX 6 — TARJETA KPI COMBINADA (KpiRow.tsx):
+    - Fusionadas las tarjetas "Ingresos totales" y "Ticket medio" en una sola.
+    - Layout: valor grande (ingresos totales) + valor secundario (ticket medio / pedido).
+    - Dos delta badges independientes: % variacion ingresos y % variacion ticket.
+    - Componente DeltaBadge extraido para reutilizar en la tarjeta combinada.
+    - Grid cambia de 4 columnas a 3: Pedidos | Ingresos+Ticket | Tasa completado.
+
+  ARCHIVOS MODIFICADOS (7):
+    - apps/web/components/metrics/MetricsDashboard.tsx (defaults custom + cache no-store)
     - apps/web/components/metrics/ProductBreakdown.tsx (LabelList en Bar)
     - apps/web/components/metrics/PurchaseTypeChart.tsx (renderLabel + labelLine)
     - apps/web/components/metrics/StatusDistChart.tsx (renderLabel + labelLine)
+    - apps/web/lib/supabase/server.ts (global fetch cache: no-store)
+    - apps/web/app/api/metrics/route.ts (dynamic = force-dynamic)
+    - apps/web/app/api/metrics/export/route.ts (dynamic = force-dynamic)
+    - apps/web/components/metrics/KpiRow.tsx (tarjeta combinada ingresos+ticket)
 
   COMMITS DE ESTA SESION:
-    - fix: filtro personalizado con fechas default y numeros visibles en graficos metricas
+    - ebc71bf: fix: filtro personalizado con fechas default y numeros visibles en graficos
+    - b0d4c1b: fix: forzar no-cache en metricas para filtros de fecha
+    - 4a1ae78: feat: tarjeta KPI combinada ingresos totales + ticket medio
 
   BUILD: Exitoso sin errores.
 
-  Estado general: Dashboard de metricas ahora muestra toda la informacion visible
-  sin necesidad de hover. Filtro personalizado funcional desde el primer click.
+  Estado general: Dashboard de metricas totalmente funcional con filtros de periodo
+  que devuelven datos reales del rango seleccionado. Graficos con numeros visibles
+  y tarjeta KPI combinada ingresos/ticket medio.
 
 --------------------------------------------------------------------------------
 7. PENDIENTE / BACKLOG
