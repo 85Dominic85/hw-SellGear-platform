@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react'
 import { Pencil, Loader2, Check } from 'lucide-react'
 
 type FieldType = 'text' | 'email' | 'url' | 'number' | 'select' | 'textarea'
@@ -11,7 +11,7 @@ interface EditableFieldProps {
   value: string | number | null
   fieldType?: FieldType
   canEdit: boolean
-  label: string
+  label: ReactNode
   options?: { value: string; label: string }[]
   formatDisplay?: (value: string | number | null) => React.ReactNode
   placeholder?: string

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import type { Order, OrderItem, UserRole } from '@/types/database'
-import { formatCurrency, formatDate, PURCHASE_TYPE_LABELS } from '@/lib/utils'
+import { formatCurrency, formatDate, PURCHASE_TYPE_LABELS, isCanaryIslands } from '@/lib/utils'
 import StatusBadge from './StatusBadge'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, X, MapPin, Package, FileText, Phone, Mail } from 'lucide-react'
@@ -122,6 +122,9 @@ function OrderDetailPopup({ order, onClose }: { order: Order; onClose: () => voi
             <div className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
               <MapPin className="h-4 w-4 text-blue-500" />
               Direccion de contacto
+              {isCanaryIslands(order.shipping_address) && (
+                <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Canarias</span>
+              )}
             </div>
             {hasContact ? (
               <div className="space-y-1.5 rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-600">
@@ -293,6 +296,9 @@ export default function OrdersTable({ orders, userRole }: OrdersTableProps) {
                 <td className="px-4 py-3">
                   <Link href={`/orders/${order.id}`} className="block">
                     <span className="text-sm text-gray-900">{order.customer_name}</span>
+                    {isCanaryIslands(order.shipping_address) && (
+                      <span className="ml-1.5 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Canarias</span>
+                    )}
                   </Link>
                 </td>
                 <td className="px-4 py-3">

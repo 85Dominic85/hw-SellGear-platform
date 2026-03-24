@@ -5,7 +5,7 @@ import FileUploadField from './FileUploadField'
 import InvoiceCheckbox from './InvoiceCheckbox'
 import OrderCheckbox from './OrderCheckbox'
 import ShippingLabelViewer from './ShippingLabelViewer'
-import { formatCurrency, formatDate, PURCHASE_TYPE_LABELS } from '@/lib/utils'
+import { formatCurrency, formatDate, PURCHASE_TYPE_LABELS, isCanaryIslands } from '@/lib/utils'
 import type { PurchaseType } from '@/types/database'
 
 interface OrderData {
@@ -299,7 +299,7 @@ export default function OrderDetailFields({ order, canEdit, isViewer }: OrderDet
           value={order.shipping_address}
           fieldType="textarea"
           canEdit={canEdit}
-          label="Direccion de envio"
+          label={<>Direccion de envio{isCanaryIslands(order.shipping_address) && <span className="ml-1.5 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Canarias</span>}</>}
           fullWidth
         />
 

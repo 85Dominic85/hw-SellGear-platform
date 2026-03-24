@@ -42,6 +42,18 @@ export const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   bloqueado:                ['nuevo', 'pendiente', 'solicitado_a_proveedor', 'pagado', 'falta_informacion'],
 }
 
+const CANARY_KEYWORDS = [
+  'canarias', 'tenerife', 'gran canaria', 'las palmas', 'lanzarote',
+  'fuerteventura', 'la palma', 'la gomera', 'el hierro',
+]
+
+export function isCanaryIslands(address: string | null): boolean {
+  if (!address) return false
+  const lower = address.toLowerCase()
+  if (/\b3[58]\d{3}\b/.test(address)) return true
+  return CANARY_KEYWORDS.some((kw) => lower.includes(kw))
+}
+
 export function formatCurrency(amount: number | null): string {
   if (amount == null) return '—'
   return new Intl.NumberFormat('es-ES', {
