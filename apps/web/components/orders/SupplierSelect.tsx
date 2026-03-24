@@ -9,7 +9,7 @@ export const SUPPLIERS = [
   { name: 'Pedro Porto', emails: ['jose.romero@pedroporto.pt'] },
   { name: 'PosiFlex', emails: ['mario.guillem@posiflex.es', 'miriam.ballester@posiflex.es'] },
   { name: 'PC Mira', emails: ['ramon.martinez@pcmira.com', 'lidia.alonso@pcmira.com'] },
-  { name: 'Mayorista Canario', emails: [] },
+  { name: 'Mayorista Canario', emails: ['comercial@mayoristacanario.com'] },
 ] as const
 
 export function getSupplierEmails(name: string): readonly string[] {
