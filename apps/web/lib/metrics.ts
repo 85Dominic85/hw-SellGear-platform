@@ -85,9 +85,16 @@ export function generateCSV(
     status: string
     supplier: string | null
     products: string
-  }[]
+    invoiced?: boolean | null
+    ae_ref?: string | null
+  }[],
+  options?: { includeExtended?: boolean }
 ): string {
-  const header = 'ID Operacion,Fecha,Cliente,Venue,Tipo Compra,Importe,Estado,Proveedor,Productos'
+  const extended = options?.includeExtended ?? false
+  let header = 'ID Operacion,Fecha,Cliente,Venue,Tipo Compra,Importe,Estado'
+  if (extended) header += ',Facturado,Ref AE'
+  header += ',Proveedor,Productos'
+
   const rows = orders.map((o) => {
     const fields = [
       o.operation_id,
@@ -97,9 +104,13 @@ export function generateCSV(
       o.purchase_type || '',
       o.amount != null ? o.amount.toString() : '',
       o.status || '',
-      o.supplier || '',
-      `"${(o.products || '').replace(/"/g, '""')}"`,
     ]
+    if (extended) {
+      fields.push(o.invoiced ? 'Si' : 'No')
+      fields.push(o.ae_ref || '')
+    }
+    fields.push(o.supplier || '')
+    fields.push(`"${(o.products || '').replace(/"/g, '""')}"`)
     return fields.join(',')
   })
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { cn } from '@/lib/utils'
+import { buildCSV, downloadCSV } from '@/lib/csv'
 import type { UserProfile, UserRole } from '@/types/database'
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -192,6 +193,22 @@ export default function AdminUsersPage() {
     return matchesSearch && matchesRole
   })
 
+  const handleExportCSV = () => {
+    const csv = buildCSV(filtered, [
+      { key: 'full_name', header: 'Nombre', transform: (v) => String(v ?? '') },
+      { key: 'email', header: 'Email', transform: (v) => String(v ?? '') },
+      { key: 'role', header: 'Rol', transform: (v) => ROLE_LABELS[v as UserRole] ?? String(v) },
+      { key: 'department', header: 'Departamento', transform: (v) => String(v ?? '') },
+      {
+        key: 'created_at',
+        header: 'Fecha Registro',
+        transform: (v) => (v ? new Date(String(v)).toLocaleDateString('es-ES') : ''),
+      },
+    ])
+    const today = new Date().toISOString().slice(0, 10)
+    downloadCSV(csv, `usuarios_export_${today}.csv`)
+  }
+
   const formatDate = (dateStr: string) => {
     return new Intl.DateTimeFormat('es-ES', {
       day: '2-digit',
@@ -233,15 +250,27 @@ export default function AdminUsersPage() {
             {users.length} usuario{users.length !== 1 ? 's' : ''} registrado{users.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <button
-          onClick={() => setCreating(true)}
-          className="flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700"
-        >
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Nuevo usuario
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Exportar CSV
+          </button>
+          <button
+            onClick={() => setCreating(true)}
+            className="flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Nuevo usuario
+          </button>
+        </div>
       </div>
 
       {/* Feedback */}
