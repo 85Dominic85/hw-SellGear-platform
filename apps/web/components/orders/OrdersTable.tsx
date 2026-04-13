@@ -283,7 +283,7 @@ export default function OrdersTable({ orders, userRole }: OrdersTableProps) {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {orders.map((order) => {
-              const isFullyComplete = order.prepared && order.shipped && !!order.shipping_label_url
+              const isFullyComplete = order.prepared && order.shipped && (!!order.shipping_label_url || !!order.tracking_number)
               return (
               <tr
                 key={order.id}
@@ -336,7 +336,7 @@ export default function OrdersTable({ orders, userRole }: OrdersTableProps) {
                     >
                       <Eye className="h-4 w-4" />
                     </button>
-                    {isFullyComplete && (
+                    {isFullyComplete && order.shipping_label_url && (
                       <button
                         type="button"
                         onClick={(e) => {
@@ -350,6 +350,14 @@ export default function OrdersTable({ orders, userRole }: OrdersTableProps) {
                         <Truck className="h-4 w-4 transition-all group-hover/ship:hidden" />
                         <Package className="hidden h-4 w-4 transition-all group-hover/ship:block" />
                       </button>
+                    )}
+                    {isFullyComplete && !order.shipping_label_url && order.tracking_number && (
+                      <span
+                        className="rounded-md p-1.5 text-green-500"
+                        title={`Tracking: ${order.tracking_number}`}
+                      >
+                        <Truck className="h-4 w-4" />
+                      </span>
                     )}
                   </div>
                 </td>
