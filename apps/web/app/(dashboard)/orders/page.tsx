@@ -4,6 +4,7 @@ import Link from 'next/link'
 import type { OrderStatus, PurchaseType, UserRole } from '@/types/database'
 import OrdersTable from '@/components/orders/OrdersTable'
 import StatusFilter from '@/components/orders/StatusFilter'
+import ShippingOriginFilter from '@/components/orders/ShippingOriginFilter'
 import SearchBar from '@/components/orders/SearchBar'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 
@@ -11,6 +12,7 @@ interface SearchParams {
   status?: string
   search?: string
   type?: string
+  shipping?: string
 }
 
 export default async function OrdersPage({
@@ -47,6 +49,10 @@ export default async function OrdersPage({
 
   if (params.type) {
     query = query.eq('purchase_type', params.type as PurchaseType)
+  }
+
+  if (params.shipping) {
+    query = query.eq('status', params.shipping as OrderStatus)
   }
 
   if (params.search) {
@@ -111,9 +117,13 @@ export default async function OrdersPage({
           <SearchBar />
         </Suspense>
       </div>
-      <div className="mb-5">
+      <div className="mb-5 flex flex-wrap items-center gap-4">
         <Suspense>
           <StatusFilter />
+        </Suspense>
+        <div className="h-6 w-px bg-gray-200" />
+        <Suspense>
+          <ShippingOriginFilter />
         </Suspense>
       </div>
 

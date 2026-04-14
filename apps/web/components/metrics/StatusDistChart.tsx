@@ -13,10 +13,12 @@ interface StatusDistChartProps {
 const STATUS_CHART_COLORS: Record<string, string> = {
   nuevo: '#3b82f6',
   pendiente: '#eab308',
-  solicitado_a_proveedor: '#8b5cf6',
+  enviado_proveedor: '#8b5cf6',
+  enviado: '#6366f1',
   pagado: '#22c55e',
   falta_informacion: '#f97316',
   bloqueado: '#ef4444',
+  completado: '#16a34a',
 }
 
 const RADIAN = Math.PI / 180

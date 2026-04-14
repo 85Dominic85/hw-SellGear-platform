@@ -6,7 +6,8 @@
 export type OrderStatus =
   | 'nuevo'
   | 'pendiente'
-  | 'solicitado_a_proveedor'
+  | 'enviado_proveedor'
+  | 'enviado'
   | 'pagado'
   | 'falta_informacion'
   | 'bloqueado'

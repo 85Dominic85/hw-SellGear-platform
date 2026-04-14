@@ -9,7 +9,8 @@ export function cn(...inputs: ClassValue[]) {
 export const STATUS_LABELS: Record<OrderStatus, string> = {
   nuevo:                    'Nuevo',
   pendiente:                'Pendiente',
-  solicitado_a_proveedor:   'Solicitado a proveedor',
+  enviado_proveedor:        'Enviado desde proveedor',
+  enviado:                  'Enviado',
   pagado:                   'Pagado',
   falta_informacion:        'Falta informacion',
   bloqueado:                'Bloqueado',
@@ -19,7 +20,8 @@ export const STATUS_LABELS: Record<OrderStatus, string> = {
 export const STATUS_COLORS: Record<OrderStatus, string> = {
   nuevo:                    'bg-blue-100 text-blue-800',
   pendiente:                'bg-yellow-100 text-yellow-800',
-  solicitado_a_proveedor:   'bg-purple-100 text-purple-800',
+  enviado_proveedor:        'bg-purple-100 text-purple-800',
+  enviado:                  'bg-indigo-100 text-indigo-800',
   pagado:                   'bg-green-100 text-green-800',
   falta_informacion:        'bg-orange-100 text-orange-800',
   bloqueado:                'bg-red-100 text-red-800',
@@ -36,12 +38,13 @@ export const PURCHASE_TYPE_LABELS: Record<PurchaseType, string> = {
 
 // Transiciones de estado permitidas (selector libre entre todos)
 export const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  nuevo:                    ['pendiente', 'solicitado_a_proveedor', 'pagado', 'completado', 'falta_informacion', 'bloqueado'],
-  pendiente:                ['nuevo', 'solicitado_a_proveedor', 'pagado', 'completado', 'falta_informacion', 'bloqueado'],
-  solicitado_a_proveedor:   ['nuevo', 'pendiente', 'pagado', 'completado', 'falta_informacion', 'bloqueado'],
-  pagado:                   ['nuevo', 'pendiente', 'solicitado_a_proveedor', 'completado', 'falta_informacion', 'bloqueado'],
-  falta_informacion:        ['nuevo', 'pendiente', 'solicitado_a_proveedor', 'pagado', 'completado', 'bloqueado'],
-  bloqueado:                ['nuevo', 'pendiente', 'solicitado_a_proveedor', 'pagado', 'completado', 'falta_informacion'],
+  nuevo:                    ['pendiente', 'enviado_proveedor', 'enviado', 'pagado', 'completado', 'falta_informacion', 'bloqueado'],
+  pendiente:                ['nuevo', 'enviado_proveedor', 'enviado', 'pagado', 'completado', 'falta_informacion', 'bloqueado'],
+  enviado_proveedor:        ['nuevo', 'pendiente', 'enviado', 'pagado', 'completado', 'falta_informacion', 'bloqueado'],
+  enviado:                  ['nuevo', 'pendiente', 'enviado_proveedor', 'pagado', 'completado', 'falta_informacion', 'bloqueado'],
+  pagado:                   ['nuevo', 'pendiente', 'enviado_proveedor', 'enviado', 'completado', 'falta_informacion', 'bloqueado'],
+  falta_informacion:        ['nuevo', 'pendiente', 'enviado_proveedor', 'enviado', 'pagado', 'completado', 'bloqueado'],
+  bloqueado:                ['nuevo', 'pendiente', 'enviado_proveedor', 'enviado', 'pagado', 'completado', 'falta_informacion'],
   completado:               ['nuevo', 'pendiente'],
 }
 

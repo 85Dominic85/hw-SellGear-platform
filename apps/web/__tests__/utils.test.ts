@@ -13,8 +13,8 @@ import {
 import type { OrderStatus } from '@/types/database'
 
 const ALL_STATUSES: OrderStatus[] = [
-  'nuevo', 'pendiente', 'solicitado_a_proveedor',
-  'pagado', 'falta_informacion', 'bloqueado',
+  'nuevo', 'pendiente', 'enviado_proveedor', 'enviado',
+  'pagado', 'falta_informacion', 'bloqueado', 'completado',
 ]
 
 describe('STATUS_LABELS', () => {

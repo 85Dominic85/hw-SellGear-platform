@@ -23,10 +23,12 @@ interface SlackPayload {
 const STATUS_LABELS: Record<string, string> = {
   nuevo:                  'Nuevo',
   pendiente:              'Pendiente',
-  solicitado_a_proveedor: 'Solicitado a proveedor',
+  enviado_proveedor:      'Enviado desde proveedor',
+  enviado:                'Enviado',
   pagado:                 'Pagado',
   falta_informacion:      'Falta informacion',
   bloqueado:              'Bloqueado',
+  completado:             'Completado',
 }
 
 function buildMessage(payload: SlackPayload, appUrl: string): object {
