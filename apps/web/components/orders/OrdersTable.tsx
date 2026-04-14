@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import type { Order, OrderItem, UserRole } from '@/types/database'
 import { formatCurrency, formatDate, PURCHASE_TYPE_LABELS, isCanaryIslands } from '@/lib/utils'
-import { getDaysElapsed, getSlaStatus, getSlaColor, formatDaysElapsed, getSlaLabel } from '@/lib/sla'
+import { getDaysElapsed, getSlaStatus, getSlaColor, formatDaysElapsed, getSlaLabel, SLA_TARGET_DAYS } from '@/lib/sla'
 import StatusBadge from './StatusBadge'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, X, MapPin, Package, FileText, Phone, Mail, Truck, Clock, CheckCircle2, AlertTriangle } from 'lucide-react'
@@ -214,6 +214,25 @@ function OrderDetailPopup({ order, onClose }: { order: Order; onClose: () => voi
   )
 }
 
+function SlaProgressBar({ days, isTerminal }: { days: number; isTerminal: boolean }) {
+  // Barra va de 0% a 100% en 7 dias, puede superar 100%
+  const pct = Math.min((days / SLA_TARGET_DAYS) * 100, 100)
+
+  // Color de la barra segun progreso
+  let barColor = 'bg-green-500'
+  if (days > 6) barColor = 'bg-red-500'
+  else if (days > 4) barColor = 'bg-amber-500'
+
+  return (
+    <div className="mt-1 h-1 w-full rounded-full bg-gray-200 overflow-hidden">
+      <div
+        className={`h-full rounded-full transition-all ${barColor} ${!isTerminal && days > 0 ? 'animate-pulse' : ''}`}
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  )
+}
+
 function SlaBadge({
   createdAt,
   deliveredAt,
@@ -229,33 +248,39 @@ function SlaBadge({
   const label = formatDaysElapsed(days)
   const tooltip = getSlaLabel(status)
 
-  // Para pedidos completados, mostrar icono de resultado
+  // Pedidos completados — icono stop, barra congelada
   if (isTerminal && deliveredAt) {
-    const onTime = days <= 7
+    const onTime = days <= SLA_TARGET_DAYS
     return (
-      <span
-        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${colorClass}`}
+      <div
+        className={`inline-flex flex-col items-center rounded-lg px-2.5 py-1 text-xs font-medium ${colorClass}`}
         title={`${tooltip} — ${label}`}
       >
-        {onTime ? (
-          <CheckCircle2 className="h-3 w-3" />
-        ) : (
-          <AlertTriangle className="h-3 w-3" />
-        )}
-        {label}
-      </span>
+        <div className="flex items-center gap-1">
+          {onTime ? (
+            <CheckCircle2 className="h-3 w-3" />
+          ) : (
+            <AlertTriangle className="h-3 w-3" />
+          )}
+          <span>{label}</span>
+        </div>
+        <SlaProgressBar days={days} isTerminal />
+      </div>
     )
   }
 
-  // Para pedidos activos, mostrar reloj + dias
+  // Pedidos activos — reloj con pulso, barra animada
   return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${colorClass}`}
+    <div
+      className={`inline-flex flex-col items-center rounded-lg px-2.5 py-1 text-xs font-medium ${colorClass}`}
       title={`${tooltip} — ${label}`}
     >
-      <Clock className="h-3 w-3" />
-      {label}
-    </span>
+      <div className="flex items-center gap-1">
+        <Clock className="h-3 w-3 animate-pulse" />
+        <span>{label}</span>
+      </div>
+      <SlaProgressBar days={days} isTerminal={false} />
+    </div>
   )
 }
 
