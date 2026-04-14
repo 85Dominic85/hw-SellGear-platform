@@ -13,6 +13,7 @@ export const STATUS_LABELS: Record<OrderStatus, string> = {
   pagado:                   'Pagado',
   falta_informacion:        'Falta informacion',
   bloqueado:                'Bloqueado',
+  completado:               'Completado',
 }
 
 export const STATUS_COLORS: Record<OrderStatus, string> = {
@@ -22,6 +23,7 @@ export const STATUS_COLORS: Record<OrderStatus, string> = {
   pagado:                   'bg-green-100 text-green-800',
   falta_informacion:        'bg-orange-100 text-orange-800',
   bloqueado:                'bg-red-100 text-red-800',
+  completado:               'bg-green-50 text-green-700 ring-2 ring-green-500 font-semibold',
 }
 
 export const PURCHASE_TYPE_LABELS: Record<PurchaseType, string> = {
@@ -34,12 +36,13 @@ export const PURCHASE_TYPE_LABELS: Record<PurchaseType, string> = {
 
 // Transiciones de estado permitidas (selector libre entre todos)
 export const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  nuevo:                    ['pendiente', 'solicitado_a_proveedor', 'pagado', 'falta_informacion', 'bloqueado'],
-  pendiente:                ['nuevo', 'solicitado_a_proveedor', 'pagado', 'falta_informacion', 'bloqueado'],
-  solicitado_a_proveedor:   ['nuevo', 'pendiente', 'pagado', 'falta_informacion', 'bloqueado'],
-  pagado:                   ['nuevo', 'pendiente', 'solicitado_a_proveedor', 'falta_informacion', 'bloqueado'],
-  falta_informacion:        ['nuevo', 'pendiente', 'solicitado_a_proveedor', 'pagado', 'bloqueado'],
-  bloqueado:                ['nuevo', 'pendiente', 'solicitado_a_proveedor', 'pagado', 'falta_informacion'],
+  nuevo:                    ['pendiente', 'solicitado_a_proveedor', 'pagado', 'completado', 'falta_informacion', 'bloqueado'],
+  pendiente:                ['nuevo', 'solicitado_a_proveedor', 'pagado', 'completado', 'falta_informacion', 'bloqueado'],
+  solicitado_a_proveedor:   ['nuevo', 'pendiente', 'pagado', 'completado', 'falta_informacion', 'bloqueado'],
+  pagado:                   ['nuevo', 'pendiente', 'solicitado_a_proveedor', 'completado', 'falta_informacion', 'bloqueado'],
+  falta_informacion:        ['nuevo', 'pendiente', 'solicitado_a_proveedor', 'pagado', 'completado', 'bloqueado'],
+  bloqueado:                ['nuevo', 'pendiente', 'solicitado_a_proveedor', 'pagado', 'completado', 'falta_informacion'],
+  completado:               ['nuevo', 'pendiente'],
 }
 
 const CANARY_KEYWORDS = [

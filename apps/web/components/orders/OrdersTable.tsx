@@ -430,7 +430,7 @@ export default function OrdersTable({ orders, userRole }: OrdersTableProps) {
                     <SlaBadge
                       createdAt={order.created_at}
                       deliveredAt={order.delivered_at}
-                      isTerminal={order.status === 'pagado' || order.status === 'bloqueado'}
+                      isTerminal={order.status === 'completado' || order.status === 'bloqueado'}
                     />
                   </Link>
                 </td>

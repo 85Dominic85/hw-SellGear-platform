@@ -10,6 +10,7 @@ export type OrderStatus =
   | 'pagado'
   | 'falta_informacion'
   | 'bloqueado'
+  | 'completado'
 
 export type PurchaseType =
   | 'kit_digital'
