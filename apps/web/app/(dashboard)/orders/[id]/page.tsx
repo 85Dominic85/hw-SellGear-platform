@@ -13,6 +13,7 @@ import AutoMarkSeen from '@/components/orders/AutoMarkSeen'
 import EditableHeader from '@/components/orders/EditableHeader'
 import OrderDetailFields from '@/components/orders/OrderDetailFields'
 import { isAdminUser } from '@/lib/auth'
+import SlaIndicator from '@/components/orders/SlaIndicator'
 import type { OrderStatus, UserRole } from '@/types/database'
 
 export default async function OrderDetailPage({
@@ -102,6 +103,11 @@ export default async function OrderDetailPage({
               canEdit={canEdit}
             />
             <StatusBadge status={order.status as OrderStatus} />
+            <SlaIndicator
+              createdAt={order.created_at}
+              deliveredAt={order.delivered_at}
+              isTerminal={order.status === 'pagado' || order.status === 'bloqueado'}
+            />
           </div>
         </div>
       </div>

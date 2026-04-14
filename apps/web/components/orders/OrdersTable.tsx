@@ -4,9 +4,10 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import type { Order, OrderItem, UserRole } from '@/types/database'
 import { formatCurrency, formatDate, PURCHASE_TYPE_LABELS, isCanaryIslands } from '@/lib/utils'
+import { getDaysElapsed, getSlaStatus, getSlaColor, formatDaysElapsed, getSlaLabel } from '@/lib/sla'
 import StatusBadge from './StatusBadge'
 import { createClient } from '@/lib/supabase/client'
-import { Eye, X, MapPin, Package, FileText, Phone, Mail, Truck } from 'lucide-react'
+import { Eye, X, MapPin, Package, FileText, Phone, Mail, Truck, Clock, CheckCircle2, AlertTriangle } from 'lucide-react'
 
 interface OrdersTableProps {
   orders: Order[]
@@ -213,6 +214,51 @@ function OrderDetailPopup({ order, onClose }: { order: Order; onClose: () => voi
   )
 }
 
+function SlaBadge({
+  createdAt,
+  deliveredAt,
+  isTerminal,
+}: {
+  createdAt: string
+  deliveredAt?: string | null
+  isTerminal: boolean
+}) {
+  const days = getDaysElapsed(createdAt, isTerminal ? deliveredAt : undefined)
+  const status = getSlaStatus(days)
+  const colorClass = getSlaColor(status)
+  const label = formatDaysElapsed(days)
+  const tooltip = getSlaLabel(status)
+
+  // Para pedidos completados, mostrar icono de resultado
+  if (isTerminal && deliveredAt) {
+    const onTime = days <= 7
+    return (
+      <span
+        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${colorClass}`}
+        title={`${tooltip} — ${label}`}
+      >
+        {onTime ? (
+          <CheckCircle2 className="h-3 w-3" />
+        ) : (
+          <AlertTriangle className="h-3 w-3" />
+        )}
+        {label}
+      </span>
+    )
+  }
+
+  // Para pedidos activos, mostrar reloj + dias
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${colorClass}`}
+      title={`${tooltip} — ${label}`}
+    >
+      <Clock className="h-3 w-3" />
+      {label}
+    </span>
+  )
+}
+
 export default function OrdersTable({ orders, userRole }: OrdersTableProps) {
   const canEditInvoice = userRole === 'admin' || userRole === 'manager'
   const [detailOrder, setDetailOrder] = useState<Order | null>(null)
@@ -272,6 +318,9 @@ export default function OrdersTable({ orders, userRole }: OrdersTableProps) {
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                 Estado
+              </th>
+              <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">
+                SLA
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                 Fecha
@@ -374,6 +423,15 @@ export default function OrdersTable({ orders, userRole }: OrdersTableProps) {
                 <td className="whitespace-nowrap px-4 py-3">
                   <Link href={`/orders/${order.id}`} className="block">
                     <StatusBadge status={order.status} />
+                  </Link>
+                </td>
+                <td className="whitespace-nowrap px-3 py-3 text-center">
+                  <Link href={`/orders/${order.id}`} className="block">
+                    <SlaBadge
+                      createdAt={order.created_at}
+                      deliveredAt={order.delivered_at}
+                      isTerminal={order.status === 'pagado' || order.status === 'bloqueado'}
+                    />
                   </Link>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3">

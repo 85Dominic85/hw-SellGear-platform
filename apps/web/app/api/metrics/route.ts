@@ -38,9 +38,10 @@ export async function GET(request: NextRequest) {
     rpcParams.p_purchase_type = purchaseType
   }
 
-  const [metricsRes, comparisonRes] = await Promise.all([
+  const [metricsRes, comparisonRes, slaRes] = await Promise.all([
     supabase.rpc('get_dashboard_metrics', rpcParams),
     supabase.rpc('get_dashboard_comparison', rpcParams),
+    supabase.rpc('get_sla_metrics', { p_from: from, p_to: to }),
   ])
 
   if (metricsRes.error) {
@@ -50,5 +51,13 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     metrics: metricsRes.data,
     comparison: comparisonRes.data,
+    sla: slaRes.data ?? {
+      total_delivered: 0,
+      avg_delivery_days: 0,
+      on_time_pct: 0,
+      breached_count: 0,
+      active_at_risk: 0,
+      sla_by_week: [],
+    },
   })
 }

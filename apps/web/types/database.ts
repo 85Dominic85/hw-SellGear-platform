@@ -63,6 +63,7 @@ export interface Order {
   shipped: boolean
   shipping_label_url: string | null
   tracking_number: string | null
+  delivered_at: string | null
   // joins
   order_items?: OrderItem[]
   creator?: UserProfile

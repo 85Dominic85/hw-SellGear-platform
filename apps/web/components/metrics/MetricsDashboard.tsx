@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { getDateRange } from '@/lib/metrics'
-import type { DashboardMetrics, DashboardComparison, PeriodPreset } from '@/types/metrics'
+import type { DashboardMetrics, DashboardComparison, SlaMetrics, PeriodPreset } from '@/types/metrics'
 import type { PurchaseType } from '@/types/database'
 import KpiRow from './KpiRow'
+import SlaKpiRow from './SlaKpiRow'
+import SlaChart from './SlaChart'
 import PeriodSelector from './PeriodSelector'
 import PurchaseTypeFilter from './PurchaseTypeFilter'
 import ExportButton from './ExportButton'
@@ -13,14 +15,25 @@ import PurchaseTypeChart from './PurchaseTypeChart'
 import ProductBreakdown from './ProductBreakdown'
 import StatusDistChart from './StatusDistChart'
 
+const DEFAULT_SLA: SlaMetrics = {
+  total_delivered: 0,
+  avg_delivery_days: 0,
+  on_time_pct: 0,
+  breached_count: 0,
+  active_at_risk: 0,
+  sla_by_week: [],
+}
+
 interface MetricsDashboardProps {
   initialMetrics: DashboardMetrics
   initialComparison: DashboardComparison
+  initialSla?: SlaMetrics
 }
 
-export default function MetricsDashboard({ initialMetrics, initialComparison }: MetricsDashboardProps) {
+export default function MetricsDashboard({ initialMetrics, initialComparison, initialSla }: MetricsDashboardProps) {
   const [metrics, setMetrics] = useState<DashboardMetrics>(initialMetrics)
   const [comparison, setComparison] = useState<DashboardComparison>(initialComparison)
+  const [sla, setSla] = useState<SlaMetrics>(initialSla ?? DEFAULT_SLA)
   const [loading, setLoading] = useState(false)
   const [preset, setPreset] = useState<PeriodPreset>('this_month')
   const [purchaseType, setPurchaseType] = useState<PurchaseType | 'all'>('all')
@@ -40,6 +53,7 @@ export default function MetricsDashboard({ initialMetrics, initialComparison }: 
       const data = await res.json()
       setMetrics(data.metrics)
       setComparison(data.comparison)
+      if (data.sla) setSla(data.sla)
     } catch (err) {
       console.error('Metrics fetch error:', err)
     } finally {
@@ -105,6 +119,12 @@ export default function MetricsDashboard({ initialMetrics, initialComparison }: 
 
       {/* KPI cards */}
       <KpiRow metrics={metrics} comparison={comparison} />
+
+      {/* SLA KPI cards */}
+      <SlaKpiRow sla={sla} />
+
+      {/* SLA Chart */}
+      <SlaChart data={sla.sla_by_week} />
 
       {/* Charts row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
