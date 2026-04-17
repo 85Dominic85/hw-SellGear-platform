@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Paperclip, Loader2, Check, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -28,6 +29,7 @@ export default function FileUploadField({
   linkLabel,
   viewerComponent: ViewerComponent,
 }: FileUploadFieldProps) {
+  const router = useRouter()
   const [displayUrl, setDisplayUrl] = useState<string | null>(value)
   const [uploadState, setUploadState] = useState<UploadState>('idle')
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -87,13 +89,14 @@ export default function FileUploadField({
 
         setDisplayUrl(publicUrl)
         setUploadState('done')
+        router.refresh()
         setTimeout(() => setUploadState('idle'), 2000)
       } catch {
         setUploadState('error')
         setTimeout(() => setUploadState('idle'), 3000)
       }
     },
-    [orderId, fieldName, saveFieldUrl]
+    [orderId, fieldName, saveFieldUrl, router]
   )
 
   const handleDelete = useCallback(async () => {
@@ -118,13 +121,14 @@ export default function FileUploadField({
       await saveFieldUrl(null)
 
       setUploadState('done')
+      router.refresh()
       setTimeout(() => setUploadState('idle'), 2000)
     } catch {
       setDisplayUrl(previousUrl)
       setUploadState('error')
       setTimeout(() => setUploadState('idle'), 3000)
     }
-  }, [displayUrl, saveFieldUrl])
+  }, [displayUrl, saveFieldUrl, router])
 
   const feedbackIcon = () => {
     if (uploadState === 'uploading') {

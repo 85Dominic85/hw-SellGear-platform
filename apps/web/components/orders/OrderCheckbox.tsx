@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 interface OrderCheckboxProps {
@@ -32,6 +33,7 @@ export default function OrderCheckbox({
   readOnly,
   colorClass = DEFAULT_COLOR,
 }: OrderCheckboxProps) {
+  const router = useRouter()
   const [checked, setChecked] = useState(currentValue)
   const [saving, setSaving] = useState(false)
 
@@ -52,6 +54,8 @@ export default function OrderCheckbox({
     setSaving(false)
     if (error) {
       setChecked(!newValue) // revert on error
+    } else {
+      router.refresh()
     }
   }
 

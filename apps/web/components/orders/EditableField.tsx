@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 import { Pencil, Loader2, Check } from 'lucide-react'
 
 type FieldType = 'text' | 'email' | 'url' | 'number' | 'select' | 'textarea'
@@ -34,6 +35,7 @@ export default function EditableField({
   monospace = false,
   fullWidth = false,
 }: EditableFieldProps) {
+  const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [localValue, setLocalValue] = useState(value ?? '')
   const [displayValue, setDisplayValue] = useState(value)
@@ -82,6 +84,7 @@ export default function EditableField({
       }
 
       setSaveState('saved')
+      router.refresh()
       setTimeout(() => setSaveState('idle'), 2000)
     } catch {
       // Revert optimistic update
@@ -90,7 +93,7 @@ export default function EditableField({
       setSaveState('error')
       setTimeout(() => setSaveState('idle'), 3000)
     }
-  }, [orderId, fieldName, displayValue])
+  }, [orderId, fieldName, displayValue, router])
 
   const parseLocalValue = useCallback((): string | number | null => {
     if (fieldType === 'number') return parseFloat(String(localValue)) || null
