@@ -319,7 +319,7 @@ export default function OrdersTable({ orders, userRole }: OrdersTableProps) {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="w-1 p-0"><span className="sr-only">Estado envio</span></th>
+              <th className="w-1.5 p-0"><span className="sr-only">Estado envio</span></th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                 ID
               </th>
@@ -361,9 +361,15 @@ export default function OrdersTable({ orders, userRole }: OrdersTableProps) {
               return (
               <tr
                 key={order.id}
-                className="group cursor-pointer transition-colors hover:bg-gray-50"
+                className={`group cursor-pointer transition-colors hover:bg-gray-50 ${
+                  isFullyComplete ? 'bg-emerald-50/40' : ''
+                }`}
               >
-                <td className={`w-1 p-0 ${isFullyComplete ? 'bg-gradient-to-b from-blue-500 to-green-500' : ''}`} />
+                <td className="relative w-1.5 p-0">
+                  {isFullyComplete && (
+                    <div className="absolute inset-0 bg-gradient-to-b from-blue-500 to-green-500" />
+                  )}
+                </td>
                 <td className="whitespace-nowrap px-4 py-3">
                   <Link
                     href={`/orders/${order.id}`}
