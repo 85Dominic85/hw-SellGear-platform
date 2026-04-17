@@ -319,7 +319,6 @@ export default function OrdersTable({ orders, userRole }: OrdersTableProps) {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="w-1.5 p-0"><span className="sr-only">Estado envio</span></th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                 ID
               </th>
@@ -365,12 +364,13 @@ export default function OrdersTable({ orders, userRole }: OrdersTableProps) {
                   isFullyComplete ? 'bg-emerald-50/40' : ''
                 }`}
               >
-                <td className="relative w-1.5 p-0">
-                  {isFullyComplete && (
-                    <div className="absolute inset-0 bg-gradient-to-b from-blue-500 to-green-500" />
-                  )}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3">
+                <td
+                  className={`relative whitespace-nowrap px-4 py-3 ${
+                    isFullyComplete
+                      ? "before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1.5 before:bg-gradient-to-b before:from-blue-500 before:to-green-500 before:content-['']"
+                      : ''
+                  }`}
+                >
                   <Link
                     href={`/orders/${order.id}`}
                     className="block text-sm font-mono font-medium text-gray-900 hover:text-blue-600"
