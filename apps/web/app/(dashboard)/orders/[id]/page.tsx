@@ -219,6 +219,7 @@ export default async function OrderDetailPage({
               }
               canCreate={canEdit}
               canRefresh={canEdit}
+              canDelete={isAdmin}
             />
             <SupplierSection
               orderId={order.id}

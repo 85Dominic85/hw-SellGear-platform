@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ExternalLink, RefreshCw, Truck, Loader2 } from 'lucide-react'
+import { ExternalLink, RefreshCw, Truck, Loader2, Trash2 } from 'lucide-react'
 import CreateShipmentModal from './CreateShipmentModal'
 import ShippingLabelViewer from './ShippingLabelViewer'
 import type { ShippingEvent } from '@/types/database'
@@ -21,6 +21,7 @@ interface ShippingTrackingPanelProps {
   defaultContent: string
   canCreate: boolean
   canRefresh: boolean
+  canDelete: boolean
 }
 
 export default function ShippingTrackingPanel({
@@ -37,10 +38,13 @@ export default function ShippingTrackingPanel({
   defaultContent,
   canCreate,
   canRefresh,
+  canDelete,
 }: ShippingTrackingPanelProps) {
   const router = useRouter()
   const [modalOpen, setModalOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const hasShipment = Boolean(trackingNumber)
@@ -64,6 +68,28 @@ export default function ShippingTrackingPanel({
       setError('Error de conexión')
     } finally {
       setRefreshing(false)
+    }
+  }
+
+  async function handleDelete() {
+    setError(null)
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/tipsa/shipment/${orderId}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error ?? 'Error borrando envío')
+        setDeleting(false)
+        return
+      }
+      setConfirmingDelete(false)
+      setDeleting(false)
+      router.refresh()
+    } catch {
+      setError('Error de conexión')
+      setDeleting(false)
     }
   }
 
@@ -198,6 +224,53 @@ export default function ShippingTrackingPanel({
             ))}
           </ol>
         </>
+      )}
+
+      {canDelete && (
+        <div className="mt-4 border-t pt-3">
+          {!confirmingDelete ? (
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(true)}
+              className="inline-flex items-center gap-1 text-xs text-red-600 hover:underline"
+            >
+              <Trash2 className="h-3 w-3" />
+              Borrar envío
+            </button>
+          ) : (
+            <div className="rounded-md border border-red-300 bg-red-50 p-3">
+              <p className="mb-2 text-xs font-semibold text-red-800">
+                ¿Seguro que quieres borrar este envío?
+              </p>
+              <p className="mb-3 text-xs text-red-700">
+                Se eliminarán de la aplicación: albarán <span className="font-mono">{trackingNumber}</span>,
+                la etiqueta PDF y el timeline de eventos. El pedido <strong>no</strong> se borra.
+                {trackingNumber?.startsWith('9999')
+                  ? ' (Albarán sandbox, no afecta a TIPSA real.)'
+                  : ' El envío en TIPSA seguirá existiendo — esta acción solo limpia la referencia local.'}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="inline-flex flex-1 items-center justify-center gap-1 rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                >
+                  {deleting && <Loader2 className="h-3 w-3 animate-spin" />}
+                  {deleting ? 'Borrando...' : 'Sí, borrar envío'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingDelete(false)}
+                  disabled={deleting}
+                  className="flex-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
