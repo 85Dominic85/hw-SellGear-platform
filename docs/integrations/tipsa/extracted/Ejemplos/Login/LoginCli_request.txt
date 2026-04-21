@@ -1,0 +1,16 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" 
+xmlns:tem="http://tempuri.org/">
+   <soapenv:Header>
+      <tem:ROClientIDHeader>
+         <!--Optional:-->
+         <tem:ID></tem:ID>
+      </tem:ROClientIDHeader>
+   </soapenv:Header>
+   <soapenv:Body>
+      <tem:LoginWSService___LoginCli>
+         <tem:strCodAge>000000</tem:strCodAge>
+         <tem:strCod>33333</tem:strCod>
+         <tem:strPass>Pr%20#23%</tem:strPass>
+      </tem:LoginWSService___LoginCli>
+   </soapenv:Body>
+</soapenv:Envelope>

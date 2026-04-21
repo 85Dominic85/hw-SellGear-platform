@@ -1,0 +1,38 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns0="http://tempuri.org/">
+   <soapenv:Header>
+      <ns0:ROClientIDHeader>
+         <!--Optional:-->
+         <ns0:ID>{7EE3D89C-5FD9-4989-A350-D4E552690F1A}</ns0:ID>
+      </ns0:ROClientIDHeader>
+   </soapenv:Header>
+   <ns0:Body>
+      <ns0:WebServService___GrabaEnvio16>
+         <ns0:strCodAgeCargo>000000</ns0:strCodAgeCargo>
+            <ns0:strCodAgeOri>000000</ns0:strCodAgeOri>
+            <ns0:dtFecha>2019/11/11</ns0:dtFecha>
+            <ns0:strCodTipoServ>48</ns0:strCodTipoServ>
+            <ns0:strCodCli>33333</ns0:strCodCli>
+            <ns0:strNomOri>Marcandi S.L.</ns0:strNomOri>
+            <ns0:strDirOri>Monte squinza, 28</ns0:strDirOri>
+            <ns0:strPobOri>Madrid</ns0:strPobOri>
+            <ns0:strCPOri>28850</ns0:strCPOri>
+            <ns0:strTlfOri></ns0:strTlfOri>
+            <ns0:strNomDes>Sofia Clauida Toral</ns0:strNomDes>
+            <ns0:strDirDes>test address</ns0:strDirDes>
+            <ns0:strPobDes></ns0:strPobDes>
+            <ns0:strCPDes>04820</ns0:strCPDes>
+            <ns0:strTlfDes></ns0:strTlfDes>
+            <ns0:intPaq>1</ns0:intPaq>
+            <ns0:dPesoOri>1.0</ns0:dPesoOri>
+            <ns0:strRef></ns0:strRef>
+            <ns0:strPersContacto></ns0:strPersContacto>
+            <ns0:boDesSMS>false</ns0:boDesSMS>
+            <ns0:boDesEmail>false</ns0:boDesEmail>
+            <ns0:strDesMoviles>662563277</ns0:strDesMoviles>
+            <ns0:strDesDirEmails>test@test.com</ns0:strDesDirEmails>
+            <ns0:strCodPais>ES</ns0:strCodPais>
+            <ns0:strObs>pruebaaaa</ns0:strObs>
+            <ns0:boInsert>true</ns0:boInsert>           
+      </ns0:WebServService___GrabaEnvio16>
+   </ns0:Body>
+</soapenv:Envelope>

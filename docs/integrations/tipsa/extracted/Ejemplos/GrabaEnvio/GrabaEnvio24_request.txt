@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+   <soapenv:Header>
+      <tem:ROClientIDHeader>
+         <!--Optional:-->
+         <tem:ID>{D65E7D7A-3CC0-44A6-AEBA-A225DA5CE1D5}</tem:ID>
+      </tem:ROClientIDHeader>
+   </soapenv:Header>
+   <soapenv:Body>
+      <tem:WebServService___GrabaEnvio24>
+         <tem:strCodAgeCargo>000000</tem:strCodAgeCargo>
+         <tem:strCodAgeOri>000000</tem:strCodAgeOri>
+         <tem:dtFecha>2023-11-21</tem:dtFecha>
+         <tem:strCodTipoServ>48</tem:strCodTipoServ>
+         <tem:strCodCli>33333</tem:strCodCli>
+         <tem:strNomOri>Pruebas Informatica</tem:strNomOri>
+         <tem:strDirOri>Pruebas Informatica</tem:strDirOri>
+         <tem:strPobOri>San Fernando de Henares</tem:strPobOri>
+         <tem:strCPOri>28830</tem:strCPOri>
+         <tem:strTlfOri>666555444</tem:strTlfOri>
+         <tem:strNomDes>Pruebas Informatica</tem:strNomDes>
+         <tem:strDirDes>P.º de la Castellana, 28036 Madrid</tem:strDirDes>
+         <tem:strPobDes>Madrid</tem:strPobDes>
+         <tem:strCPDes>28036</tem:strCPDes>
+         <tem:strCodPais>Es</tem:strCodPais>
+         <tem:strTlfDes>666555444</tem:strTlfDes>
+         <tem:intPaq>1</tem:intPaq>
+         <tem:strConcAgru>envagru</tem:strConcAgru>
+         <tem:strRef>referencia de agrupacion</tem:strRef>
+         <tem:boInsert>true</tem:boInsert>
+         <tem:strContenido>Esto es de prueba</tem:strContenido>
+      </tem:WebServService___GrabaEnvio24>
+   </soapenv:Body>
+</soapenv:Envelope>

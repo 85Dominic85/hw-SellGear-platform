@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SOAP-ENV:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:HNS="http://tempuri.org/" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v1="http://tempuri.org/">
+   <SOAP-ENV:Header>
+      <ROClientIDHeader SOAP-ENV:mustUnderstand="0" xmlns="urn:DinaPaq">
+         <ID>{D65E7D7A-3CC0-44A6-AEBA-A225DA5CE1D5}</ID>
+      </ROClientIDHeader>
+   </SOAP-ENV:Header>
+   <SOAP-ENV:Body xmlns:ro="http://tempuri.org/">
+      <v1:WebServService___ConsultaPuntosConvenienciaResponse>
+         <v1:strXMLPuntosConvenienciaOut>
+            <![CDATA[<PUNTOS_CONVENIENCIA>
+               <data_element>
+                  <depot>28</depot>
+                  <postalCode>28005</postalCode>
+                  <code>230</code>
+                  <name>EL PATIN DE ORO</name>
+                  <type>U</type>
+                  <address>DE PONTONES</address>
+                  <cityName>MADRID</cityName>
+                  <pudoId>ES11896</pudoId>
+                  <latitude>40.405565</latitude>
+                  <longitude>-3.714036</longitude>
+                  <streetType>CL</streetType>
+                  <streetNumber>17</streetNumber>
+                  <openingTime>
+                     <weekDays_element>
+                        <day>monday</day>
+                        <openingHours>10:00-12:00, 12:00-16:00</openingHours>
+                     </weekDays_element>
+                     <weekDays_element>
+                        <day>tuesday</day>
+                        <openingHours>10:00-12:00, 12:00-16:00</openingHours>
+                     </weekDays_element>
+                     <weekDays_element>
+                        <day>wednesday</day>
+                        <openingHours>10:00-12:00, 12:00-16:00</openingHours>
+                     </weekDays_element>
+                     <weekDays_element>
+                        <day>thursday</day>
+                        <openingHours>10:00-12:00, 12:00-16:00</openingHours>
+                     </weekDays_element>
+                     <weekDays_element>
+                        <day>friday</day>
+                        <openingHours>10:00-12:00, 12:00-16:00</openingHours>
+                     </weekDays_element>
+                     <weekDays_element>
+                        <day>saturday</day>
+                        <openingHours>10:00-14:00</openingHours>
+                     </weekDays_element>
+                  </openingTime>
+               </data_element>
+               <data_element>
+                  <depot>28</depot>
+                  <postalCode>28005</postalCode>
+                  <code>776</code><name>ESTANCO 149</name><type>U</type><address>DOCTOR VALLEJO NAJERA BOTAS</address><cityName>MADRID</cityName><pudoId>ES16136</pudoId><latitude>40.4042</latitude><longitude>-3.71499</longitude><streetType>CL</streetType><streetNumber>50</streetNumber><openingTime><weekDays_element><day>monday</day><openingHours>08:30-14:30, 17:00-20:30</openingHours></weekDays_element><weekDays_element><day>tuesday</day><openingHours>08:30-14:30, 17:00-20:30</openingHours></weekDays_element><weekDays_element><day>wednesday</day><openingHours>08:30-14:30, 17:00-20:30</openingHours></weekDays_element><weekDays_element><day>thursday</day><openingHours>08:30-14:30, 17:00-20:30</openingHours></weekDays_element><weekDays_element><day>friday</day><openingHours>08:30-14:30, 17:00-20:30</openingHours></weekDays_element><weekDays_element><day>saturday</day><openingHours>09:30-12:00, 12:00-15:30</openingHours></weekDays_element></openingTime></data_element><data_element><depot>28</depot><postalCode>28005</postalCode><code>725</code><name>VINOTECA LA CRISTALERIA</name><type>U</type><address>ACACIAS</address><cityName>MADRID</cityName><pudoId>ES15273</pudoId><latitude>40.40172</latitude><longitude>-3.71212</longitude><streetType>PSO</streetType><streetNumber>59</streetNumber><openingTime><weekDays_element><day>monday</day><openingHours>10:30-14:00, 17:00-21:00</openingHours></weekDays_element><weekDays_element><day>tuesday</day><openingHours>10:30-14:00, 17:00-21:00</openingHours></weekDays_element><weekDays_element><day>wednesday</day><openingHours>10:30-14:00, 17:00-21:00</openingHours></weekDays_element><weekDays_element><day>thursday</day><openingHours>10:30-14:00, 17:00-21:00</openingHours></weekDays_element><weekDays_element><day>friday</day><openingHours>10:30-14:00, 17:00-21:00</openingHours></weekDays_element><weekDays_element><day>saturday</day><openingHours>10:30-12:00, 12:00-14:30</openingHours></weekDays_element></openingTime></data_element><data_element><depot>28</depot><postalCode>28005</postalCode><code>620</code><name>BASANTA FOTOGRAFOS</name><type>U</type><address>MELILLA</address><cityName>MADRID</cityName><pudoId>ES14073</pudoId><latitude>40.40066</latitude><longitude>-3.70997</longitude><streetType>CL</streetType><streetNumber>45</streetNumber><openingTime><weekDays_element><day>monday</day><openingHours>10:00-13:30, 17:00-20:00</openingHours></weekDays_element><weekDays_element><day>tuesday</day><openingHours>10:00-13:30, 17:00-20:00</openingHours></weekDays_element><weekDays_element><day>wednesday</day><openingHours>10:00-13:30, 17:00-20:00</openingHours></weekDays_element><weekDays_element><day>thursday</day><openingHours>10:00-13:30, 17:00-20:00</openingHours></weekDays_element><weekDays_element><day>friday</day><openingHours>10:00-13:30, 17:00-20:00</openingHours></weekDays_element></openingTime></data_element><data_element><depot>28</depot><postalCode>28005</postalCode><code>457</code><name>LIBRERIA MAYO</name><type>U</type><address>DE LA ESPERANZA</address><cityName>MADRID</cityName><pudoId>ES15910</pudoId><latitude>40.40208</latitude><longitude>-3.70502</longitude><streetType>CL</streetType><streetNumber>19</streetNumber><openingTime><weekDays_element><day>monday</day><openingHours>10:00-14:30, 17:00-20:15</openingHours></weekDays_element><weekDays_element><day>tuesday</day><openingHours>10:00-14:30, 17:00-20:15</openingHours></weekDays_element><weekDays_element><day>wednesday</day><openingHours>10:00-14:30, 17:00-20:15</openingHours></weekDays_element><weekDays_element><day>thursday</day><openingHours>10:00-14:30, 17:00-20:15</openingHours></weekDays_element><weekDays_element><day>friday</day><openingHours>10:00-14:30, 17:00-20:15</openingHours></weekDays_element><weekDays_element><day>saturday</day><openingHours>11:00-12:00, 12:00-13:45</openingHours></weekDays_element></openingTime></data_element><data_element><depot>28</depot><postalCode>28005</postalCode><code>851</code><name>LOCUTORIO TRANSFERS 28</name><type>U</type><address>SEGOVIA</address><cityName>MADRID</cityName><pudoId>ES16793</pudoId><latitude>40.40817</latitude><longitude>-3.71578</longitude><streetType>RDA</streetType><streetNumber>28</streetNumber><openingTime><weekDays_element><day>monday</day><openingHours>09:30-14:30, 17:00-21:00</openingHours></weekDays_element><weekDays_element><day>tuesday</day><openingHours>09:30-14:30, 17:00-21:00</openingHours></weekDays_element><weekDays_element><day>wednesday</day><openingHours>09:30-14:30, 17:00-21:00</openingHours></weekDays_element><weekDays_element><day>thursday</day><openingHours>09:30-14:30, 17:00-21:00</openingHours></weekDays_element><weekDays_element><day>friday</day><openingHours>09:30-14:30, 17:00-21:00</openingHours></weekDays_element><weekDays_element><day>saturday</day><openingHours>11:00-12:00, 12:00-14:00</openingHours></weekDays_element></openingTime></data_element><data_element><depot>28</depot><postalCode>28012</postalCode><code>7</code><name>PISAMORENA DE JQ</name><type>U</type><address>ALONSO DEL BARCO</address><cityName>MADRID</cityName><pudoId>ES13364</pudoId><latitude>40.40501</latitude><longitude>-3.70133</longitude><streetType>CL</streetType><streetNumber>3</streetNumber><openingTime><weekDays_element><day>monday</day><openingHours>10:00-14:00, 17:00-20:00</openingHours></weekDays_element><weekDays_element><day>tuesday</day><openingHours>10:00-14:00, 17:00-20:00</openingHours></weekDays_element><weekDays_element><day>wednesday</day><openingHours>10:00-14:00, 17:00-20:00</openingHours></weekDays_element><weekDays_element><day>thursday</day><openingHours>10:00-14:00, 17:00-20:00</openingHours></weekDays_element><weekDays_element><day>friday</day><openingHours>10:00-14:00, 17:00-19:00</openingHours></weekDays_element><weekDays_element><day>saturday</day><openingHours>10:00-14:00</openingHours></weekDays_element></openingTime></data_element><data_element><depot>28</depot><postalCode>28012</postalCode><code>339</code><name>CALZADOS VINIGON</name><type>U</type><address>TRIBULETE</address><cityName>MADRID</cityName><pudoId>ES12497</pudoId><latitude>40.407927</latitude><longitude>-3.702101</longitude><streetType>CL</streetType><streetNumber>7</streetNumber><openingTime><weekDays_element><day>monday</day><openingHours>09:30-14:00, 17:00-20:30</openingHours></weekDays_element><weekDays_element><day>tuesday</day><openingHours>09:30-14:00, 17:00-20:30</openingHours></weekDays_element><weekDays_element><day>wednesday</day><openingHours>09:30-14:00, 17:00-20:30</openingHours></weekDays_element><weekDays_element><day>thursday</day><openingHours>09:30-14:00, 17:00-20:30</openingHours></weekDays_element><weekDays_element><day>friday</day><openingHours>09:30-14:00, 17:00-20:30</openingHours></weekDays_element><weekDays_element><day>saturday</day><openingHours>10:00-14:00</openingHours></weekDays_element></openingTime></data_element><data_element><depot>28</depot><postalCode>28005</postalCode><code>336</code><name>RODAL BOOK</name><type>U</type><address>PONTONES</address><cityName>MADRID</cityName><pudoId>ES14861</pudoId><latitude>40.40428</latitude><longitude>-3.72</longitude><streetType>PJE</streetType><streetNumber>28</streetNumber><openingTime><weekDays_element><day>monday</day><openingHours>08:00-14:30, 17:00-20:00</openingHours></weekDays_element><weekDays_element><day>tuesday</day><openingHours>08:00-14:30, 17:00-20:00</openingHours></weekDays_element><weekDays_element><day>wednesday</day><openingHours>08:00-14:30, 17:00-20:00</openingHours></weekDays_element><weekDays_element><day>thursday</day><openingHours>08:00-14:30, 17:00-20:00</openingHours></weekDays_element><weekDays_element><day>friday</day><openingHours>08:00-14:30, 17:00-20:00</openingHours></weekDays_element><weekDays_element><day>saturday</day><openingHours>08:00-14:30, 17:00-20:00</openingHours></weekDays_element></openingTime></data_element></PUNTOS_CONVENIENCIA>]]></v1:strXMLPuntosConvenienciaOut>
+      </v1:WebServService___ConsultaPuntosConvenienciaResponse>
+   </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

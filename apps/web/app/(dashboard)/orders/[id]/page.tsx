@@ -14,7 +14,9 @@ import EditableHeader from '@/components/orders/EditableHeader'
 import OrderDetailFields from '@/components/orders/OrderDetailFields'
 import { isAdminUser } from '@/lib/auth'
 import SlaIndicator from '@/components/orders/SlaIndicator'
-import type { OrderStatus, UserRole } from '@/types/database'
+import ShippingTrackingPanel from '@/components/orders/ShippingTrackingPanel'
+import { loadServicesCatalog } from '@/lib/tipsa/services'
+import type { OrderStatus, ShippingEvent, UserRole } from '@/types/database'
 
 export default async function OrderDetailPage({
   params,
@@ -68,6 +70,22 @@ export default async function OrderDetailPage({
   if (!order) {
     notFound()
   }
+
+  // Cargar shipping_events aparte para no romper si la migracion TIPSA
+  // aun no esta aplicada (tabla no existe → error controlado).
+  let shippingEvents: ShippingEvent[] = []
+  try {
+    const { data: events } = await supabase
+      .from('shipping_events')
+      .select('*')
+      .eq('order_id', id)
+      .order('event_date', { ascending: false })
+    shippingEvents = (events ?? []) as ShippingEvent[]
+  } catch {
+    // Tabla no existe aun — seguimos sin eventos.
+  }
+
+  const tipsaServices = loadServicesCatalog()
 
   const items = order.order_items ?? []
   const statusHistory = (order.status_history ?? []).sort(
@@ -181,6 +199,27 @@ export default async function OrderDetailPage({
         {!isViewer && (
           <div className="space-y-4">
             <StatusChangePanel orderId={order.id} currentStatus={order.status as OrderStatus} />
+            <ShippingTrackingPanel
+              orderId={order.id}
+              trackingNumber={order.tracking_number ?? null}
+              carrier={order.carrier ?? null}
+              trackingLastStatus={order.tracking_last_status ?? null}
+              trackingLastCheckedAt={order.tracking_last_checked_at ?? null}
+              trackingPublicUrl={order.tracking_public_url ?? null}
+              shippingLabelUrl={order.shipping_label_url ?? null}
+              shippedAt={order.shipped_at ?? null}
+              events={shippingEvents}
+              services={tipsaServices}
+              defaultContent={
+                items.length > 0
+                  ? items.map((i: { product_name: string; qty: number }) =>
+                      `${i.qty}× ${i.product_name}`,
+                    ).join(', ').slice(0, 100)
+                  : 'Productos hardware'
+              }
+              canCreate={canEdit}
+              canRefresh={canEdit}
+            />
             <SupplierSection
               orderId={order.id}
               currentSupplier={order.supplier}

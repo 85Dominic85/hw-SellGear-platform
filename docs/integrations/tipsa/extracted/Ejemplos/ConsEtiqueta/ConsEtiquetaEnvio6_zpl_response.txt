@@ -1,0 +1,118 @@
+<SOAP-ENV:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:HNS="http://tempuri.org/" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v1="http://tempuri.org/">
+   <SOAP-ENV:Header>
+      <ROClientIDHeader SOAP-ENV:mustUnderstand="0" xmlns="urn:DinaPaq">
+         <ID>{4A09E83D-BCAA-4ADC-B4BB-28F50BF2CFCA}</ID>
+      </ROClientIDHeader>
+   </SOAP-ENV:Header>
+   <SOAP-ENV:Body xmlns:ro="http://tempuri.org/">
+      <v1:WebServService___ConsEtiquetaEnvio6Response>
+         <v1:strEtiqueta>^XA+chr(13)
+^MCY+chr(13)
+^XZ+chr(13)
+^XA+chr(13)
+^CI0^PR0^MNY^MMA^MD2^POI^PMN^LRN+chr(13)
+^XZ+chr(13)
+^XA+chr(13)
+^MCY+chr(13)
+^XZ+chr(13)
+^XA+chr(13)
+^XA^LRY+chr(13)
+^DFR:TEMP_FMT.ZPL+chr(13)
+^BY3,2.6^FO12,520^B2B,198,N,N,Y^FD000000+000000+9999135298+001^FS+chr(13)
+^AAB,15,15^FO212,510^FD000000-000000-9999135298-001/001^FS+chr(13)
+^BY3,2.6^FO12,70^B2B,198,N,N,Y^FD0280022885048^FS+chr(13)
+^AAB,18,15^FO212,120^FD028002-28850-48^FS+chr(13)
+**raya
+^FO230,30^GB2,1250,3,B,0^FS+chr(13)
+^A0B,25,25^FO240,1050^FDCta:33333^FS+chr(13)
+^A0B,25,25^FO240,900^FDCargo a:^FS+chr(13)
+^ADB,15,14^FO240,500^FDCLIENTES PRUEBAS MAGENTO      ^FS+chr(13)
+***canalizacion
+^A0B,85,100^FO270,300^FDMEJORADA 42^FS+chr(13)
+***
+^A0B,45,45^FO250,120^FD1^FS+chr(13)
+^A0B,40,40^FO290,80^FDRapida^FS+chr(13)
+^A0B,25,25^FO250,50^FDC^FS+chr(13)
+^A0B,75,75^FO345,1000^FD28850^FS+chr(13)
+^A0B,60,60^FO345,720^FDECONOMY^FS+chr(13)
+***
+^FO245,200^GB80,3,4,B,0^FS+chr(13)
+^FO345,980^GB60,3,4,B,0^FS+chr(13)
+****
+***
+^A0B,95,95^FO435,1075^FD42^FS+chr(13)
+^A0B,35,150^FO410,1060^GB25,25,120^FS
+***
+^BY2,2^FO435,720^BCB,50,N,N,N^FD>;0000000000009999135298^FS+chr(13)
+^A0B,20,20^FO490,720^FD000000-000000-9999135298-1/1^FS+chr(13)
+^BY2,2^FO515,720^BCB,50,N,N,N,N^FD>;0000000000009999135298^FS+chr(13)
+^A0B,20,20^FO570,720^FD000000-000000-9999135298-1/1^FS+chr(13)
+****
+**BULTOS PESO Y FECHA
+^A0B,25,25^FO345,600^FDFECHA^FS+chr(13)
+^A0B,25,25^FO345,500^FD08/10/19^FS+chr(13)
+^A0B,25,25^FO345,300^FDDe 00:00 a 00:00^FS+chr(13)
+^A0B,25,25^FO345,120^FDBULTOS:^FS+chr(13)
+^A0B,25,25^FO345,70^FD1^FS+chr(13)
+******************
+^A0B,25,25^FO385,550^FDP.Debidos:^FS+chr(13)
+^A0B,25,25^FO385,490^FD0,00^FS+chr(13)
+^A0B,25,25^FO385,350^FDReembolso:^FS+chr(13)
+^A0B,25,25^FO385,290^FD0,00^FS+chr(13)
+^A0B,25,25^FO385,180^FDTOTAL.:^FS+chr(13)
+^A0B,25,25^FO385,50^FD0,00 Eur^FS+chr(13)
+***********************
+^A0B,20,20^FO425,625^FDRef:^FS+chr(13)
+^A0B,20,20^FO425,320^FD^FS+chr(13)
+^A0B,20,20^FO425,30^FD000000-000000-9999135298^FS+chr(13)
+*************************************
+^A0B,20,20^FO590,1130^FDRTE:^FS+chr(13)
+^ADB,10,10^FO590,750^FDCLIENTES PRUEBAS MAGENTO      ^FS+chr(13)
+^ADB,10,10^FO620,810^FD WWW.MAGENTO.COM              ^FS+chr(13)
+^ADB,10,10^FO650,810^FD^FS+chr(13)
+************************************
+^A0B,25,25^FO455,615^FDDES:^FS+chr(13)
+^ADB,5,5^FO455,10^FDDESTINATARIO                                      ^FS+chr(13)
+************************************
+**DIRECCION
+^ADB,5,5^FO495,10^FD CALLE FALSA 123                                      ^FS+chr(13)
+****************
+**POBLACION
+^ADB,5,5^FO535,10^FDBASE AEREA CONJUNTA TORREJON                          ^FS+chr(13)
+********************
+**telefono y persona de contacto
+^ADB,10,10^FO575,420^FDTLF:^FS+chr(13)
+^ADB,5,5^FO575,410^FDPC.^FS+chr(13)
+^ADB,5,5^FO575,10^FDPERSONA CONTACTO                  ^FS+chr(13)
+*****************
+^A0B,25,25^FO615,620^FDObs:^FS+chr(13)
+^ADB,5,5^FO620,15^FDOBSERVACIONES                                     ^FS+chr(13)
+^ADB,5,5^FO640,30^FD^FS+chr(13)
+^ADB,5,5^FO660,30^FD^FS+chr(13)
+******
+^A0B,35,35^FO685,550^FDFECHA:^FS+chr(13)
+^A0B,35,35^FO685,170^FDHORA:^FS+chr(13)
+^A0B,35,35^FO725,550^FDRECIBI:^FS+chr(13)
+******
+^A0B,50,50^FO630,700^FD ^FS+chr(13)
+^A0B,50,50^FO670,700^FD ^FS+chr(13)
+^A0B,50,50^FO710,700^FD ^FS+chr(13)
+^A0B,50,50^FO750,700^FD ^FS+chr(13)
+^A0B,30,30^FO790,700^FD ^FS+chr(13)
+^FO340,30^GB28,28,15,B^FS
+^FO340,670^GB28,28,15,B^FS
+^FO740,30^GB28,28,15,B^FS
+^FO740,670^GB28,28,15,B^FS
+*******************
+*********************************
+^XZ+chr(13)
+^XA+chr(13)
+^XFR:TEMP_FMT.ZPL+chr(13)
+^PQ1,0,1,N+chr(13)
+^XZ+chr(13)
+^XA+chr(13)
+^IDR:TEMP_FMT.ZPL+chr(13)
+^XZ+chr(13)</v1:strEtiqueta>
+      </v1:WebServService___ConsEtiquetaEnvio6Response>
+   </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

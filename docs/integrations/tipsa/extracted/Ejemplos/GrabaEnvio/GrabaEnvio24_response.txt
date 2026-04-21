@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SOAP-ENV:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:HNS="http://tempuri.org/" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v1="http://tempuri.org/">
+   <SOAP-ENV:Header>
+      <ROClientIDHeader SOAP-ENV:mustUnderstand="0" xmlns="urn:DinaPaq">
+         <ID>{D65E7D7A-3CC0-44A6-AEBA-A225DA5CE1D5}</ID>
+      </ROClientIDHeader>
+   </SOAP-ENV:Header>
+   <SOAP-ENV:Body xmlns:ro="http://tempuri.org/">
+      <v1:WebServService___GrabaEnvio24Response>
+         <v1:strAlbaranOut>9999425843</v1:strAlbaranOut>
+         <v1:dPesoVolOriOut>0</v1:dPesoVolOriOut>
+         <v1:dPesoVolpesOut>0</v1:dPesoVolpesOut>
+         <v1:dAltoVolpesOut>0</v1:dAltoVolpesOut>
+         <v1:dAnchoVolpesOut>0</v1:dAnchoVolpesOut>
+         <v1:dLargoVolpesOut>0</v1:dLargoVolpesOut>
+         <v1:dPesoVolVolpesOut>0</v1:dPesoVolVolpesOut>
+         <v1:dtFecEntrOut>2023-11-22T00:00:00</v1:dtFecEntrOut>
+         <v1:strTipoEnvOut>N</v1:strTipoEnvOut>
+         <v1:dtFecHoraAltaOut>2023-11-21T16:24:18.1</v1:dtFecHoraAltaOut>
+         <v1:dKmsManOut>0</v1:dKmsManOut>
+         <v1:boTecleDesOut>false</v1:boTecleDesOut>
+         <v1:strCodAgeDesOut>028006</v1:strCodAgeDesOut>
+         <v1:strCodProDesOut/>
+         <v1:dPorteDebOut>0</v1:dPorteDebOut>
+         <v1:strGuidOut>{A3A41E7D-728A-4F40-9029-EEA3762A28FA}</v1:strGuidOut>
+         <v1:strCodSalRutaOut>1</v1:strCodSalRutaOut>
+         <v1:strCPDesOut>28036</v1:strCPDesOut>
+         <v1:strCodPaisOut/>
+         <v1:boEnvioAgrupadoOut>true</v1:boEnvioAgrupadoOut>
+         <v1:strCargosAduanerosOut/>
+         <v1:dtFechaOut>2023-11-21T00:00:00</v1:dtFechaOut>
+         <v1:strCodDirAgrupDesOut/>
+         <v1:intBultosAnteriorOut>1</v1:intBultosAnteriorOut>
+         <v1:intBultosPosteriorOut>2</v1:intBultosPosteriorOut>
+         <v1:strContenidoOut/>
+         <v1:strCodPuntoRecOut/>
+         <v1:strRefAgrupaFactOut/>
+         <v1:strPobDesOut>Madrid</v1:strPobDesOut>
+         <v1:strCodPuntoConvenienciaOut/>
+         <v1:strNumEnvioIntOut/>
+         <v1:strEtiquetaOut/>
+         <v1:strCodAgeCargoOut>000000</v1:strCodAgeCargoOut>
+         <v1:strCodAgeOriOut>000000</v1:strCodAgeOriOut>
+         <v1:strCodTipoServOut>48</v1:strCodTipoServOut>
+         <v1:strCodCliOut>33333</v1:strCodCliOut>
+         <v1:strNomOriOut>Pruebas Informatica</v1:strNomOriOut>
+         <v1:strTipoViaOriOut/>
+         <v1:strDirOriOut>Pruebas Informatica</v1:strDirOriOut>
+         <v1:strNumOriOut/>
+         <v1:strPisoOriOut/>
+         <v1:strPobOriOut>San Fernando de Henares</v1:strPobOriOut>
+         <v1:strTlfOriOut>666555444</v1:strTlfOriOut>
+         <v1:strNomDesOut>Pruebas Informatica</v1:strNomDesOut>
+         <v1:strTipoViaDesOut/>
+         <v1:strDirDesOut>P.º de la Castellana, 28036 Madrid</v1:strDirDesOut>
+         <v1:strNumDesOut/>
+         <v1:strPisoDesOut/>
+         <v1:strTlfDesOut>666555444</v1:strTlfDesOut>
+         <v1:intBulOut>2</v1:intBulOut>
+         <v1:dReembolsoOut>0</v1:dReembolsoOut>
+         <v1:dCobCliOut>0</v1:dCobCliOut>
+         <v1:dAnticipoOut>0</v1:dAnticipoOut>
+         <v1:strObsOut/>
+         <v1:boSabadoOut>false</v1:boSabadoOut>
+         <v1:boRetornoOut>false</v1:boRetornoOut>
+         <v1:boGestDesOut>false</v1:boGestDesOut>
+         <v1:boAcuseOut>false</v1:boAcuseOut>
+         <v1:strRefOut>referencia de agrupacion</v1:strRefOut>
+         <v1:strPersContactoOut/>
+         <v1:strUltDirDesOut>P.º de la Castellana, 28036 Madrid</v1:strUltDirDesOut>
+         <v1:strUltViaDesOut/>
+         <v1:strUltNumDesOut/>
+         <v1:strUltPisoDesOut/>
+         <v1:strUltPobDesOut>Madrid</v1:strUltPobDesOut>
+         <v1:strUltCPDesOut>28036</v1:strUltCPDesOut>
+         <v1:strCodAgeImprOut>000000</v1:strCodAgeImprOut>
+         <v1:strNomAgeDesOut>AZCA 42</v1:strNomAgeDesOut>
+         <v1:strDesTipoServOut>ECONOMY</v1:strDesTipoServOut>
+         <v1:strDesSalRutaOut>Rapida</v1:strDesSalRutaOut>
+         <v1:strNomCliOut>CLIENTES PRUEBAS MAGENTO</v1:strNomCliOut>
+         <v1:dPesoMayorOut>0</v1:dPesoMayorOut>
+         <v1:dtHoraEntrIniOut>1900-01-01T00:00:00</v1:dtHoraEntrIniOut>
+         <v1:dtHoraEntrFinOut>1900-01-01T00:00:00</v1:dtHoraEntrFinOut>
+         <v1:strCodCliDepOut/>
+         <v1:strNomCliDepOut/>
+         <v1:strTipoImprOut>C</v1:strTipoImprOut>
+         <v1:strNomPaisOut/>
+      </v1:WebServService___GrabaEnvio24Response>
+   </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

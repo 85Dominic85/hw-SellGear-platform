@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+   <soapenv:Header>
+      <tem:ROClientIDHeader>
+         <!--Optional:-->
+         <tem:ID>{D65E7D7A-3CC0-44A6-AEBA-A225DA5CE1D5}</tem:ID>
+      </tem:ROClientIDHeader>
+   </soapenv:Header>
+   <soapenv:Body>
+      <tem:WebServService___GrabaRecogida10>
+         <tem:strCodAgeSol>000000</tem:strCodAgeSol>
+         <tem:strCodAgeCargo>000000</tem:strCodAgeCargo>
+         <tem:dtFecRec>2023/11/21</tem:dtFecRec>
+         <tem:dtHoraRecIni>2023/11/22 09:00:00</tem:dtHoraRecIni>
+         <tem:dtHoraRecFin>2023/11/22 18:00:00</tem:dtHoraRecFin>
+         <tem:intBul>1</tem:intBul>
+         <tem:strNomOri>Cliente Nito</tem:strNomOri>
+         <tem:strTipoViaOri>Calle</tem:strTipoViaOri>
+         <tem:strDirOri>Rio de Janeiro</tem:strDirOri>
+         <tem:strNumOri>22</tem:strNumOri>
+         <tem:strCPOri>07003</tem:strCPOri>
+         <tem:strTlfOri>34666555444</tem:strTlfOri>
+         <tem:strNomDes>Integraciones</tem:strNomDes>
+         <tem:strTipoViaDes>Calle</tem:strTipoViaDes>
+         <tem:strDirDes>Mar egeo</tem:strDirDes>
+         <tem:strNumDes>1</tem:strNumDes>
+         <tem:strPobDes>Madrid</tem:strPobDes>
+         <tem:strCPDes>28850</tem:strCPDes>
+         <tem:strTlfDes>34654654654</tem:strTlfDes>
+         <tem:strObs>observaciones</tem:strObs>
+         <tem:strCodCli>33333</tem:strCodCli>
+         <tem:strPersContacto>Gonzerchu</tem:strPersContacto>
+         <tem:strCodTipoServ>14</tem:strCodTipoServ>
+         <tem:strRef>referencia</tem:strRef>
+         <tem:strObsDes>observaciones de destino</tem:strObsDes>
+         <tem:strContenido>contenidooo</tem:strContenido>
+      </tem:WebServService___GrabaRecogida10>
+   </soapenv:Body>
+</soapenv:Envelope>

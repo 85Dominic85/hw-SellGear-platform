@@ -1,0 +1,38 @@
+<SOAP-ENV:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:HNS="http://tempuri.org/" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v1="http://tempuri.org/">
+   <SOAP-ENV:Header>
+      <ROClientIDHeader SOAP-ENV:mustUnderstand="0" xmlns="urn:DinaPaq">
+         <ID>{679D6FF9-29B3-415D-A42D-B29051CC44C4}</ID>
+      </ROClientIDHeader>
+   </SOAP-ENV:Header>
+   <SOAP-ENV:Body xmlns:ro="http://tempuri.org/">
+      <v1:WebServService___GrabaEnvio16Response>
+         <v1:strAlbaranOut>9999155237</v1:strAlbaranOut>
+         <v1:dPesoVolOriOut>0</v1:dPesoVolOriOut>
+         <v1:dPesoVolpesOut>1</v1:dPesoVolpesOut>
+         <v1:dAltoVolpesOut>1</v1:dAltoVolpesOut>
+         <v1:dAnchoVolpesOut>1</v1:dAnchoVolpesOut>
+         <v1:dLargoVolpesOut>1</v1:dLargoVolpesOut>
+         <v1:dPesoVolVolpesOut>0</v1:dPesoVolVolpesOut>
+         <v1:dtFecEntrOut>2019-12-04T00:00:00</v1:dtFecEntrOut>
+         <v1:strTipoEnvOut>N</v1:strTipoEnvOut>
+         <v1:dtFecHoraAltaOut>2019-12-03T20:37:13.1</v1:dtFecHoraAltaOut>
+         <v1:dKmsManOut>0</v1:dKmsManOut>
+         <v1:boTecleDesOut>false</v1:boTecleDesOut>
+         <v1:strCodAgeDesOut>028002</v1:strCodAgeDesOut>
+         <v1:strCodProDesOut>28</v1:strCodProDesOut>
+         <v1:dPorteDebOut>0</v1:dPorteDebOut>
+         <v1:strGuidOut>{83BDE6D0-B1CD-4D86-9D68-70EBCC1961A9}</v1:strGuidOut>
+         <v1:strCodSalRutaOut>1</v1:strCodSalRutaOut>
+         <v1:strCPDesOut>28850</v1:strCPDesOut>
+         <v1:strCodPaisOut/>
+         <v1:boEnvioAgrupadoOut>true</v1:boEnvioAgrupadoOut>
+         <v1:strCargosAduanerosOut/>
+         <v1:dtFechaOut>2019-12-03T00:00:00</v1:dtFechaOut>
+         <v1:strCodDirAgrupDesOut/>
+         <v1:intBultosAnteriorOut>1</v1:intBultosAnteriorOut>
+         <v1:intBultosPosteriorOut>2</v1:intBultosPosteriorOut>
+         <v1:strContenidoOut/>
+         <v1:strCodPuntoRecOut/>
+      </v1:WebServService___GrabaEnvio16Response>
+   </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

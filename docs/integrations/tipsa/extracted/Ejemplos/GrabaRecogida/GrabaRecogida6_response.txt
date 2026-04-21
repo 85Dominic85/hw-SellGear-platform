@@ -1,0 +1,22 @@
+<SOAP-ENV:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:HNS="http://tempuri.org/" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v1="http://tempuri.org/">
+   <SOAP-ENV:Header>
+      <ROClientIDHeader SOAP-ENV:mustUnderstand="0" xmlns="urn:DinaPaq">
+         <ID>{BCBD8F16-3CBD-4126-BC46-FF5ADE483F95}</ID>
+      </ROClientIDHeader>
+   </SOAP-ENV:Header>
+   <SOAP-ENV:Body xmlns:ro="http://tempuri.org/">
+      <v1:WebServService___GrabaRecogida6Response>
+         <v1:strCodOut>0019459987</v1:strCodOut>
+         <v1:strTipoRecOut>N</v1:strTipoRecOut>
+         <v1:dtFecHoraAltaOut>2020-02-07T17:07:54.1</v1:dtFecHoraAltaOut>
+         <v1:strCodAgeOriOut>016000</v1:strCodAgeOriOut>
+         <v1:strCodProOriOut>16</v1:strCodProOriOut>
+         <v1:strCodAgeDesOut>028069</v1:strCodAgeDesOut>
+         <v1:strCodProDesOut/>
+         <v1:fPorteDebOut>0</v1:fPorteDebOut>
+         <v1:dtFecRecOut>2020-02-07T00:00:00</v1:dtFecRecOut>
+         <v1:strCodPuntoRecOut/>
+         <v1:strGuidOut>{4C941B36-387F-4C71-9D63-367A237513B8}</v1:strGuidOut>
+      </v1:WebServService___GrabaRecogida6Response>
+   </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

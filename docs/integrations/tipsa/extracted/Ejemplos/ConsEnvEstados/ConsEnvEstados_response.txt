@@ -1,0 +1,12 @@
+<SOAP-ENV:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:HNS="http://tempuri.org/" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v1="http://tempuri.org/">
+   <SOAP-ENV:Header>
+      <ROClientIDHeader SOAP-ENV:mustUnderstand="0" xmlns="urn:DinaPaq">
+         <ID>{DECA66DC-FDD9-4FAD-8CD6-BEA204A01D6E}</ID>
+      </ROClientIDHeader>
+   </SOAP-ENV:Header>
+   <SOAP-ENV:Body xmlns:ro="http://tempuri.org/">
+      <v1:WebServService___ConsEnvEstadosResponse>
+         <v1:strEnvEstados><![CDATA[<CONSULTA><ENV_ESTADOS I_ID="1" V_COD_TIPO_EST="1" D_FEC_HORA_ALTA="02/06/2020 17:28:02" V_COD_USU_ALTA="99912" V_COD_AGE_ALTA="" V_COD_REP_ALTA="" V_COD_CLI_ALTA="" V_COD_CLI_DEP_ALTA=""/><ENV_ESTADOS I_ID="2" V_COD_TIPO_EST="4" D_FEC_HORA_ALTA="02/06/2020 17:29:43" V_COD_USU_ALTA="99912" V_COD_AGE_ALTA="" V_COD_REP_ALTA="" V_COD_CLI_ALTA="" V_COD_CLI_DEP_ALTA=""/><ENV_ESTADOS I_ID="3" V_COD_TIPO_EST="4" D_FEC_HORA_ALTA="02/06/2020 17:30:01" V_COD_USU_ALTA="99912" V_COD_AGE_ALTA="" V_COD_REP_ALTA="" V_COD_CLI_ALTA="" V_COD_CLI_DEP_ALTA=""/><ENV_ESTADOS I_ID="4" V_COD_TIPO_EST="2" D_FEC_HORA_ALTA="02/06/2020 17:30:13" V_COD_USU_ALTA="99912" V_COD_AGE_ALTA="" V_COD_REP_ALTA="" V_COD_CLI_ALTA="" V_COD_CLI_DEP_ALTA=""/><ENV_ESTADOS I_ID="5" V_COD_TIPO_EST="3" D_FEC_HORA_ALTA="02/06/2020 17:30:19" V_COD_USU_ALTA="99912" V_COD_AGE_ALTA="" V_COD_REP_ALTA="" V_COD_CLI_ALTA="" V_COD_CLI_DEP_ALTA=""/></CONSULTA>]]></v1:strEnvEstados>
+      </v1:WebServService___ConsEnvEstadosResponse>
+   </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

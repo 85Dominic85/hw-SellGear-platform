@@ -1,0 +1,12 @@
+<SOAP-ENV:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:HNS="http://tempuri.org/" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v1="http://tempuri.org/">
+   <SOAP-ENV:Header>
+      <ROClientIDHeader SOAP-ENV:mustUnderstand="0" xmlns="urn:DinaPaq">
+         <ID>{B6EBAC40-C003-4AB1-B1DA-8372F0C84306}</ID>
+      </ROClientIDHeader>
+   </SOAP-ENV:Header>
+   <SOAP-ENV:Body xmlns:ro="http://tempuri.org/">
+      <v1:WebServService___InfEnviosRefResponse>
+         <v1:strInfEnvios>&lt;CONSULTA>&lt;INF_ENVIOS_REF V_COD_AGE_CARGO="008000" V_COD_AGE_ORI="046015" V_ALBARAN="0001158070" D_FECHA="11/19/2019 00:00:00" V_COD_AGE_DES="046015" V_NOM_ORI="SkyNet Barcelona" V_DIR_ORI="C/ PRAT DE LA MANTA 14-16  " V_POB_ORI="HOSPITALET DE LLOBREGAT" V_CP_ORI="08902" V_NOM_DES="EMMA  HODGKISS" V_TIPO_VIA_DES="C" V_DIR_DES="Urbanizacion Vinya Malata 1/15 122" V_NUM_DES="" V_PISO_DES="" V_POB_DES="TURIS" V_CP_DES="46389" V_TLF_DES="000000" D_FEC_ENTR="12/02/2019 00:00:00" I_BUL="1" V_REF="711900293005" F_REEMBOLSO="0" F_PORTE_DEB="0" F_VALOR="0" V_COD_CLI="00078" V_ULT_TIPO_VIA="" V_ULT_DIR="" V_ULT_NUM="" V_ULT_PISO="" F_PESO_ORI="0" V_NOM_CLI="SKYNET WORLDWIDE EXPRESS" V_COD_CLI_DEP="" V_NOM_DEP="" V_COD_TIPO_EST="4" D_FEC_HORA_ENTR_POD="" V_COD_PAIS="" V_NOM_PAIS=""/>&lt;/CONSULTA></v1:strInfEnvios>
+      </v1:WebServService___InfEnviosRefResponse>
+   </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

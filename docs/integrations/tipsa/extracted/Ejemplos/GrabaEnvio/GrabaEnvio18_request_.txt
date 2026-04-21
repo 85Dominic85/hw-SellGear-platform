@@ -1,0 +1,78 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+   <soapenv:Header>
+      <tem:ROClientIDHeader>
+         <!--Optional:-->
+         <tem:ID>{FD00C0B1-DC20-4A86-BC96-6EFBD739F848}</tem:ID>
+      </tem:ROClientIDHeader>
+   </soapenv:Header>
+   <soapenv:Body>
+      <tem:WebServService___GrabaEnvio18>
+	<strCodAgeCargo>000000</strCodAgeCargo>
+	<strCodAgeOri>000000</strCodAgeOri>
+	<dtFecha>2020-02-05T15:11:59.9687036+01:00</dtFecha>
+	<strCodAgeDes/>
+	<strCodTipoServ>14</strCodTipoServ>
+	<strCodCli/>
+	<strCodCliDep/>
+	<strNomOri>HP ENT ESCXQ02</strNomOri>
+	<strTipoViaOri/>
+	<strDirOri>Calle Rumania, 3</strDirOri>
+	<strNumOri>123</strNumOri>
+	<strPisoOri/>
+	<strPobOri>ES</strPobOri>
+	<strCPOri>28820</strCPOri>
+	<strCodProOri>Coslada (Madrid)</strCodProOri>
+	<strTlfOri/>
+	<strNomDes>HARDWARE AND PROGRAMMING SA</strNomDes>
+	<strTipoViaDes/>
+	<strDirDes>CALLE OCHANDIANO (CENTRO EMPRESARIAL EL</strDirDes>
+	<strNumDes>123</strNumDes>
+	<strPisoDes/>
+	<strPobDes>MADRID</strPobDes>
+	<strCPDes>28023</strCPDes>
+	<strCodProDes>ES</strCodProDes>
+	<strTlfDes/>
+	<intDoc>1</intDoc>
+	<intPaq>1</intPaq>
+	<dPesoOri>2</dPesoOri>
+	<dAltoOri>3</dAltoOri>
+	<dAnchoOri>3</dAnchoOri>
+	<dLargoOri>4</dLargoOri>
+	<dReembolso>0</dReembolso>
+	<dValor>0</dValor>
+	<dAnticipo>0</dAnticipo>
+	<dCobCli>0</dCobCli>
+	<strObs/>
+	<boSabado>true</boSabado>
+	<boRetorno>false</boRetorno>
+	<boGestOri>false</boGestOri>
+	<boGestDes>false</boGestDes>
+	<boAnulado>false</boAnulado>
+	<boAcuse>false</boAcuse>
+	<strRef/>
+	<strCodSalRuta/>
+	<dBaseImp>0</dBaseImp>
+	<dImpuesto>0</dImpuesto>
+	<boPorteDebCli>false</boPorteDebCli>
+	<strPersContacto/>
+	<boDesSMS>false</boDesSMS>
+	<boDesEmail>false</boDesEmail>
+	<strDesMoviles/>
+	<strDesDirEmails/>
+	<dtHoraEntrIni>2020-02-08T15:12:14.239036+01:00</dtHoraEntrIni>
+	<dtHoraEntrFin>2020-02-08T15:12:14.239036+01:00</dtHoraEntrFin>
+	<strCodPais>ES</strCodPais>
+	<dValorFactInt>0</dValorFactInt>
+	<boInsert>true</boInsert>
+	<strAlbaran/>
+	<strConcAgru/>
+	<strCargosAduaneros/>
+	<strCodDirAgrupDes/>
+	<boSeguroFranquicia>false</boSeguroFranquicia>
+	<strContenido>type1</strContenido>
+	<strCodPuntoRec/>
+	<strCodDevolucion/>
+	<strRefAgrupaFact/>
+      </tem:WebServService___GrabaEnvio18>
+   </soapenv:Body>
+</soapenv:Envelope>

@@ -1,0 +1,15 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+   <soapenv:Header>
+      <tem:ROClientIDHeader>
+         <!--Optional:-->
+         <tem:ID>{6DD60A79-ACBD-41B9-988F-50ADF889C099}</tem:ID>
+      </tem:ROClientIDHeader>
+   </soapenv:Header>
+   <soapenv:Body>
+      <tem:WebServService___ConsEnvEstIncCambiosEstados>
+         <tem:dtFecHoraEstadoInicio>2019/11/09 00:00:00</tem:dtFecHoraEstadoInicio>
+         <tem:dtFecHoraEstadoFin>2019/11/15 22:00:00</tem:dtFecHoraEstadoFin>
+         <tem:iPagina>0</tem:iPagina>
+      </tem:WebServService___ConsEnvEstIncCambiosEstados>
+   </soapenv:Body>
+</soapenv:Envelope>

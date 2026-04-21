@@ -1,0 +1,12 @@
+<SOAP-ENV:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:HNS="http://tempuri.org/" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v1="http://tempuri.org/">
+   <SOAP-ENV:Header>
+      <ROClientIDHeader SOAP-ENV:mustUnderstand="0" xmlns="urn:DinaPaq">
+         <ID>{24069051-80FF-424F-A97C-D2028E4AC7F7}</ID>
+      </ROClientIDHeader>
+   </SOAP-ENV:Header>
+   <SOAP-ENV:Body xmlns:ro="http://tempuri.org/">
+      <v1:WebServService___ConsEnvioResponse>
+         <v1:strEnvio>&lt;CONSULTA>&lt;ENVIOS V_COD_AGE_CARGO="000000" V_COD_AGE_ORI="000000" V_ALBARAN="9999251121" D_FECHA="10/13/2020 00:00:00" V_COD_AGE_DES="000094" V_COD_TIPO_SERV="92" V_COD_CLI="33333" V_COD_CLI_DEP="" V_NOM_ORI="test address" V_TIPO_VIA_ORI="" V_DIR_ORI="test address" V_NUM_ORI="" V_PISO_ORI="" V_POB_ORI="Paris" V_CP_ORI="38660" V_COD_PRO_ORI="38" V_TLF_ORI="911111111" V_NOM_DES="Sofia Clauida Toral" V_TIPO_VIA_DES="" V_DIR_DES="test address" V_NUM_DES="" V_PISO_DES="" V_POB_DES="" V_CP_DES="2885" V_COD_PRO_DES="" V_TLF_DES="" I_DOC="0" I_PAQ="1" I_BUL="1" F_PESO_ORI="1" F_ALTO_ORI="0" F_ANCHO_ORI="0" F_LARGO_ORI="0" F_PESO_VOL_ORI="0" F_PESO_VOLPES="1" F_ALTO_VOLPES="0" F_ANCHO_VOLPES="0" F_LARGO_VOLPES="0" F_PESO_VOL_VOLPES="0" F_REEMBOLSO="0" F_VALOR="0" F_ANTICIPO="0" F_COB_CLI="0" F_PORTE_DEB="0" V_OBS="pruebaaaaaa" D_FEC_ENTR="10/14/2020 00:00:00" B_SABADO="False" B_TECLE_DES="False" B_RETORNO="False" B_GEST_ORI="False" B_GEST_DES="False" B_ANULADO="False" B_ACUSE="False" V_COD_REP="" V_COD_USU_ALTA="" V_REF="" V_ASOCIADO_RET="" V_TIPO_ASOC="" V_COD_SAL_RUTA="1" V_TIPO_ENV="N" F_BASE_IMP="0" F_IMPUESTO="0" D_FEC_HORA_ALTA="10/13/2020 10:40:11" B_VALIDADO="False" B_CLIENTE="True" B_PORTE_DEB_CLI="False" V_COD_AGE_ALTA="000000" V_COD_CLI_ALTA="33333" V_COD_CLI_DEP_ALTA="" U_GUID="{06558636-04F0-4A6C-8D00-6798AE6C5CCF}" V_PERS_CONTACTO="" D_FEC_HORA_ENTR_POD="" V_NOM_POD="" V_DNI_POD="" F_PESO_MAYOR_4="1" V_ULT_DIR="test address" V_ULT_TIPO_VIA="" V_ULT_NUM="" V_ULT_PISO="" V_ULT_POB="" V_ULT_CP="2885" V_NOM_AGE_DES="DPD INTERNACIONAL  01" V_DES_SERV="DPD CLASSIC" V_DES_SAL_RUTA="Rapida" V_NOM_CLI="CLIENTES PRUEBAS MAGENTO" SD_HORA_ENTR_INI="01/01/1900 00:00:00" SD_HORA_ENTR_FIN="01/01/1900 00:00:00" V_NOM_CLI_DEP="" V_COD_PAIS="FR" V_NOM_PAIS="France" V_COD_REC_ASOC="" V_CONC_AGRU="" F_KMS_CAN_DES="0" V_NUM_ENVIO_INT="07080012996516"/>&lt;/CONSULTA></v1:strEnvio>
+      </v1:WebServService___ConsEnvioResponse>
+   </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

@@ -1,0 +1,12 @@
+<SOAP-ENV:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:HNS="http://tempuri.org/" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v1="http://tempuri.org/">
+   <SOAP-ENV:Header>
+      <ROClientIDHeader SOAP-ENV:mustUnderstand="0" xmlns="urn:DinaPaq">
+         <ID>{31553243-C09A-44A2-AF1D-B40E283F5EDD}</ID>
+      </ROClientIDHeader>
+   </SOAP-ENV:Header>
+   <SOAP-ENV:Body xmlns:ro="http://tempuri.org/">
+      <v1:WebServService___ConsAgeCanalizaResponse>
+         <v1:strCodAgeCan>&lt;CONSULTA>&lt;CONS_AGENCIAS V_COD="039002" V_NOM="SANTANDER ESTE 28" V_DIR="Polígono Industrial de Morero, Parcela P1-5B, Nave 3" V_POB="GUARNIZO" V_CP="39611" V_TLF="942269693" V_FAX="942543587" V_TLF_URG="699948175" V_EMAIL="santander.este@tip-sa.com"/>&lt;/CONSULTA></v1:strCodAgeCan>
+      </v1:WebServService___ConsAgeCanalizaResponse>
+   </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

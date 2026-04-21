@@ -1,0 +1,43 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns0="http://tempuri.org/">
+   <soapenv:Header>
+      <ns0:ROClientIDHeader>
+         <!--Optional:-->
+         <ns0:ID>{679D6FF9-29B3-415D-A42D-B29051CC44C4}</ns0:ID>
+      </ns0:ROClientIDHeader>
+   </soapenv:Header>
+   <ns0:Body>
+      <ns0:WebServService___GrabaEnvio16>
+         <ns0:strCodAgeCargo>000000</ns0:strCodAgeCargo>
+            <ns0:strCodAgeOri>000000</ns0:strCodAgeOri>
+            <ns0:dtFecha>2019-12-03</ns0:dtFecha>
+            <ns0:strCodTipoServ>48</ns0:strCodTipoServ>
+            <ns0:strCodCli>33333</ns0:strCodCli>
+            <ns0:strNomOri>prueba 2</ns0:strNomOri>
+            <ns0:strDirOri>Avenida de San Isidro, 21</ns0:strDirOri>
+            <ns0:strPobOri>Sesena Viejo</ns0:strPobOri>
+            <ns0:strCPOri>45223</ns0:strCPOri>
+            <ns0:strTlfOri>911111111</ns0:strTlfOri>
+            <ns0:strNomDes>zahra velasco Att: zahra velasco</ns0:strNomDes>
+            <ns0:strDirDes>candido mateos 10</ns0:strDirDes>
+            <ns0:strPobDes></ns0:strPobDes>
+            <ns0:strCPDes>28850</ns0:strCPDes>
+            <ns0:strTlfDes>634846111</ns0:strTlfDes>
+            <ns0:intPaq>1</ns0:intPaq>
+            <ns0:dPesoOri>1.0</ns0:dPesoOri>
+            <ns0:boRetorno>false</ns0:boRetorno>
+            <ns0:strRef>900047</ns0:strRef>
+            <ns0:strPersContacto>zahra velasco</ns0:strPersContacto>
+            <ns0:boDesSMS>false</ns0:boDesSMS>
+            <ns0:boDesEmail>false</ns0:boDesEmail>
+            <ns0:strDesMoviles>61111111</ns0:strDesMoviles>
+            <ns0:strDesDirEmails>integraciones@tip-sa.com</ns0:strDesDirEmails>
+            <ns0:strCodPais>ES</ns0:strCodPais>
+            <ns0:strObs>pruebaaaa</ns0:strObs>
+            <ns0:boInsert>true</ns0:boInsert>
+            <ns0:dAltoOri>1</ns0:dAltoOri>
+            <ns0:dAnchoOri>1</ns0:dAnchoOri>
+            <ns0:dlargoOri>1</ns0:dlargoOri>
+            <ns0:strConcAgru>candido mateos 10</ns0:strConcAgru>
+      </ns0:WebServService___GrabaEnvio16>
+   </ns0:Body>
+</soapenv:Envelope>

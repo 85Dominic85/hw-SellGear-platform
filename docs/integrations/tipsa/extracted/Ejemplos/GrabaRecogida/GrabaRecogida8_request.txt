@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns0="http://tempuri.org/" xmlns:ns1="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <SOAP-ENV:Header>
+        <ROClientIDHeader>
+            <ID>{FF41A8FC-52A4-4CBB-BAA8-8348C9D7A645}</ID>
+        </ROClientIDHeader>
+    </SOAP-ENV:Header>
+    <ns1:Body>
+        <ns0:WebServService___GrabaRecogida8>
+            <ns0:strCod>33333</ns0:strCod>
+	<ns0:strCodAgeCargo>000000</ns0:strCodAgeCargo>
+            <ns0:strCodAgeSol>000000</ns0:strCodAgeSol>
+            <ns0:dtFecRec>2020-05-18</ns0:dtFecRec>
+            <ns0:intBul>1</ns0:intBul>
+            <ns0:dPeso>4.0</ns0:dPeso>
+            <ns0:strNomOri>Ana  Fuertes </ns0:strNomOri>
+            <ns0:strDirOri>Calle mayor 3, Yunquera de henares es una floristeria</ns0:strDirOri>
+            <ns0:strCPOri>19210</ns0:strCPOri>
+            <ns0:strDirDes>Avenida de San Isidro, 21</ns0:strDirDes>
+            <ns0:strCPDes>45223</ns0:strCPDes>
+            <ns0:strCodTipoServ>48</ns0:strCodTipoServ>
+        </ns0:WebServService___GrabaRecogida8>
+    </ns1:Body>
+</SOAP-ENV:Envelope>

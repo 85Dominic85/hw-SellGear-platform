@@ -66,10 +66,34 @@ export interface Order {
   shipping_label_url: string | null
   tracking_number: string | null
   delivered_at: string | null
+  // TIPSA integration (tras aplicar migracion 20260421000001_add_tipsa_fields)
+  carrier: string | null
+  carrier_service_code: string | null
+  carrier_guid: string | null
+  shipping_weight_kg: number | null
+  shipping_packages: number | null
+  shipping_content: string | null
+  shipping_observations: string | null
+  shipped_at: string | null
+  tracking_public_url: string | null
+  tracking_last_status: string | null
+  tracking_last_checked_at: string | null
   // joins
   order_items?: OrderItem[]
   creator?: UserProfile
   assignee?: UserProfile
+  shipping_events?: ShippingEvent[]
+}
+
+export interface ShippingEvent {
+  id: number
+  order_id: string
+  carrier: string
+  event_code: string
+  event_label: string | null
+  event_date: string
+  raw_payload: Record<string, unknown> | null
+  created_at: string
 }
 
 export interface OrderItem {

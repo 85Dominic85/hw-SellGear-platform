@@ -1,0 +1,30 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+   <soapenv:Header>
+      <tem:ROClientIDHeader>
+         <!--Optional:-->
+         <tem:ID>{BCBD8F16-3CBD-4126-BC46-FF5ADE483F95}</tem:ID>
+      </tem:ROClientIDHeader>
+   </soapenv:Header>
+   <soapenv:Body>
+      <tem:WebServService___GrabaRecogida6>
+         <strCodAgeSol>000000</strCodAgeSol> 
+<dtFecRec>2020/02/07</dtFecRec> 
+<strNomOri>Raquel Apellido1 Apellido2</strNomOri> 
+<strDirOri>Avda Reina Sofía, XX</strDirOri> 
+<strPobOri>Tarancón</strPobOri>
+<strCPOri>16400</strCPOri>
+<strCodProOri>CUENCA</strCodProOri>
+<strTlfOri>xxxxxx</strTlfOri>
+<strNomDes>prueba</strNomDes> 
+<strDirDes>Conde de romanones 7</strDirDes>
+<strPobDes>MADRID</strPobDes>
+<strObs>observaciones origen</strObs>
+<strObsDes>observaciones destino</strObsDes>
+<strCPDes>28012</strCPDes>
+<strCodProDes>MADRID</strCodProDes> 
+<strTlfDes>671493313</strTlfDes>
+<intBul>1</intBul>
+<strCodTipoServ>48</strCodTipoServ>
+      </tem:WebServService___GrabaRecogida6>
+   </soapenv:Body>
+</soapenv:Envelope>

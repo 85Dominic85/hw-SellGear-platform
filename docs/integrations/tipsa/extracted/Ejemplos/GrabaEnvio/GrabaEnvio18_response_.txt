@@ -1,0 +1,40 @@
+<SOAP-ENV:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:HNS="http://tempuri.org/" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v1="http://tempuri.org/">
+   <SOAP-ENV:Header>
+      <ROClientIDHeader SOAP-ENV:mustUnderstand="0" xmlns="urn:DinaPaq">
+         <ID>{FD00C0B1-DC20-4A86-BC96-6EFBD739F848}</ID>
+      </ROClientIDHeader>
+   </SOAP-ENV:Header>
+   <SOAP-ENV:Body xmlns:ro="http://tempuri.org/">
+      <v1:WebServService___GrabaEnvio18Response>
+         <v1:strAlbaranOut>9999171900</v1:strAlbaranOut>
+         <v1:dPesoVolOriOut>0.01</v1:dPesoVolOriOut>
+         <v1:dPesoVolpesOut>2</v1:dPesoVolpesOut>
+         <v1:dAltoVolpesOut>3</v1:dAltoVolpesOut>
+         <v1:dAnchoVolpesOut>3</v1:dAnchoVolpesOut>
+         <v1:dLargoVolpesOut>4</v1:dLargoVolpesOut>
+         <v1:dPesoVolVolpesOut>0.01</v1:dPesoVolVolpesOut>
+         <v1:dtFecEntrOut>2020-02-08T00:00:00</v1:dtFecEntrOut>
+         <v1:strTipoEnvOut>N</v1:strTipoEnvOut>
+         <v1:dtFecHoraAltaOut>2020-02-05T17:39:58</v1:dtFecHoraAltaOut>
+         <v1:dKmsManOut>0</v1:dKmsManOut>
+         <v1:boTecleDesOut>false</v1:boTecleDesOut>
+         <v1:strCodAgeDesOut>028001</v1:strCodAgeDesOut>
+         <v1:strCodProDesOut/>
+         <v1:dPorteDebOut>0</v1:dPorteDebOut>
+         <v1:strGuidOut>{2CB649B4-11F7-4EA5-954B-CFB2058649B8}</v1:strGuidOut>
+         <v1:strCodSalRutaOut>1</v1:strCodSalRutaOut>
+         <v1:strCPDesOut>28023</v1:strCPDesOut>
+         <v1:strCodPaisOut/>
+         <v1:boEnvioAgrupadoOut>false</v1:boEnvioAgrupadoOut>
+         <v1:strCargosAduanerosOut/>
+         <v1:dtFechaOut>2020-02-05T00:00:00</v1:dtFechaOut>
+         <v1:strCodDirAgrupDesOut/>
+         <v1:intBultosAnteriorOut>0</v1:intBultosAnteriorOut>
+         <v1:intBultosPosteriorOut>2</v1:intBultosPosteriorOut>
+         <v1:strContenidoOut/>
+         <v1:strCodPuntoRecOut/>
+         <v1:strRefAgrupaFactOut/>
+         <v1:strPobDesOut>MADRID</v1:strPobDesOut>
+      </v1:WebServService___GrabaEnvio18Response>
+   </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+   <soapenv:Header>
+      <tem:ROClientIDHeader>
+         <!--Optional:-->
+         <tem:ID>{D65E7D7A-3CC0-44A6-AEBA-A225DA5CE1D5}</tem:ID>
+      </tem:ROClientIDHeader>
+   </soapenv:Header>
+   <soapenv:Body>
+      <tem:WebServService___ConsultaPuntosConveniencia>
+         <tem:strCP>28005</tem:strCP>
+         <tem:strPoblacion>San Fernando de Henares</tem:strPoblacion>
+         <tem:strCodPais>ES</tem:strCodPais>
+      </tem:WebServService___ConsultaPuntosConveniencia>
+   </soapenv:Body>
+</soapenv:Envelope>

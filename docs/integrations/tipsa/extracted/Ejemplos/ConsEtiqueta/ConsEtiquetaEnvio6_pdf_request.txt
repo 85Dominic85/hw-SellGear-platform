@@ -1,0 +1,17 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+   <soapenv:Header>
+      <tem:ROClientIDHeader>
+         <!--Optional:-->
+         <tem:ID>{1004380C-7D84-4C4E-85A2-25BC9CA05238}</tem:ID>
+      </tem:ROClientIDHeader>
+   </soapenv:Header>
+   <soapenv:Body>
+      <tem:WebServService___ConsEtiquetaEnvio6>
+         <tem:strCodAgeOri>000000</tem:strCodAgeOri>
+         <tem:strCodAgeCargo>000000</tem:strCodAgeCargo>
+         <tem:StrAlbaran>9999135190</tem:StrAlbaran>
+         <tem:intIdRepDet>233</tem:intIdRepDet>
+         <tem:strFormato>pdf</tem:strFormato>
+      </tem:WebServService___ConsEtiquetaEnvio6>
+   </soapenv:Body>
+</soapenv:Envelope>

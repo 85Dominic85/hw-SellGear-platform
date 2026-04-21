@@ -1,0 +1,13 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+   <soapenv:Header>
+      <tem:ROClientIDHeader>
+         <!--Optional:-->
+         <tem:ID>{BE698B14-891E-474E-A445-50BE15105603}</tem:ID>
+      </tem:ROClientIDHeader>
+   </soapenv:Header>
+   <soapenv:Body>
+      <tem:WebServService___InfEnviosCli>
+         <tem:dtFecha>2019/12/03</tem:dtFecha>
+      </tem:WebServService___InfEnviosCli>
+   </soapenv:Body>
+</soapenv:Envelope>

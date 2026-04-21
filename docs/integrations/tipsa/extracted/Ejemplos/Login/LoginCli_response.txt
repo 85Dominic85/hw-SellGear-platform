@@ -1,0 +1,19 @@
+<SOAP-ENV:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:HNS="http://tempuri.org/" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v1="http://tempuri.org/">
+   <SOAP-ENV:Header>
+      <ROClientIDHeader SOAP-ENV:mustUnderstand="0" xmlns="urn:DinaPaq">
+         <ID>{8D5400DC-1FEA-42CC-BFB6-B829E11ACBDF}</ID>
+      </ROClientIDHeader>
+   </SOAP-ENV:Header>
+   <SOAP-ENV:Body xmlns:ro="http://tempuri.org/">
+      <v1:LoginWSService___LoginCliResponse>
+         <v1:Result>true</v1:Result>
+         <v1:strNom>CLIENTES PRUEBAS MAGENTO</v1:strNom>
+         <v1:strCodCR/>
+         <v1:strTipo>4</v1:strTipo>
+         <v1:strVersion>0.01.71</v1:strVersion>
+         <v1:strError>0</v1:strError>
+         <v1:strSesion>{8D5400DC-1FEA-42CC-BFB6-B829E11ACBDF}</v1:strSesion>
+         <v1:strURLDetSegEnv>http://dinapaqwebval.tipsa-dinapaq.com:8080/dinapaqweb/detalle_envio.php?servicio={GUID}&amp;fecha={FECHA}</v1:strURLDetSegEnv>
+      </v1:LoginWSService___LoginCliResponse>
+   </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

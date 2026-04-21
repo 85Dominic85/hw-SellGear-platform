@@ -1,0 +1,14 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+   <soapenv:Header>
+      <tem:ROClientIDHeader>
+         <!--Optional:-->
+         <tem:ID>{31553243-C09A-44A2-AF1D-B40E283F5EDD}</tem:ID>
+      </tem:ROClientIDHeader>
+   </soapenv:Header>
+   <soapenv:Body>
+      <tem:WebServService___ConsAgeCanaliza>
+         <tem:strPobla>Madrid</tem:strPobla>
+         <tem:strCP>39609</tem:strCP>
+      </tem:WebServService___ConsAgeCanaliza>
+   </soapenv:Body>
+</soapenv:Envelope>

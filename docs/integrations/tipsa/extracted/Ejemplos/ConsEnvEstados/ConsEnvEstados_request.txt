@@ -1,0 +1,15 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+   <soapenv:Header>
+      <tem:ROClientIDHeader>
+         <!--Optional:-->
+         <tem:ID>{DECA66DC-FDD9-4FAD-8CD6-BEA204A01D6E}</tem:ID>
+      </tem:ROClientIDHeader>
+   </soapenv:Header>
+   <soapenv:Body>
+      <tem:WebServService___ConsEnvEstados>
+         <tem:strCodAgeCargo>000000</tem:strCodAgeCargo>
+         <tem:strCodAgeOri>000000</tem:strCodAgeOri>
+         <tem:strAlbaran>9999171970</tem:strAlbaran>
+      </tem:WebServService___ConsEnvEstados>
+   </soapenv:Body>
+</soapenv:Envelope>
