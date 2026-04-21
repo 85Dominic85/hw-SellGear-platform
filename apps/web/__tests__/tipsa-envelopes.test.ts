@@ -258,13 +258,29 @@ describe('tipsaEventLabel', () => {
 })
 
 describe('buildPublicTrackingUrl', () => {
-  it('interpolates GUID and FECHA placeholders', () => {
+  it('strips braces from GUID and formats date as DD/MM/YYYY per TIPSA docs', () => {
     const url = buildPublicTrackingUrl(
-      'https://example/segn.php?s={GUID}&f={FECHA}',
+      'https://example/seg.php?servicio={GUID}&fecha={FECHA}',
       '{ABC-123}',
-      new Date('2026-04-20T10:00:00Z'),
+      new Date(2026, 3, 21, 12, 0, 0), // 21 abril 2026 (local time)
     )
-    expect(url).toBe('https://example/segn.php?s=%7BABC-123%7D&f=20260420')
+    expect(url).toBe('https://example/seg.php?servicio=ABC-123&fecha=21/04/2026')
+  })
+  it('pads single-digit day and month to 2 chars', () => {
+    const url = buildPublicTrackingUrl(
+      'https://example/seg.php?servicio={GUID}&fecha={FECHA}',
+      'XYZ',
+      new Date(2026, 0, 5, 12, 0, 0), // 5 enero 2026
+    )
+    expect(url).toContain('fecha=05/01/2026')
+  })
+  it('preserves GUID without braces unchanged', () => {
+    const url = buildPublicTrackingUrl(
+      'https://example/seg.php?servicio={GUID}',
+      'NO-BRACES-GUID',
+      new Date(2026, 3, 21),
+    )
+    expect(url).toContain('servicio=NO-BRACES-GUID')
   })
   it('returns null if base is null', () => {
     expect(buildPublicTrackingUrl(null, 'x', new Date())).toBeNull()

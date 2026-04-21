@@ -118,7 +118,10 @@ function parseServicesCatalog(raw: string | undefined): Array<{ code: string; la
 
 /**
  * URL publica de seguimiento TIPSA para un envio.
- * Se construye con el GUID del envio y la fecha (YYYYMMDD).
+ * Segun doc oficial "Documentacion Construccion URL" pag. 4:
+ *   - GUID sin llaves {}, solo el UUID
+ *   - FECHA en formato DD/MM/YYYY (literal, sin URL-encode)
+ * Ejemplo esperado: ?servicio=16C85B1E-648B-46BD-87CC-B93792BAAF5E&fecha=21/02/2019
  */
 export function buildPublicTrackingUrl(
   trackingBaseUrl: string | null,
@@ -126,8 +129,12 @@ export function buildPublicTrackingUrl(
   date: Date,
 ): string | null {
   if (!trackingBaseUrl) return null
-  const fecha = date.toISOString().slice(0, 10).replace(/-/g, '')
+  const cleanGuid = guid.replace(/^\{/, '').replace(/\}$/, '')
+  const dd = String(date.getDate()).padStart(2, '0')
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const yyyy = String(date.getFullYear())
+  const fecha = `${dd}/${mm}/${yyyy}`
   return trackingBaseUrl
-    .replace('{GUID}', encodeURIComponent(guid))
+    .replace('{GUID}', cleanGuid)
     .replace('{FECHA}', fecha)
 }
