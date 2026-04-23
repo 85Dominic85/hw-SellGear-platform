@@ -20,12 +20,16 @@ interface FormData {
   venue_name: string
   contact_email: string
   phone: string
+  contact_person: string
   purchase_type: PurchaseType | ''
   amount: string
   ae_ref: string
   hubspot_ref: string
   bank_receipt_url: string
-  shipping_address: string
+  shipping_street: string
+  shipping_cp: string
+  shipping_city: string
+  shipping_province: string
   notes: string
 }
 
@@ -36,12 +40,16 @@ const EMPTY_FORM: FormData = {
   venue_name: '',
   contact_email: '',
   phone: '',
+  contact_person: '',
   purchase_type: '',
   amount: '',
   ae_ref: '',
   hubspot_ref: '',
   bank_receipt_url: '',
-  shipping_address: '',
+  shipping_street: '',
+  shipping_cp: '',
+  shipping_city: '',
+  shipping_province: '',
   notes: '',
 }
 
@@ -72,8 +80,29 @@ export default function NewOrderPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    // Validacion estricta client-side (obligatorios: cliente, telefono, calle, CP, ciudad).
     if (!form.customer_name.trim()) {
       setError('El nombre del cliente es obligatorio.')
+      return
+    }
+    if (!form.phone.trim()) {
+      setError('El teléfono del cliente es obligatorio.')
+      return
+    }
+    if (!form.shipping_street.trim()) {
+      setError('La dirección (calle) es obligatoria.')
+      return
+    }
+    if (!form.shipping_cp.trim()) {
+      setError('El código postal es obligatorio.')
+      return
+    }
+    if (!/^\d{5}$/.test(form.shipping_cp.trim())) {
+      setError('El código postal debe tener 5 dígitos exactos.')
+      return
+    }
+    if (!form.shipping_city.trim()) {
+      setError('La ciudad es obligatoria.')
       return
     }
 
@@ -90,13 +119,17 @@ export default function NewOrderPage() {
           customer_name: form.customer_name.trim(),
           venue_name: form.venue_name.trim() || null,
           contact_email: form.contact_email.trim() || null,
-          phone: form.phone.trim() || null,
+          phone: form.phone.trim(),
+          contact_person: form.contact_person.trim() || null,
           purchase_type: form.purchase_type || null,
           amount: form.amount ? parseFloat(form.amount) : null,
           ae_ref: form.ae_ref.trim() || null,
           hubspot_ref: form.hubspot_ref.trim() || null,
           bank_receipt_url: form.bank_receipt_url.trim() || null,
-          shipping_address: form.shipping_address.trim() || null,
+          shipping_street: form.shipping_street.trim(),
+          shipping_cp: form.shipping_cp.trim(),
+          shipping_city: form.shipping_city.trim(),
+          shipping_province: form.shipping_province.trim() || null,
           notes: form.notes.trim() || null,
           items: items
             .filter((item) => item.product_name.trim())
@@ -208,14 +241,30 @@ export default function NewOrderPage() {
               />
             </div>
             <div>
-              <label className={labelClass}>Teléfono</label>
+              <label className={labelClass}>
+                Teléfono <span className="text-red-500">*</span>
+              </label>
               <input
                 type="tel"
                 value={form.phone}
                 onChange={(e) => setField('phone', e.target.value)}
                 placeholder="+34 600 000 000"
+                required
                 className={inputClass}
               />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={labelClass}>Persona de contacto en el destino</label>
+              <input
+                type="text"
+                value={form.contact_person}
+                onChange={(e) => setField('contact_person', e.target.value)}
+                placeholder="Nombre de quien recibe el envío (opcional)"
+                className={inputClass}
+              />
+              <p className="mt-1 text-xs text-gray-400">
+                Se enviará a TIPSA para que el repartidor pregunte por esta persona.
+              </p>
             </div>
           </div>
         </div>
@@ -286,12 +335,63 @@ export default function NewOrderPage() {
               />
             </div>
             <div className="sm:col-span-2">
-              <label className={labelClass}>Dirección de envío</label>
+              <label className={labelClass}>
+                Dirección (calle, número, piso){' '}
+                <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
-                value={form.shipping_address}
-                onChange={(e) => setField('shipping_address', e.target.value)}
-                placeholder="Calle Ejemplo 1, 28001 Madrid"
+                value={form.shipping_street}
+                onChange={(e) => setField('shipping_street', e.target.value)}
+                placeholder="Ej: Gran Vía 1, 3ºB"
+                maxLength={200}
+                required
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>
+                Código postal <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="\d{5}"
+                value={form.shipping_cp}
+                onChange={(e) =>
+                  setField('shipping_cp', e.target.value.replace(/\D/g, '').slice(0, 5))
+                }
+                placeholder="28001"
+                maxLength={5}
+                required
+                className={inputClass}
+              />
+              {form.shipping_cp.length > 0 && form.shipping_cp.length !== 5 && (
+                <p className="mt-1 text-xs text-red-600">Debe tener 5 dígitos.</p>
+              )}
+            </div>
+            <div>
+              <label className={labelClass}>
+                Ciudad <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={form.shipping_city}
+                onChange={(e) => setField('shipping_city', e.target.value)}
+                placeholder="Madrid"
+                maxLength={100}
+                required
+                className={inputClass}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={labelClass}>Provincia</label>
+              <input
+                type="text"
+                value={form.shipping_province}
+                onChange={(e) => setField('shipping_province', e.target.value)}
+                placeholder="Ej: Sevilla, Madrid, A Coruña (opcional)"
+                maxLength={50}
                 className={inputClass}
               />
             </div>

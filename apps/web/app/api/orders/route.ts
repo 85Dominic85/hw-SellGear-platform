@@ -48,6 +48,38 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // Telefono del cliente obligatorio para pedidos manuales (decision 2026-04-24).
+  const phone = typeof body.phone === 'string' ? body.phone.trim() : ''
+  if (!phone) {
+    return NextResponse.json(
+      { error: 'El teléfono del cliente es obligatorio.' },
+      { status: 400 }
+    )
+  }
+
+  // Direccion estructurada (4 campos). CP, calle y ciudad obligatorios; provincia opcional.
+  const shippingStreet   = typeof body.shipping_street   === 'string' ? body.shipping_street.trim()   : ''
+  const shippingCp       = typeof body.shipping_cp       === 'string' ? body.shipping_cp.trim()       : ''
+  const shippingCity     = typeof body.shipping_city     === 'string' ? body.shipping_city.trim()     : ''
+  const shippingProvince = typeof body.shipping_province === 'string' ? body.shipping_province.trim() : ''
+  const contactPerson    = typeof body.contact_person    === 'string' ? body.contact_person.trim()    : ''
+
+  if (!shippingStreet) {
+    return NextResponse.json({ error: 'La dirección (calle) es obligatoria.' }, { status: 400 })
+  }
+  if (!shippingCp) {
+    return NextResponse.json({ error: 'El código postal es obligatorio.' }, { status: 400 })
+  }
+  if (!/^\d{5}$/.test(shippingCp)) {
+    return NextResponse.json(
+      { error: 'El código postal debe tener 5 dígitos exactos.' },
+      { status: 400 }
+    )
+  }
+  if (!shippingCity) {
+    return NextResponse.json({ error: 'La ciudad es obligatoria.' }, { status: 400 })
+  }
+
   // Validate email format if provided
   const contactEmail = typeof body.contact_email === 'string' ? body.contact_email.trim() : ''
   if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
@@ -69,6 +101,15 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Serializar los 4 campos estructurados a shipping_address (compat Google Sheets y vistas legacy).
+  const serializedAddress = [
+    shippingStreet,
+    `${shippingCp} ${shippingCity}`,
+    shippingProvince || null,
+  ]
+    .filter((part) => part && part.trim().length > 0)
+    .join(', ')
+
   // 4. Determine sheet_tab from purchase_type
   const purchaseType =
     typeof body.purchase_type === 'string' && VALID_PURCHASE_TYPES.has(body.purchase_type)
@@ -85,7 +126,7 @@ export async function POST(request: NextRequest) {
       customer_name: customerName,
       venue_name: typeof body.venue_name === 'string' ? body.venue_name.trim() || null : null,
       contact_email: contactEmail || null,
-      phone: typeof body.phone === 'string' ? body.phone.trim() || null : null,
+      phone,
       purchase_type: purchaseType,
       sheet_tab: sheetTab,
       amount: typeof body.amount === 'number' ? body.amount : null,
@@ -94,7 +135,14 @@ export async function POST(request: NextRequest) {
       requester_email: requesterEmail || null,
       ae_ref: typeof body.ae_ref === 'string' ? body.ae_ref.trim() || null : null,
       hubspot_ref: typeof body.hubspot_ref === 'string' ? body.hubspot_ref.trim() || null : null,
-      shipping_address: typeof body.shipping_address === 'string' ? body.shipping_address.trim() || null : null,
+      // 4 columnas estructuradas (uso primario para TIPSA).
+      shipping_street: shippingStreet,
+      shipping_cp: shippingCp,
+      shipping_city: shippingCity,
+      shipping_province: shippingProvince || null,
+      contact_person: contactPerson || null,
+      // Serializado para compat con Google Sheets y vistas legacy.
+      shipping_address: serializedAddress,
       notes: typeof body.notes === 'string' ? body.notes.trim() || null : null,
       created_by: user.id,
       status: 'nuevo',

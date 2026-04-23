@@ -173,6 +173,24 @@ describe('GrabaEnvio24', () => {
     expect(xml).toContain('<tem:boRetorno>true</tem:boRetorno>')
   })
 
+  it('includes strPersContacto when contactPerson is set on recipient', () => {
+    const xml = buildGrabaEnvio24Envelope({
+      creds,
+      sessionId,
+      sender,
+      input: {
+        ...input,
+        recipient: { ...input.recipient, contactPerson: 'Juan García' },
+      },
+    })
+    expect(xml).toContain('<tem:strPersContacto>Juan García</tem:strPersContacto>')
+  })
+
+  it('sends empty strPersContacto when contactPerson is omitted', () => {
+    const xml = buildGrabaEnvio24Envelope({ creds, sessionId, sender, input })
+    expect(xml).toContain('<tem:strPersContacto></tem:strPersContacto>')
+  })
+
   it('falls back to city only when recipient cp is empty', () => {
     const xml = buildGrabaEnvio24Envelope({
       creds,

@@ -68,9 +68,23 @@ const EDITABLE_FIELDS = new Set([
   'hubspot_ref',
   'invoice_ref',
   'shipping_address',
+  'shipping_street',
+  'shipping_cp',
+  'shipping_city',
+  'shipping_province',
+  'contact_person',
   'notes',
   'tracking_number',
   'shipping_label_url',
+])
+
+// Cuando cambian estos, regeneramos shipping_address serializado para compat con
+// Google Sheets y vistas legacy.
+const SHIPPING_STRUCTURED_FIELDS = new Set([
+  'shipping_street',
+  'shipping_cp',
+  'shipping_city',
+  'shipping_province',
 ])
 
 const VALID_PURCHASE_TYPES = new Set([
@@ -152,6 +166,16 @@ export async function PATCH(
     } else {
       value = null
     }
+  } else if (field === 'shipping_cp') {
+    if (value !== null && typeof value === 'string' && value.trim()) {
+      const cp = value.trim()
+      if (!/^\d{5}$/.test(cp)) {
+        return NextResponse.json({ error: 'shipping_cp debe tener 5 dígitos exactos' }, { status: 400 })
+      }
+      value = cp
+    } else {
+      value = null
+    }
   } else {
     // String fields: trim or null
     if (typeof value === 'string') {
@@ -160,9 +184,41 @@ export async function PATCH(
   }
 
   const adminClient = createAdminClient()
+  const updates: Record<string, unknown> = { [field]: value }
+
+  // Si cambia uno de los 4 campos estructurados de direccion, regenerar
+  // el textarea serializado shipping_address para que Google Sheets y vistas
+  // legacy sigan mostrando la direccion completa.
+  if (SHIPPING_STRUCTURED_FIELDS.has(field)) {
+    const { data: current } = await adminClient
+      .from('orders')
+      .select('shipping_street, shipping_cp, shipping_city, shipping_province')
+      .eq('id', id)
+      .single()
+
+    if (current) {
+      const next = {
+        shipping_street: current.shipping_street,
+        shipping_cp: current.shipping_cp,
+        shipping_city: current.shipping_city,
+        shipping_province: current.shipping_province,
+        [field]: value,
+      }
+      const parts: string[] = []
+      if (next.shipping_street) parts.push(next.shipping_street as string)
+      if (next.shipping_cp && next.shipping_city) {
+        parts.push(`${next.shipping_cp} ${next.shipping_city}`)
+      } else if (next.shipping_city) {
+        parts.push(next.shipping_city as string)
+      }
+      if (next.shipping_province) parts.push(next.shipping_province as string)
+      updates.shipping_address = parts.length > 0 ? parts.join(', ') : null
+    }
+  }
+
   const { error } = await adminClient
     .from('orders')
-    .update({ [field]: value })
+    .update(updates)
     .eq('id', id)
 
   if (error) {

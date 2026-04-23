@@ -40,6 +40,11 @@ export interface TipsaRecipient {
   phone?: string
   email?: string
   country?: string
+  /**
+   * Persona de contacto en el destino (ej. "Juan Garcia").
+   * Se envia a TIPSA como strPersContacto (WSDL GrabaEnvio24 linea 2362).
+   */
+  contactPerson?: string
 }
 
 export interface TipsaCreateShipmentInput {

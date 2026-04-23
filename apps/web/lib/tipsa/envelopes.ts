@@ -143,6 +143,7 @@ export function buildGrabaEnvio24Envelope({
       <tem:strRef>${xmlEscape(input.reference ?? '')}</tem:strRef>
       <tem:strObs>${xmlEscape(input.observations ?? '')}</tem:strObs>
       <tem:strContenido>${xmlEscape(input.content ?? '')}</tem:strContenido>
+      <tem:strPersContacto>${xmlEscape(rcp.contactPerson ?? '')}</tem:strPersContacto>
       <tem:boDesSMS>false</tem:boDesSMS>
       <tem:boDesEmail>${rcp.email ? 'true' : 'false'}</tem:boDesEmail>
       <tem:strDesMoviles>${xmlEscape(rcp.phone ?? '')}</tem:strDesMoviles>

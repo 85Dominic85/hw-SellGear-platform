@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
   const { data: order, error: orderError } = await admin
     .from('orders')
     .select(
-      'id, operation_id, customer_name, venue_name, contact_email, phone, shipping_address, status, tracking_number',
+      'id, operation_id, customer_name, venue_name, contact_email, phone, shipping_address, shipping_street, shipping_cp, shipping_city, shipping_province, contact_person, status, tracking_number',
     )
     .eq('id', body.order_id)
     .single()
@@ -83,28 +83,41 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // 5. Validar direccion (minima)
-  const shipping = (order.shipping_address ?? '').trim()
-  if (shipping.length < 10) {
-    return NextResponse.json(
-      {
-        error:
-          'La dirección de envío está vacía o es demasiado corta. Completa shipping_address antes de crear el envío.',
-      },
-      { status: 422 },
-    )
-  }
+  // 5. Resolver direccion: si las 4 columnas estructuradas estan rellenas, usarlas
+  //    directamente (camino nuevo). Si no, fallback al parser regex sobre shipping_address
+  //    (pedidos legacy / Typeform).
+  let recipientStreet: string
+  let recipientCp: string
+  let recipientCity: string
 
-  // Parseo muy basico: ultimo "12345" del string es CP, resto se divide.
-  const parsed = parseShippingAddress(shipping)
-  if (!parsed.cp) {
-    return NextResponse.json(
-      {
-        error:
-          'No se pudo extraer código postal de shipping_address. Revisa el formato (incluye CP de 5 dígitos).',
-      },
-      { status: 422 },
-    )
+  if (order.shipping_cp && order.shipping_city && order.shipping_street) {
+    recipientStreet = order.shipping_street
+    recipientCp = order.shipping_cp
+    recipientCity = order.shipping_city
+  } else {
+    const shipping = (order.shipping_address ?? '').trim()
+    if (shipping.length < 10) {
+      return NextResponse.json(
+        {
+          error:
+            'La dirección de envío está vacía o es demasiado corta. Completa la dirección antes de crear el envío.',
+        },
+        { status: 422 },
+      )
+    }
+    const parsed = parseShippingAddress(shipping)
+    if (!parsed.cp) {
+      return NextResponse.json(
+        {
+          error:
+            'No se pudo extraer código postal de la dirección. Rellena los 4 campos estructurados (calle, CP, ciudad, provincia) en la ficha del pedido.',
+        },
+        { status: 422 },
+      )
+    }
+    recipientStreet = parsed.street
+    recipientCp = parsed.cp
+    recipientCity = parsed.city
   }
 
   // 6. Config TIPSA
@@ -133,12 +146,13 @@ export async function POST(request: NextRequest) {
       returnShipment,
       recipient: {
         name: order.customer_name || order.venue_name || 'Destinatario',
-        address: parsed.street,
-        city: parsed.city,
-        cp: parsed.cp,
+        address: recipientStreet,
+        city: recipientCity,
+        cp: recipientCp,
         phone: order.phone ?? '',
         email: order.contact_email ?? undefined,
         country: 'ES',
+        contactPerson: order.contact_person ?? undefined,
       },
     })
 

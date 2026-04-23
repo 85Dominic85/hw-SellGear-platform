@@ -31,6 +31,11 @@ interface OrderData {
   shipping_label_url: string | null
   tracking_number: string | null
   shipping_address: string | null
+  shipping_street: string | null
+  shipping_cp: string | null
+  shipping_city: string | null
+  shipping_province: string | null
+  contact_person: string | null
   notes: string | null
 }
 
@@ -292,16 +297,66 @@ export default function OrderDetailFields({ order, canEdit, isViewer }: OrderDet
           viewerComponent={ShippingLabelViewer}
         />
 
-        {/* shipping_address — editable textarea full width */}
+        {/* Direccion estructurada: 4 campos + persona contacto.
+            Se regenera shipping_address serializado automaticamente al guardar. */}
         <EditableField
           orderId={order.id}
-          fieldName="shipping_address"
-          value={order.shipping_address}
-          fieldType="textarea"
+          fieldName="shipping_street"
+          value={order.shipping_street}
+          fieldType="text"
           canEdit={canEdit}
-          label={<>Direccion de envio{isCanaryIslands(order.shipping_address) && <span className="ml-1.5 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Canarias</span>}</>}
+          label={<>Calle / dirección{isCanaryIslands(order.shipping_address) && <span className="ml-1.5 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Canarias</span>}</>}
           fullWidth
         />
+
+        <EditableField
+          orderId={order.id}
+          fieldName="shipping_cp"
+          value={order.shipping_cp}
+          fieldType="text"
+          canEdit={canEdit}
+          label="Código postal"
+        />
+
+        <EditableField
+          orderId={order.id}
+          fieldName="shipping_city"
+          value={order.shipping_city}
+          fieldType="text"
+          canEdit={canEdit}
+          label="Ciudad"
+        />
+
+        <EditableField
+          orderId={order.id}
+          fieldName="shipping_province"
+          value={order.shipping_province}
+          fieldType="text"
+          canEdit={canEdit}
+          label="Provincia"
+        />
+
+        <EditableField
+          orderId={order.id}
+          fieldName="contact_person"
+          value={order.contact_person}
+          fieldType="text"
+          canEdit={canEdit}
+          label="Persona de contacto"
+        />
+
+        {/* shipping_address legacy: solo mostrar para pedidos Typeform que aun no tienen los 4 campos estructurados */}
+        {!order.shipping_street && order.shipping_address && (
+          <div className="col-span-full">
+            <dt className="text-xs text-gray-500">Dirección heredada (Typeform)</dt>
+            <dd className="mt-0.5 whitespace-pre-wrap text-sm text-gray-600">
+              {order.shipping_address}
+            </dd>
+            <p className="mt-1 text-xs text-amber-700">
+              Rellena los 4 campos estructurados arriba para mejorar la etiqueta TIPSA.
+            </p>
+          </div>
+        )}
 
         {/* notes — editable textarea full width */}
         <EditableField

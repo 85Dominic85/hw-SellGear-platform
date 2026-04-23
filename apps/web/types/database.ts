@@ -78,6 +78,14 @@ export interface Order {
   tracking_public_url: string | null
   tracking_last_status: string | null
   tracking_last_checked_at: string | null
+  // Direccion estructurada (tras aplicar migracion 20260424000001_structured_shipping_fields)
+  shipping_street: string | null
+  shipping_cp: string | null
+  shipping_city: string | null
+  shipping_province: string | null
+  contact_person: string | null
+  // TIPSA envio con retorno (tras aplicar migracion 20260423000001_shipping_return)
+  shipping_return: boolean | null
   // joins
   order_items?: OrderItem[]
   creator?: UserProfile
