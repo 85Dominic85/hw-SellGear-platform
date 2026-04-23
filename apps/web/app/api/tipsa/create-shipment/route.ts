@@ -14,6 +14,8 @@ interface CreateShipmentBody {
   weight_kg?: number
   content?: string
   observations?: string
+  /** Si true, envio con recogida de material al destinatario (boRetorno TIPSA). */
+  return_shipment?: boolean
 }
 
 export async function POST(request: NextRequest) {
@@ -56,6 +58,7 @@ export async function POST(request: NextRequest) {
   }
   const packages = Math.max(1, Math.floor(body.packages ?? 1))
   const weightKg = Math.max(0.1, Number(body.weight_kg ?? 1))
+  const returnShipment = body.return_shipment === true
 
   // 4. Load order (admin client para evitar problemas de RLS entre roles)
   const admin = createAdminClient()
@@ -127,6 +130,7 @@ export async function POST(request: NextRequest) {
       content: body.content ?? 'Productos hardware',
       observations: body.observations,
       reference: order.operation_id,
+      returnShipment,
       recipient: {
         name: order.customer_name || order.venue_name || 'Destinatario',
         address: parsed.street,
@@ -183,6 +187,7 @@ export async function POST(request: NextRequest) {
         shipping_packages: packages,
         shipping_content: body.content ?? 'Productos hardware',
         shipping_observations: body.observations ?? null,
+        shipping_return: returnShipment,
         shipped: true,
         shipped_at: now,
         tracking_last_status: '1',

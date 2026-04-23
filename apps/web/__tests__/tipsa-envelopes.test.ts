@@ -141,12 +141,16 @@ describe('GrabaEnvio24', () => {
     expect(xml).toContain('<tem:strCPOri>41001</tem:strCPOri>')
     expect(xml).toContain('<tem:strNomDes>Bar El Rinconcito</tem:strNomDes>')
     expect(xml).toContain('<tem:strCPDes>41010</tem:strCPDes>')
+    // CP prefijado en strPobDes para que TIPSA lo imprima siempre en la etiqueta.
+    expect(xml).toContain('<tem:strPobDes>41010 Sevilla</tem:strPobDes>')
     expect(xml).toContain('<tem:intPaq>1</tem:intPaq>')
     expect(xml).toContain('<tem:dPesoOri>1.5</tem:dPesoOri>')
     expect(xml).toContain('<tem:strRef>HW-202604-0001</tem:strRef>')
     expect(xml).toContain('<tem:boDesEmail>true</tem:boDesEmail>')
     expect(xml).toContain('<tem:dtFecha>2026-04-20</tem:dtFecha>')
     expect(xml).toContain('<tem:ID>{TEST-GUID}</tem:ID>')
+    // boRetorno false por defecto (envio sin recogida)
+    expect(xml).toContain('<tem:boRetorno>false</tem:boRetorno>')
   })
 
   it('sets boDesEmail=false when recipient has no email', () => {
@@ -157,6 +161,27 @@ describe('GrabaEnvio24', () => {
       input: { ...input, recipient: { ...input.recipient, email: undefined } },
     })
     expect(xml).toContain('<tem:boDesEmail>false</tem:boDesEmail>')
+  })
+
+  it('sets boRetorno=true when returnShipment flag is on', () => {
+    const xml = buildGrabaEnvio24Envelope({
+      creds,
+      sessionId,
+      sender,
+      input: { ...input, returnShipment: true },
+    })
+    expect(xml).toContain('<tem:boRetorno>true</tem:boRetorno>')
+  })
+
+  it('falls back to city only when recipient cp is empty', () => {
+    const xml = buildGrabaEnvio24Envelope({
+      creds,
+      sessionId,
+      sender,
+      input: { ...input, recipient: { ...input.recipient, cp: '' } },
+    })
+    // Sin CP no se prefija (evita "  Sevilla" con espacio suelto)
+    expect(xml).toContain('<tem:strPobDes>Sevilla</tem:strPobDes>')
   })
 
   it('parses GrabaEnvio16_response fixture and extracts albaran + guid', () => {

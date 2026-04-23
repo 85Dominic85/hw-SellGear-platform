@@ -106,6 +106,11 @@ export function buildGrabaEnvio24Envelope({
 }: GrabaEnvio24Input): string {
   const date = input.date ?? new Date().toISOString().slice(0, 10)
   const rcp = input.recipient
+  // Prefijamos el CP a la poblacion destino para que TIPSA lo imprima siempre
+  // en la linea del destinatario (sin esto, el renderer omite el CP del bloque DES).
+  // El strCPDes sigue enviandose por separado para routing.
+  const pobDesWithCp = rcp.cp ? `${rcp.cp} ${rcp.city}` : rcp.city
+  const boRetorno = input.returnShipment ? 'true' : 'false'
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
@@ -128,12 +133,13 @@ export function buildGrabaEnvio24Envelope({
       <tem:strTlfOri>${xmlEscape(sender.phone)}</tem:strTlfOri>
       <tem:strNomDes>${xmlEscape(rcp.name)}</tem:strNomDes>
       <tem:strDirDes>${xmlEscape(rcp.address)}</tem:strDirDes>
-      <tem:strPobDes>${xmlEscape(rcp.city)}</tem:strPobDes>
+      <tem:strPobDes>${xmlEscape(pobDesWithCp)}</tem:strPobDes>
       <tem:strCPDes>${xmlEscape(rcp.cp)}</tem:strCPDes>
       <tem:strCodPais>${xmlEscape(rcp.country ?? 'ES')}</tem:strCodPais>
       <tem:strTlfDes>${xmlEscape(rcp.phone ?? '')}</tem:strTlfDes>
       <tem:intPaq>${xmlEscape(input.packages)}</tem:intPaq>
       <tem:dPesoOri>${xmlEscape(input.weightKg)}</tem:dPesoOri>
+      <tem:boRetorno>${boRetorno}</tem:boRetorno>
       <tem:strRef>${xmlEscape(input.reference ?? '')}</tem:strRef>
       <tem:strObs>${xmlEscape(input.observations ?? '')}</tem:strObs>
       <tem:strContenido>${xmlEscape(input.content ?? '')}</tem:strContenido>

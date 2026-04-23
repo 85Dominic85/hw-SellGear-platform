@@ -28,6 +28,7 @@ export default function CreateShipmentModal({
   const [weightKg, setWeightKg] = useState(1)
   const [content, setContent] = useState(defaultContent ?? 'Productos hardware')
   const [observations, setObservations] = useState('')
+  const [returnShipment, setReturnShipment] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -55,6 +56,7 @@ export default function CreateShipmentModal({
             weight_kg: weightKg,
             content,
             observations: observations.trim() || undefined,
+            return_shipment: returnShipment,
           }),
         })
         const data = await res.json()
@@ -70,7 +72,17 @@ export default function CreateShipmentModal({
         setLoading(false)
       }
     },
-    [orderId, serviceCode, packages, weightKg, content, observations, router, onClose],
+    [
+      orderId,
+      serviceCode,
+      packages,
+      weightKg,
+      content,
+      observations,
+      returnShipment,
+      router,
+      onClose,
+    ],
   )
 
   return (
@@ -168,6 +180,22 @@ export default function CreateShipmentModal({
               placeholder="Ej: Dejar en portería"
             />
           </div>
+
+          <label className="flex cursor-pointer items-start gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-gray-100">
+            <input
+              type="checkbox"
+              checked={returnShipment}
+              onChange={(e) => setReturnShipment(e.target.checked)}
+              disabled={loading}
+              className="mt-0.5 h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-xs text-gray-700">
+              <span className="font-medium text-gray-900">Con retorno de material</span>
+              <span className="mt-0.5 block text-gray-500">
+                TIPSA recogerá material del destinatario tras la entrega (boRetorno).
+              </span>
+            </span>
+          </label>
 
           {error && (
             <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">

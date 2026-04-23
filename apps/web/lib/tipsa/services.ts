@@ -15,15 +15,35 @@ export const TIPSA_URLS = {
 } as const satisfies Record<TipsaEnv, { login: string; webserv: string }>
 
 /**
- * Catalogo por defecto de servicios TIPSA (fallback si TIPSA_SERVICES_CATALOG no esta seteado).
- * Codigos habituales; el cliente puede ajustar via env var.
+ * Catalogo por defecto de servicios TIPSA Dinapaq.
+ * Extraido de docs/integrations/tipsa/extracted/Documentacion/Documentacion WebServices 64.0_resumen_ES.pdf.
+ * Son todos los codigos disponibles en el contrato QR Payments; TIPSA aplica las
+ * restricciones propias de cada codigo (ej. 10h no disponible a Peninsula/Baleares).
+ * Si se intenta un codigo no admisible para el destino, TIPSA devuelve error 28.
+ *
+ * Se puede sobreescribir via env var TIPSA_SERVICES_CATALOG (JSON array).
  */
 export const DEFAULT_SERVICES_CATALOG: Array<{ code: string; label: string }> = [
-  { code: '48', label: '24h estándar' },
-  { code: '10', label: '48h' },
-  { code: '52', label: 'Sábado' },
-  { code: '40', label: '14h (next day)' },
-  { code: '01', label: 'Económico' },
+  // Mas habituales primero (el primero es el default del selector)
+  { code: '48', label: 'Economy (24h)' },
+  { code: '49', label: 'Standard' },
+  { code: '24', label: 'Premium' },
+  { code: '14', label: '14 Horas' },
+  { code: '10', label: '10 Horas' },
+  { code: '12', label: 'Mediodía' },
+  { code: '19', label: '19 Horas' },
+  // Especificos / menos habituales
+  { code: '06', label: 'Aérea/Marítima (Canarias/Baleares)' },
+  { code: '20', label: 'En Delegación' },
+  { code: '50', label: 'Pickup (Puntos Conveniencia)' },
+  { code: '15', label: 'Farma 15' },
+  { code: '25', label: 'Farma 25' },
+  // Internacional / especiales
+  { code: '90', label: 'Int-Express' },
+  { code: '91', label: 'Int-Economy' },
+  { code: '92', label: 'DPD - Classic' },
+  { code: '96', label: 'Marítima' },
+  { code: 'MV', label: 'Masivo' },
 ]
 
 /**

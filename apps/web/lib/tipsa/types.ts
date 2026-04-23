@@ -58,6 +58,12 @@ export interface TipsaCreateShipmentInput {
    * Fecha del envio (YYYY-MM-DD). Por defecto hoy.
    */
   date?: string
+  /**
+   * Si true, activa boRetorno en GrabaEnvio24 para que TIPSA recoja material
+   * del destinatario tras la entrega (envio con retorno / recogida).
+   * Por defecto false.
+   */
+  returnShipment?: boolean
 }
 
 export interface TipsaCreateShipmentResult {
