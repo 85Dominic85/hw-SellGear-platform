@@ -120,6 +120,14 @@ export default function NewOrderPage() {
       setError('La ciudad es obligatoria.')
       return
     }
+    if (!form.hubspot_ref.trim()) {
+      setError('La referencia de HubSpot es obligatoria.')
+      return
+    }
+    if (!form.bank_receipt_url.trim()) {
+      setError('El justificante bancario es obligatorio.')
+      return
+    }
 
     // Validación carrito
     const filledItems = items.filter((it) => it.product_id)
@@ -345,21 +353,27 @@ export default function NewOrderPage() {
               />
             </div>
             <div>
-              <label className={labelClass}>Ref. HubSpot</label>
+              <label className={labelClass}>
+                Ref. HubSpot <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
                 value={form.hubspot_ref}
                 onChange={(e) => setField('hubspot_ref', e.target.value)}
                 placeholder="HS-XXXXX"
+                required
                 className={inputClass}
               />
             </div>
             <div className="sm:col-span-2">
-              <label className={labelClass}>Justificante bancario</label>
+              <label className={labelClass}>
+                Justificante bancario <span className="text-red-500">*</span>
+              </label>
               <BankReceiptInput
                 value={form.bank_receipt_url}
                 onChange={(v) => setField('bank_receipt_url', v)}
                 className={inputClass}
+                required
               />
             </div>
             <div className="sm:col-span-2">

@@ -11,9 +11,10 @@ interface Props {
   value: string
   onChange: (v: string) => void
   className?: string
+  required?: boolean
 }
 
-export default function BankReceiptInput({ value, onChange, className }: Props) {
+export default function BankReceiptInput({ value, onChange, className, required }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [state, setState] = useState<'idle' | 'uploading' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -79,6 +80,7 @@ export default function BankReceiptInput({ value, onChange, className }: Props) 
           placeholder="https://drive.google.com/..."
           className={className}
           disabled={state === 'uploading'}
+          required={required}
         />
         <button
           type="button"
