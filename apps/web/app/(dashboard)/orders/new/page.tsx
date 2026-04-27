@@ -7,6 +7,7 @@ import type { PurchaseType, Product } from '@/types/database'
 import { PURCHASE_TYPE_LABELS } from '@/lib/utils'
 import CartLine, { EMPTY_LINE, type CartLineState } from '@/components/orders/CartLine'
 import CartSummary from '@/components/orders/CartSummary'
+import BankReceiptInput from '@/components/orders/BankReceiptInput'
 
 interface FormData {
   requester_name: string
@@ -354,12 +355,10 @@ export default function NewOrderPage() {
               />
             </div>
             <div className="sm:col-span-2">
-              <label className={labelClass}>Justificante bancario (URL)</label>
-              <input
-                type="url"
+              <label className={labelClass}>Justificante bancario</label>
+              <BankReceiptInput
                 value={form.bank_receipt_url}
-                onChange={(e) => setField('bank_receipt_url', e.target.value)}
-                placeholder="https://drive.google.com/..."
+                onChange={(v) => setField('bank_receipt_url', v)}
                 className={inputClass}
               />
             </div>
