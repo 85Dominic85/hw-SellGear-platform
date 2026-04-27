@@ -80,7 +80,7 @@ CREATE POLICY "orders: commercial update own limited"
   USING (
     public.get_my_role() = 'commercial'
     AND created_by = auth.uid()
-    AND status IN ('nuevo', 'falta_info')
+    AND status IN ('nuevo', 'falta_informacion')
   );
 
 -- order_items
@@ -103,7 +103,7 @@ CREATE POLICY "order_items: commercial insert own"
     AND order_id IN (
       SELECT id FROM public.orders
       WHERE created_by = auth.uid()
-      AND status IN ('nuevo', 'falta_info')
+      AND status IN ('nuevo', 'falta_informacion')
     )
   );
 
