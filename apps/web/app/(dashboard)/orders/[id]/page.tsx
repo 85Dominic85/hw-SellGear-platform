@@ -12,6 +12,7 @@ import DeleteOrderButton from '@/components/orders/DeleteOrderButton'
 import AutoMarkSeen from '@/components/orders/AutoMarkSeen'
 import EditableHeader from '@/components/orders/EditableHeader'
 import OrderDetailFields from '@/components/orders/OrderDetailFields'
+import MessageToHardwarePanel from '@/components/orders/MessageToHardwarePanel'
 import { isAdminUser, canCreateShipment } from '@/lib/auth'
 import SlaIndicator from '@/components/orders/SlaIndicator'
 import ShippingTrackingPanel from '@/components/orders/ShippingTrackingPanel'
@@ -32,6 +33,7 @@ export default async function OrderDetailPage({
   } = await supabase.auth.getUser()
   let isAdmin = false
   let isViewer = false
+  let isCommercial = false
   let canEdit = false
   let canShipment = false
   if (currentUser) {
@@ -42,10 +44,14 @@ export default async function OrderDetailPage({
       .single()
     isAdmin = isAdminUser(profile?.email ?? currentUser.email, profile?.role)
     isViewer = profile?.role === 'viewer'
+    isCommercial = profile?.role === 'commercial'
     const role = profile?.role as UserRole | undefined
     canEdit = isAdmin || (!!role && ['admin', 'manager', 'hardware'].includes(role))
     canShipment = isAdmin || canCreateShipment(role)
   }
+  // Roles externos: solo lectura del pedido + envío en modo consulta + caja
+  // de mensaje para Hardware. Sin cambio de estado, sin Slack, sin proveedor.
+  const isExternalRole = isViewer || isCommercial
 
   // Load order with all relations
   const { data: order } = await supabase
@@ -203,8 +209,32 @@ export default async function OrderDetailPage({
           </div>
         </div>
 
-        {/* Sidebar — 1/3 (oculta para viewers) */}
-        {!isViewer && (
+        {/* Sidebar — 1/3 */}
+        {isExternalRole ? (
+          /* Comercial / Viewer: solo tracking público (si hay envío) + mensaje a Hardware */
+          <div className="space-y-4">
+            {order.tracking_number && (
+              <ShippingTrackingPanel
+                orderId={order.id}
+                trackingNumber={order.tracking_number ?? null}
+                carrier={order.carrier ?? null}
+                trackingLastStatus={order.tracking_last_status ?? null}
+                trackingLastCheckedAt={order.tracking_last_checked_at ?? null}
+                trackingPublicUrl={order.tracking_public_url ?? null}
+                shippingLabelUrl={order.shipping_label_url ?? null}
+                shippedAt={order.shipped_at ?? null}
+                events={shippingEvents}
+                services={tipsaServices}
+                defaultContent=""
+                canCreate={false}
+                canRefresh={false}
+                canDelete={false}
+              />
+            )}
+            <MessageToHardwarePanel orderId={order.id} />
+          </div>
+        ) : (
+          /* Hardware / Manager / Admin: vista interna completa */
           <div className="space-y-4">
             <StatusChangePanel orderId={order.id} currentStatus={order.status as OrderStatus} />
             <ShippingTrackingPanel
