@@ -19,6 +19,7 @@ interface ShippingTrackingPanelProps {
   events: ShippingEvent[]
   services: Array<{ code: string; label: string }>
   defaultContent: string
+  defaultPackages?: number
   canCreate: boolean
   canRefresh: boolean
   canDelete: boolean
@@ -36,6 +37,7 @@ export default function ShippingTrackingPanel({
   events,
   services,
   defaultContent,
+  defaultPackages,
   canCreate,
   canRefresh,
   canDelete,
@@ -126,6 +128,7 @@ export default function ShippingTrackingPanel({
             orderId={orderId}
             services={services}
             defaultContent={defaultContent}
+            defaultPackages={defaultPackages}
             onClose={() => setModalOpen(false)}
           />
         )}

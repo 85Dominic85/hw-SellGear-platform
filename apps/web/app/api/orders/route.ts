@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { PurchaseType } from '@/types/database'
+import type { PurchaseType, Product } from '@/types/database'
+import { cartTotals } from '@/lib/pricing'
 
 const SHEET_TAB_MAP: Record<string, string> = {
   kit_digital: 'KIT Digital',
@@ -117,8 +118,139 @@ export async function POST(request: NextRequest) {
       : null
   const sheetTab = purchaseType ? SHEET_TAB_MAP[purchaseType] ?? 'Pedidos' : 'Pedidos'
 
-  // 5. Insert order with admin client (bypasses RLS)
+  // 5. Validar y resolver items del carrito ANTES de crear el pedido.
+  // El servidor recalcula precios desde products (no se confia en el cliente).
   const admin = createAdminClient()
+
+  const rawItems = Array.isArray(body.items) ? body.items : []
+  if (rawItems.length === 0) {
+    return NextResponse.json(
+      { error: 'Debes añadir al menos un producto al pedido.' },
+      { status: 400 },
+    )
+  }
+
+  interface CartItemInput {
+    product_id: string
+    qty: number
+    discount_pct: number
+    product_name_override: string | null
+    unit_price_override_cents: number | null
+  }
+
+  const cartInputs: CartItemInput[] = []
+  for (const raw of rawItems) {
+    if (typeof raw !== 'object' || raw === null) {
+      return NextResponse.json({ error: 'Línea de carrito inválida.' }, { status: 400 })
+    }
+    const r = raw as Record<string, unknown>
+    if (typeof r.product_id !== 'string' || !r.product_id) {
+      return NextResponse.json(
+        { error: 'Cada línea debe tener product_id.' },
+        { status: 400 },
+      )
+    }
+    const qty = typeof r.qty === 'number' ? Math.floor(r.qty) : 0
+    if (qty < 1) {
+      return NextResponse.json(
+        { error: 'La cantidad debe ser un entero mayor o igual a 1.' },
+        { status: 400 },
+      )
+    }
+    const discountPct = typeof r.discount_pct === 'number' ? r.discount_pct : 0
+    if (discountPct < 0 || discountPct > 10) {
+      return NextResponse.json(
+        { error: 'El descuento debe estar entre 0 y 10 por ciento.' },
+        { status: 400 },
+      )
+    }
+    cartInputs.push({
+      product_id: r.product_id,
+      qty,
+      discount_pct: discountPct,
+      product_name_override:
+        typeof r.product_name_override === 'string'
+          ? r.product_name_override.trim() || null
+          : null,
+      unit_price_override_cents:
+        typeof r.unit_price_override_cents === 'number'
+          ? Math.floor(r.unit_price_override_cents)
+          : null,
+    })
+  }
+
+  const productIds = Array.from(new Set(cartInputs.map((it) => it.product_id)))
+  const { data: catalogProducts, error: productsError } = await admin
+    .from('products')
+    .select('*')
+    .in('id', productIds)
+    .eq('active', true)
+
+  if (productsError) {
+    return NextResponse.json({ error: productsError.message }, { status: 500 })
+  }
+
+  const productMap = new Map<string, Product>()
+  for (const p of (catalogProducts ?? []) as Product[]) {
+    productMap.set(p.id, p)
+  }
+
+  // Resolver cada línea: snapshot de precio, IVA y nombre.
+  interface ResolvedLine {
+    product_id: string
+    product_name: string
+    qty: number
+    discount_pct: number
+    unit_price_cents: number
+    vat_rate: number
+  }
+  const resolved: ResolvedLine[] = []
+  for (const it of cartInputs) {
+    const product = productMap.get(it.product_id)
+    if (!product) {
+      return NextResponse.json(
+        { error: 'Producto inactivo o inexistente en el carrito.' },
+        { status: 400 },
+      )
+    }
+    let unitPriceCents = product.price_cents
+    let productName = product.name
+    if (product.code === 'otro') {
+      if (!it.product_name_override) {
+        return NextResponse.json(
+          { error: 'Las líneas "Otro" requieren descripción del producto.' },
+          { status: 400 },
+        )
+      }
+      if (it.unit_price_override_cents === null || it.unit_price_override_cents <= 0) {
+        return NextResponse.json(
+          { error: 'Las líneas "Otro" requieren un precio unitario mayor que 0.' },
+          { status: 400 },
+        )
+      }
+      unitPriceCents = it.unit_price_override_cents
+      productName = it.product_name_override
+    }
+    resolved.push({
+      product_id: product.id,
+      product_name: productName,
+      qty: it.qty,
+      discount_pct: it.discount_pct,
+      unit_price_cents: unitPriceCents,
+      vat_rate: Number(product.vat_rate),
+    })
+  }
+
+  // Total con IVA en céntimos → euros (compat orders.amount).
+  const totals = cartTotals(
+    resolved.map((l) => ({
+      priceCents: l.unit_price_cents,
+      qty: l.qty,
+      discountPct: l.discount_pct,
+      vatRate: l.vat_rate,
+    })),
+  )
+  const computedAmount = totals.totalCents / 100
 
   const { data: newOrder, error: insertError } = await admin
     .from('orders')
@@ -129,7 +261,7 @@ export async function POST(request: NextRequest) {
       phone,
       purchase_type: purchaseType,
       sheet_tab: sheetTab,
-      amount: typeof body.amount === 'number' ? body.amount : null,
+      amount: computedAmount,
       bank_receipt_url: bankReceiptUrl || null,
       requester_name: typeof body.requester_name === 'string' ? body.requester_name.trim() || null : null,
       requester_email: requesterEmail || null,
@@ -158,29 +290,21 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // 6. Insert items (filter out blank rows)
-  const items = Array.isArray(body.items) ? body.items : []
-  const validItems = items.filter(
-    (item: unknown): item is { product_name: string; qty: number } =>
-      typeof item === 'object' &&
-      item !== null &&
-      typeof (item as Record<string, unknown>).product_name === 'string' &&
-      (item as Record<string, unknown>).product_name !== '' &&
-      typeof (item as Record<string, unknown>).qty === 'number'
+  // 6. Insert items con snapshot de precio, IVA, descuento y product_id.
+  const { error: itemsError } = await admin.from('order_items').insert(
+    resolved.map((line) => ({
+      order_id: newOrder.id,
+      product_id: line.product_id,
+      product_name: line.product_name,
+      qty: line.qty,
+      discount_pct: line.discount_pct,
+      unit_price_cents: line.unit_price_cents,
+      vat_rate: line.vat_rate,
+    })),
   )
 
-  if (validItems.length > 0) {
-    const { error: itemsError } = await admin.from('order_items').insert(
-      validItems.map((item) => ({
-        order_id: newOrder.id,
-        product_name: item.product_name.trim(),
-        qty: item.qty,
-      }))
-    )
-
-    if (itemsError) {
-      console.error('Error inserting order items:', itemsError.message)
-    }
+  if (itemsError) {
+    console.error('Error inserting order items:', itemsError.message)
   }
 
   // 7. Insert initial status_history entry

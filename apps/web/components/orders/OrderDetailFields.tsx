@@ -305,7 +305,7 @@ export default function OrderDetailFields({ order, canEdit, isViewer }: OrderDet
           value={order.shipping_street}
           fieldType="text"
           canEdit={canEdit}
-          label={<>Calle / dirección{isCanaryIslands(order.shipping_address) && <span className="ml-1.5 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Canarias</span>}</>}
+          label={<>Calle / dirección{isCanaryIslands(order.shipping_cp ?? order.shipping_address) && <span className="ml-1.5 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Canarias</span>}</>}
           fullWidth
         />
 

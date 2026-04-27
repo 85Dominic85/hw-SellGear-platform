@@ -1,17 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import type { PurchaseType } from '@/types/database'
+import type { PurchaseType, Product } from '@/types/database'
 import { PURCHASE_TYPE_LABELS } from '@/lib/utils'
-
-interface ItemRow {
-  product_name: string
-  qty: number
-}
-
-const EMPTY_ITEM: ItemRow = { product_name: '', qty: 1 }
+import CartLine, { EMPTY_LINE, type CartLineState } from '@/components/orders/CartLine'
+import CartSummary from '@/components/orders/CartSummary'
 
 interface FormData {
   requester_name: string
@@ -22,7 +17,6 @@ interface FormData {
   phone: string
   contact_person: string
   purchase_type: PurchaseType | ''
-  amount: string
   ae_ref: string
   hubspot_ref: string
   bank_receipt_url: string
@@ -42,7 +36,6 @@ const EMPTY_FORM: FormData = {
   phone: '',
   contact_person: '',
   purchase_type: '',
-  amount: '',
   ae_ref: '',
   hubspot_ref: '',
   bank_receipt_url: '',
@@ -56,31 +49,52 @@ const EMPTY_FORM: FormData = {
 export default function NewOrderPage() {
   const router = useRouter()
   const [form, setForm] = useState<FormData>(EMPTY_FORM)
-  const [items, setItems] = useState<ItemRow[]>([{ ...EMPTY_ITEM }])
+  const [items, setItems] = useState<CartLineState[]>([{ ...EMPTY_LINE }])
+  const [products, setProducts] = useState<Product[]>([])
+  const [loadingCatalog, setLoadingCatalog] = useState(true)
+  const [catalogError, setCatalogError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function loadCatalog() {
+      try {
+        const res = await fetch('/api/products')
+        const data = await res.json()
+        if (!res.ok) {
+          setCatalogError(data.error ?? 'Error al cargar el catálogo.')
+          return
+        }
+        setProducts(data.products ?? [])
+      } catch {
+        setCatalogError('Error de conexión al cargar el catálogo.')
+      } finally {
+        setLoadingCatalog(false)
+      }
+    }
+    loadCatalog()
+  }, [])
 
   function setField<K extends keyof FormData>(key: K, value: FormData[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
   function addItem() {
-    setItems((prev) => [...prev, { ...EMPTY_ITEM }])
+    setItems((prev) => [...prev, { ...EMPTY_LINE }])
   }
 
   function removeItem(index: number) {
     setItems((prev) => prev.filter((_, i) => i !== index))
   }
 
-  function updateItem(index: number, field: keyof ItemRow, value: string | number) {
+  function updateItem(index: number, partial: Partial<CartLineState>) {
     setItems((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
+      prev.map((item, i) => (i === index ? { ...item, ...partial } : item)),
     )
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    // Validacion estricta client-side (obligatorios: cliente, telefono, calle, CP, ciudad).
     if (!form.customer_name.trim()) {
       setError('El nombre del cliente es obligatorio.')
       return
@@ -106,6 +120,34 @@ export default function NewOrderPage() {
       return
     }
 
+    // Validación carrito
+    const filledItems = items.filter((it) => it.product_id)
+    if (filledItems.length === 0) {
+      setError('Debes añadir al menos un producto al pedido.')
+      return
+    }
+
+    for (const it of filledItems) {
+      const product = products.find((p) => p.id === it.product_id)
+      if (!product) {
+        setError('Hay un producto del carrito que no existe en el catálogo.')
+        return
+      }
+      if (product.code === 'otro') {
+        if (!it.product_name_override.trim()) {
+          setError('Las líneas "Otro (fuera de catálogo)" requieren descripción.')
+          return
+        }
+        if (
+          it.unit_price_override_cents === null ||
+          it.unit_price_override_cents <= 0
+        ) {
+          setError('Las líneas "Otro" requieren un precio unitario mayor que 0.')
+          return
+        }
+      }
+    }
+
     setSaving(true)
     setError(null)
 
@@ -122,7 +164,6 @@ export default function NewOrderPage() {
           phone: form.phone.trim(),
           contact_person: form.contact_person.trim() || null,
           purchase_type: form.purchase_type || null,
-          amount: form.amount ? parseFloat(form.amount) : null,
           ae_ref: form.ae_ref.trim() || null,
           hubspot_ref: form.hubspot_ref.trim() || null,
           bank_receipt_url: form.bank_receipt_url.trim() || null,
@@ -131,12 +172,13 @@ export default function NewOrderPage() {
           shipping_city: form.shipping_city.trim(),
           shipping_province: form.shipping_province.trim() || null,
           notes: form.notes.trim() || null,
-          items: items
-            .filter((item) => item.product_name.trim())
-            .map((item) => ({
-              product_name: item.product_name.trim(),
-              qty: item.qty,
-            })),
+          items: filledItems.map((it) => ({
+            product_id: it.product_id,
+            qty: it.qty,
+            discount_pct: it.discount_pct,
+            product_name_override: it.product_name_override.trim() || null,
+            unit_price_override_cents: it.unit_price_override_cents,
+          })),
         }),
       })
 
@@ -161,7 +203,6 @@ export default function NewOrderPage() {
 
   return (
     <div className="px-6 py-8">
-      {/* Header */}
       <div className="mb-6">
         <nav className="mb-2 flex items-center gap-2 text-sm text-gray-500">
           <Link href="/orders" className="hover:text-gray-700">
@@ -275,7 +316,7 @@ export default function NewOrderPage() {
             Detalles del pedido
           </h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
+            <div className="sm:col-span-2">
               <label className={labelClass}>Tipo de compra</label>
               <select
                 value={form.purchase_type}
@@ -291,18 +332,6 @@ export default function NewOrderPage() {
                   </option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className={labelClass}>Importe (EUR)</label>
-              <input
-                type="number"
-                step="0.01"
-                min={0}
-                value={form.amount}
-                onChange={(e) => setField('amount', e.target.value)}
-                placeholder="0.00"
-                className={inputClass}
-              />
             </div>
             <div>
               <label className={labelClass}>Ref. AE</label>
@@ -408,14 +437,15 @@ export default function NewOrderPage() {
           </div>
         </div>
 
-        {/* Items */}
+        {/* Cart: artículos */}
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-900">Artículos</h2>
             <button
               type="button"
               onClick={addItem}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200 transition-colors hover:bg-gray-50"
+              disabled={loadingCatalog || !!catalogError}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <svg
                 className="h-3.5 w-3.5"
@@ -434,62 +464,43 @@ export default function NewOrderPage() {
             </button>
           </div>
 
-          <div className="space-y-2">
-            {items.map((item, index) => (
-              <div key={index} className="flex items-center gap-3">
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    value={item.product_name}
-                    onChange={(e) => updateItem(index, 'product_name', e.target.value)}
-                    placeholder={`Producto ${index + 1}`}
-                    className={inputClass}
-                  />
-                </div>
-                <div className="w-24">
-                  <input
-                    type="number"
-                    min={1}
-                    value={item.qty}
-                    onChange={(e) =>
-                      updateItem(
-                        index,
-                        'qty',
-                        Math.max(1, parseInt(e.target.value) || 1)
-                      )
-                    }
-                    className={`${inputClass} text-center`}
-                    title="Cantidad"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeItem(index)}
-                  disabled={items.length === 1}
-                  className="flex-shrink-0 rounded p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-30"
-                  title="Eliminar línea"
-                >
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-            ))}
-          </div>
-          <p className="mt-2 text-xs text-gray-400">
-            Las líneas en blanco se ignorarán al guardar.
+          {loadingCatalog && (
+            <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">
+              Cargando catálogo de productos…
+            </div>
+          )}
+
+          {catalogError && (
+            <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">
+              {catalogError}
+            </div>
+          )}
+
+          {!loadingCatalog && !catalogError && (
+            <div className="space-y-3">
+              {items.map((line, index) => (
+                <CartLine
+                  key={index}
+                  index={index}
+                  line={line}
+                  products={products}
+                  canRemove={items.length > 1}
+                  onChange={updateItem}
+                  onRemove={removeItem}
+                />
+              ))}
+            </div>
+          )}
+
+          <p className="mt-3 text-xs text-gray-400">
+            Selecciona &quot;Otro (fuera de catálogo)&quot; para introducir productos puntuales con descripción y precio libres.
           </p>
         </div>
+
+        {/* Cart summary */}
+        {!loadingCatalog && !catalogError && (
+          <CartSummary lines={items} products={products} />
+        )}
 
         {/* Error + Submit */}
         {error && (
@@ -501,7 +512,7 @@ export default function NewOrderPage() {
         <div className="flex items-center gap-3 pb-8">
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || loadingCatalog || !!catalogError}
             className="flex items-center gap-2 rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving && (

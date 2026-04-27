@@ -136,7 +136,7 @@ export default function ItemsList({ orderId, items, readOnly }: ItemsListProps) 
           <tbody className="divide-y divide-gray-50">
             {items.map((item) => (
               <tr key={item.id} className="group">
-                <td className="px-5 py-3 text-sm text-gray-900">{item.product_name}</td>
+                <td className="px-5 py-3 text-sm text-gray-900">{item.product_name ?? '(sin nombre)'}</td>
                 <td className="px-4 py-3 text-center text-sm text-gray-700">
                   {item.qty}
                 </td>

@@ -53,7 +53,7 @@ export default async function OrderDetailPage({
       *,
       creator:user_profiles!orders_created_by_fkey(id, full_name, email, role, department, created_at, updated_at),
       assignee:user_profiles!orders_assigned_to_fkey(id, full_name, email, role, department, created_at, updated_at),
-      order_items(*),
+      order_items(*, product:products(id, code, name, package_count, vat_rate)),
       status_history:status_history(
         id, order_id, from_status, to_status, changed_by, changed_at, comment,
         changer:user_profiles!status_history_changed_by_fkey(id, full_name, email, role, department, created_at, updated_at)
@@ -88,6 +88,12 @@ export default async function OrderDetailPage({
   const tipsaServices = loadServicesCatalog()
 
   const items = order.order_items ?? []
+  // Bultos TIPSA pre-calculados: SUM(qty * product.package_count). Items legacy = 1.
+  const defaultPackages = items.reduce(
+    (sum: number, i: { qty: number; product?: { package_count?: number } | null }) =>
+      sum + i.qty * (i.product?.package_count ?? 1),
+    0,
+  )
   const statusHistory = (order.status_history ?? []).sort(
     (a: { changed_at: string }, b: { changed_at: string }) =>
       new Date(b.changed_at).getTime() - new Date(a.changed_at).getTime()
@@ -212,11 +218,12 @@ export default async function OrderDetailPage({
               services={tipsaServices}
               defaultContent={
                 items.length > 0
-                  ? items.map((i: { product_name: string; qty: number }) =>
-                      `${i.qty}× ${i.product_name}`,
+                  ? items.map((i: { product_name: string | null; qty: number }) =>
+                      `${i.qty}× ${i.product_name ?? 'Producto'}`,
                     ).join(', ').slice(0, 100)
                   : 'Productos hardware'
               }
+              defaultPackages={defaultPackages > 0 ? defaultPackages : undefined}
               canCreate={canEdit}
               canRefresh={canEdit}
               canDelete={isAdmin}
@@ -231,8 +238,8 @@ export default async function OrderDetailPage({
               contactEmail={order.contact_email}
               shippingAddress={order.shipping_address}
               notes={order.notes}
-              items={items.map((i: { product_name: string; qty: number }) => ({
-                product_name: i.product_name,
+              items={items.map((i: { product_name: string | null; qty: number }) => ({
+                product_name: i.product_name ?? '(sin nombre)',
                 qty: i.qty,
               }))}
             />

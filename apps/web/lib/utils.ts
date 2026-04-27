@@ -48,16 +48,15 @@ export const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   completado:               ['nuevo', 'pendiente'],
 }
 
-const CANARY_KEYWORDS = [
-  'canarias', 'tenerife', 'gran canaria', 'las palmas', 'lanzarote',
-  'fuerteventura', 'la palma', 'la gomera', 'el hierro',
-]
-
-export function isCanaryIslands(address: string | null): boolean {
-  if (!address) return false
-  const lower = address.toLowerCase()
-  if (/\b3[58]\d{3}\b/.test(address)) return true
-  return CANARY_KEYWORDS.some((kw) => lower.includes(kw))
+// Canarias: detección estricta por código postal.
+// 35xxx = Las Palmas; 38xxx = Santa Cruz de Tenerife.
+// Acepta tanto CP exacto ('38500') como dirección textual con CP embebido.
+// NO matchea por keywords ('Calle Canarias 5, Madrid' → false).
+export function isCanaryIslands(cpOrAddress: string | null): boolean {
+  if (!cpOrAddress) return false
+  const trimmed = cpOrAddress.trim()
+  if (/^3[58]\d{3}$/.test(trimmed)) return true
+  return /\b3[58]\d{3}\b/.test(trimmed)
 }
 
 export function formatCurrency(amount: number | null): string {

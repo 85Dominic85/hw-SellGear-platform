@@ -1,7 +1,7 @@
 ================================================================================
   PROYECTO LOG — hw-SellGear-platform (MainOperation Platform)
   Creado: 2026-02-20
-  Última actualización: 2026-03-17 (sesion 14)
+  Última actualización: 2026-03-24 (sesion 15)
 ================================================================================
 
 --------------------------------------------------------------------------------
@@ -1125,6 +1125,56 @@ MCPs configurados (.mcp.json):
   que devuelven datos reales del rango seleccionado. Graficos con numeros visibles
   y tarjeta KPI combinada ingresos/ticket medio.
 
+--- SESION 2026-03-24 (sesion 15 — badge visual Canarias para envios insulares) ---
+
+  CONTEXTO:
+    - Los envios a Islas Canarias requieren atencion especial (aduanas, IGIC vs IVA,
+      costes adicionales de transporte). No habia forma de identificar visualmente
+      estos pedidos en la plataforma.
+    - El campo shipping_address es texto libre, asi que la deteccion se basa en
+      codigos postales canarios y palabras clave.
+
+  IMPLEMENTACION — FUNCION DETECTORA (utils.ts):
+    - Nueva funcion isCanaryIslands(address: string | null): boolean.
+    - Detecta por codigo postal: regex /\b3[58]\d{3}\b/ (35000-35999 Las Palmas,
+      38000-38999 Santa Cruz de Tenerife).
+    - Detecta por palabras clave (case-insensitive): canarias, tenerife, gran canaria,
+      las palmas, lanzarote, fuerteventura, la palma, la gomera, el hierro.
+    - Devuelve false para null/undefined (seguro contra datos vacios).
+
+  IMPLEMENTACION — BADGE VISUAL:
+    - Badge amber/naranja discreto: rounded-full, bg-amber-100, text-amber-800, text-xs.
+    - Sigue el patron visual existente de StatusBadge (colores Tailwind).
+    - Mostrado en 3 ubicaciones del flujo de trabajo:
+      1. Tabla de pedidos (OrdersTable.tsx): junto al customer_name en la columna Cliente.
+      2. Popup detalle de envio (OrderDetailPopup): junto al titulo "Direccion de contacto".
+      3. Ficha completa del pedido (OrderDetailFields.tsx): junto a la label "Direccion de envio".
+
+  CAMBIO AUXILIAR — EditableField.tsx:
+    - Tipo de prop label cambiado de string a ReactNode para soportar el badge
+      inline junto a la label de direccion de envio en la ficha.
+
+  PEDIDO DE TEST:
+    - Creado pedido TEST-CANARIAS-001 con direccion "Calle El Teide 42, 38005
+      Santa Cruz de Tenerife, Islas Canarias" para verificar el badge.
+    - Verificado: badge aparece correctamente en las 3 ubicaciones.
+    - Pedido mantenido para demo/presentacion (se borrara manualmente).
+
+  ARCHIVOS MODIFICADOS (4):
+    - apps/web/lib/utils.ts (funcion isCanaryIslands + constante CANARY_KEYWORDS)
+    - apps/web/components/orders/OrdersTable.tsx (import + badge en tabla y popup)
+    - apps/web/components/orders/OrderDetailFields.tsx (import + badge junto a direccion)
+    - apps/web/components/orders/EditableField.tsx (label: string → ReactNode)
+
+  COMMITS DE ESTA SESION:
+    - 882e6da: feat: badge visual Canarias para envios a Islas Canarias
+
+  BUILD: Type-check exitoso sin errores (tsc --noEmit).
+
+  Estado general: Pedidos con destino Canarias ahora se identifican visualmente con
+  badge naranja en toda la interfaz (tabla, popup, ficha), facilitando la gestion
+  diferenciada de envios insulares (aduanas, IGIC, costes extra).
+
 --------------------------------------------------------------------------------
 7. PENDIENTE / BACKLOG
 --------------------------------------------------------------------------------
@@ -1158,6 +1208,7 @@ MCPs configurados (.mcp.json):
   [x] Fix sincronizacion checkboxes entre admins/managers (useState + RLS manager UPDATE)
   [x] Dashboard resumen (metricas: pedidos por estado, importe pendiente, estancados)
   [x] Exportacion de pedidos filtrados a CSV/Excel
+  [x] Badge visual "Canarias" para envios a Islas Canarias (deteccion por CP + keywords)
 
   PENDIENTE:
   [ ] Edge Function: sincronizacion masiva Supabase → Google Sheets

@@ -22,6 +22,30 @@ export type PurchaseType =
 
 export type UserRole = 'viewer' | 'creator' | 'hardware' | 'manager' | 'admin'
 
+export type ProductCategory =
+  | 'pack'
+  | 'tpv'
+  | 'kds'
+  | 'printer'
+  | 'accessory'
+  | 'network'
+  | 'custom'
+
+export interface Product {
+  id: string
+  code: string
+  name: string
+  description: string | null
+  category: ProductCategory
+  price_cents: number
+  vat_rate: number
+  package_count: number
+  active: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
 export interface UserProfile {
   id: string
   full_name: string | null
@@ -107,11 +131,16 @@ export interface ShippingEvent {
 export interface OrderItem {
   id: string
   order_id: string
-  product_name: string
+  product_name: string | null
   qty: number
   unit_price: number | null
   notes: string | null
   created_at: string
+  product_id: string | null
+  unit_price_cents: number | null
+  discount_pct: number | null
+  vat_rate: number | null
+  product?: Product | null
 }
 
 export interface StatusHistory {

@@ -13,6 +13,7 @@ interface CreateShipmentModalProps {
   orderId: string
   services: ServiceOption[]
   defaultContent?: string
+  defaultPackages?: number
   onClose: () => void
 }
 
@@ -20,11 +21,12 @@ export default function CreateShipmentModal({
   orderId,
   services,
   defaultContent,
+  defaultPackages,
   onClose,
 }: CreateShipmentModalProps) {
   const router = useRouter()
   const [serviceCode, setServiceCode] = useState(services[0]?.code ?? '48')
-  const [packages, setPackages] = useState(1)
+  const [packages, setPackages] = useState(Math.max(1, defaultPackages ?? 1))
   const [weightKg, setWeightKg] = useState(1)
   const [content, setContent] = useState(defaultContent ?? 'Productos hardware')
   const [observations, setObservations] = useState('')
