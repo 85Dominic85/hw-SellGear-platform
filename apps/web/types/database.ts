@@ -107,7 +107,6 @@ export interface Order {
   shipping_cp: string | null
   shipping_city: string | null
   shipping_province: string | null
-  contact_person: string | null
   // TIPSA envio con retorno (tras aplicar migracion 20260423000001_shipping_return)
   shipping_return: boolean | null
   // joins

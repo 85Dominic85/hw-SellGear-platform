@@ -35,7 +35,6 @@ interface OrderData {
   shipping_cp: string | null
   shipping_city: string | null
   shipping_province: string | null
-  contact_person: string | null
   notes: string | null
 }
 
@@ -334,15 +333,6 @@ export default function OrderDetailFields({ order, canEdit, isViewer }: OrderDet
           fieldType="text"
           canEdit={canEdit}
           label="Provincia"
-        />
-
-        <EditableField
-          orderId={order.id}
-          fieldName="contact_person"
-          value={order.contact_person}
-          fieldType="text"
-          canEdit={canEdit}
-          label="Persona de contacto"
         />
 
         {/* shipping_address legacy: solo mostrar para pedidos Typeform que aun no tienen los 4 campos estructurados */}

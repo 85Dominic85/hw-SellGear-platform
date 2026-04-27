@@ -72,7 +72,6 @@ const EDITABLE_FIELDS = new Set([
   'shipping_cp',
   'shipping_city',
   'shipping_province',
-  'contact_person',
   'notes',
   'tracking_number',
   'shipping_label_url',

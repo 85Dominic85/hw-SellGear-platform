@@ -78,7 +78,6 @@ export async function POST(request: NextRequest) {
   const shippingCp       = typeof body.shipping_cp       === 'string' ? body.shipping_cp.trim()       : ''
   const shippingCity     = typeof body.shipping_city     === 'string' ? body.shipping_city.trim()     : ''
   const shippingProvince = typeof body.shipping_province === 'string' ? body.shipping_province.trim() : ''
-  const contactPerson    = typeof body.contact_person    === 'string' ? body.contact_person.trim()    : ''
 
   if (!shippingStreet) {
     return NextResponse.json({ error: 'La dirección (calle) es obligatoria.' }, { status: 400 })
@@ -287,7 +286,6 @@ export async function POST(request: NextRequest) {
       shipping_cp: shippingCp,
       shipping_city: shippingCity,
       shipping_province: shippingProvince || null,
-      contact_person: contactPerson || null,
       // Serializado para compat con Google Sheets y vistas legacy.
       shipping_address: serializedAddress,
       notes: typeof body.notes === 'string' ? body.notes.trim() || null : null,

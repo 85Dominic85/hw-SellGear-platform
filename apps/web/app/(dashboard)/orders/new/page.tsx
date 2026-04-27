@@ -16,7 +16,6 @@ interface FormData {
   venue_name: string
   contact_email: string
   phone: string
-  contact_person: string
   purchase_type: PurchaseType | ''
   ae_ref: string
   hubspot_ref: string
@@ -35,7 +34,6 @@ const EMPTY_FORM: FormData = {
   venue_name: '',
   contact_email: '',
   phone: '',
-  contact_person: '',
   purchase_type: '',
   ae_ref: '',
   hubspot_ref: '',
@@ -171,7 +169,6 @@ export default function NewOrderPage() {
           venue_name: form.venue_name.trim() || null,
           contact_email: form.contact_email.trim() || null,
           phone: form.phone.trim(),
-          contact_person: form.contact_person.trim() || null,
           purchase_type: form.purchase_type || null,
           ae_ref: form.ae_ref.trim() || null,
           hubspot_ref: form.hubspot_ref.trim() || null,
@@ -302,19 +299,6 @@ export default function NewOrderPage() {
                 required
                 className={inputClass}
               />
-            </div>
-            <div className="sm:col-span-2">
-              <label className={labelClass}>Persona de contacto en el destino</label>
-              <input
-                type="text"
-                value={form.contact_person}
-                onChange={(e) => setField('contact_person', e.target.value)}
-                placeholder="Nombre de quien recibe el envío (opcional)"
-                className={inputClass}
-              />
-              <p className="mt-1 text-xs text-gray-400">
-                Se enviará a TIPSA para que el repartidor pregunte por esta persona.
-              </p>
             </div>
           </div>
         </div>

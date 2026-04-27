@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
   const { data: order, error: orderError } = await admin
     .from('orders')
     .select(
-      'id, operation_id, customer_name, venue_name, contact_email, phone, shipping_address, shipping_street, shipping_cp, shipping_city, shipping_province, contact_person, status, tracking_number',
+      'id, operation_id, customer_name, venue_name, contact_email, phone, shipping_address, shipping_street, shipping_cp, shipping_city, shipping_province, status, tracking_number',
     )
     .eq('id', body.order_id)
     .single()
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
         phone: order.phone ?? '',
         email: order.contact_email ?? undefined,
         country: 'ES',
-        contactPerson: order.contact_person ?? undefined,
+        contactPerson: order.customer_name ?? undefined,
       },
     })
 
