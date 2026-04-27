@@ -12,7 +12,7 @@ import DeleteOrderButton from '@/components/orders/DeleteOrderButton'
 import AutoMarkSeen from '@/components/orders/AutoMarkSeen'
 import EditableHeader from '@/components/orders/EditableHeader'
 import OrderDetailFields from '@/components/orders/OrderDetailFields'
-import { isAdminUser } from '@/lib/auth'
+import { isAdminUser, canCreateShipment } from '@/lib/auth'
 import SlaIndicator from '@/components/orders/SlaIndicator'
 import ShippingTrackingPanel from '@/components/orders/ShippingTrackingPanel'
 import { loadServicesCatalog } from '@/lib/tipsa/services'
@@ -33,6 +33,7 @@ export default async function OrderDetailPage({
   let isAdmin = false
   let isViewer = false
   let canEdit = false
+  let canShipment = false
   if (currentUser) {
     const { data: profile } = await supabase
       .from('user_profiles')
@@ -43,6 +44,7 @@ export default async function OrderDetailPage({
     isViewer = profile?.role === 'viewer'
     const role = profile?.role as UserRole | undefined
     canEdit = isAdmin || (!!role && ['admin', 'manager', 'hardware'].includes(role))
+    canShipment = isAdmin || canCreateShipment(role)
   }
 
   // Load order with all relations
@@ -224,7 +226,7 @@ export default async function OrderDetailPage({
                   : 'Productos hardware'
               }
               defaultPackages={defaultPackages > 0 ? defaultPackages : undefined}
-              canCreate={canEdit}
+              canCreate={canShipment}
               canRefresh={canEdit}
               canDelete={isAdmin}
             />

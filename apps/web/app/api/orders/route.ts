@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { PurchaseType, Product } from '@/types/database'
+import type { PurchaseType, Product, UserRole } from '@/types/database'
 import { cartTotals } from '@/lib/pricing'
+import { canCreateOrder } from '@/lib/auth'
 
 const SHEET_TAB_MAP: Record<string, string> = {
   kit_digital: 'KIT Digital',
@@ -30,6 +31,20 @@ export async function POST(request: NextRequest) {
 
   if (authError || !user) {
     return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  }
+
+  // 1.b. Authorize: solo commercial/hardware/admin pueden crear pedidos.
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+  const role = profile?.role as UserRole | undefined
+  if (!canCreateOrder(role)) {
+    return NextResponse.json(
+      { error: 'No tienes permisos para crear pedidos.' },
+      { status: 403 }
+    )
   }
 
   // 2. Parse body

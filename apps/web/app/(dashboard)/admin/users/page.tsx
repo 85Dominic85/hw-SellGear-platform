@@ -7,7 +7,7 @@ import type { UserProfile, UserRole } from '@/types/database'
 
 const ROLE_LABELS: Record<UserRole, string> = {
   viewer: 'Viewer',
-  creator: 'Creador',
+  commercial: 'Comercial',
   hardware: 'Hardware',
   manager: 'Manager',
   admin: 'Admin',
@@ -15,7 +15,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
 
 const ROLE_COLORS: Record<UserRole, string> = {
   viewer: 'bg-gray-100 text-gray-800',
-  creator: 'bg-blue-100 text-blue-800',
+  commercial: 'bg-blue-100 text-blue-800',
   hardware: 'bg-purple-100 text-purple-800',
   manager: 'bg-green-100 text-green-800',
   admin: 'bg-red-100 text-red-800',

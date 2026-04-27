@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminUser } from '@/lib/auth'
 import type { UserRole } from '@/types/database'
 
-const VALID_ROLES: UserRole[] = ['viewer', 'creator', 'hardware', 'manager', 'admin']
+const VALID_ROLES: UserRole[] = ['viewer', 'commercial', 'hardware', 'manager', 'admin']
 
 async function verifyAdmin() {
   const supabase = await createClient()

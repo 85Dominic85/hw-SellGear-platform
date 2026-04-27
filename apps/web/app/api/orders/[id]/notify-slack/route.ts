@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { canComment } from '@/lib/auth'
+import type { UserRole } from '@/types/database'
 
 export async function POST(
   _request: NextRequest,
@@ -17,6 +19,17 @@ export async function POST(
 
   if (authError || !user) {
     return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  }
+
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const role = profile?.role as UserRole | undefined
+  if (!canComment(role)) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
 
   // Load order

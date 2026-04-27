@@ -11,3 +11,39 @@ export function isAdminUser(email?: string | null, role?: UserRole | null): bool
   if (email && ADMIN_EMAILS.includes(email.toLowerCase())) return true
   return false
 }
+
+// Capacidades derivadas de la matriz roles × permisos.
+// Mantén estos helpers como única fuente de verdad: si la matriz cambia,
+// se cambia aquí y todos los call sites quedan alineados.
+
+export function canCreateOrder(role: UserRole | null | undefined): boolean {
+  return !!role && (['commercial', 'hardware', 'admin'] as UserRole[]).includes(role)
+}
+
+export function canEditOrder(role: UserRole | null | undefined): boolean {
+  return !!role && (['hardware', 'manager', 'admin'] as UserRole[]).includes(role)
+}
+
+export function canCreateShipment(role: UserRole | null | undefined): boolean {
+  return !!role && (['hardware', 'admin'] as UserRole[]).includes(role)
+}
+
+export function canDeleteShipment(role: UserRole | null | undefined): boolean {
+  return role === 'admin'
+}
+
+export function canDeleteOrder(role: UserRole | null | undefined): boolean {
+  return role === 'admin'
+}
+
+export function canExport(role: UserRole | null | undefined): boolean {
+  return !!role && (['hardware', 'manager', 'admin'] as UserRole[]).includes(role)
+}
+
+export function canRefreshTracking(role: UserRole | null | undefined): boolean {
+  return !!role && role !== 'viewer'
+}
+
+export function canComment(role: UserRole | null | undefined): boolean {
+  return !!role && role !== 'viewer'
+}

@@ -78,8 +78,8 @@ export async function POST(
   }
 
   // 6. Role-based restriction:
-  // Creators can only change status when order is 'nuevo' or 'falta_informacion'
-  if (role === 'creator') {
+  // Comerciales solo pueden cambiar el estado cuando el pedido está en 'nuevo' o 'falta_informacion'
+  if (role === 'commercial') {
     if (currentStatus !== 'nuevo' && currentStatus !== 'falta_informacion') {
       return NextResponse.json(
         {

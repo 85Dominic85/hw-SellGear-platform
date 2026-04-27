@@ -20,7 +20,7 @@ export type PurchaseType =
   | 'transferencias_saas'
   | 'otro'
 
-export type UserRole = 'viewer' | 'creator' | 'hardware' | 'manager' | 'admin'
+export type UserRole = 'viewer' | 'commercial' | 'hardware' | 'manager' | 'admin'
 
 export type ProductCategory =
   | 'pack'
