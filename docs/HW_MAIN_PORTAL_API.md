@@ -86,13 +86,41 @@ GET /api/external/metrics?from=2026-04-01&to=2026-04-30&purchase_type=all&recent
       "status": "nuevo",
       "tracking_number": null
     }
-  ]
+  ],
+  "ops": {
+    "total_shipped": 25,
+    "total_completed": 72,
+    "avg_handling_days": 10.6,
+    "avg_transit_days": 2.6,
+    "on_time_shipping_pct": 75,
+    "throughput_by_week": [
+      { "week_start": "2026-04-20", "created": 14, "shipped": 11, "delivered": 22 }
+    ],
+    "blocked_count": 0,
+    "excluded_admin": 16
+  }
 }
 ```
 
+### Bloque `ops` (opcional)
+
+Aditivo y opcional (puede no estar presente si la RPC no lo devuelve). Pensado para visibilizar el trabajo del departamento Hardware separando lo que controla de lo que depende de terceros:
+
+| Campo | Significado |
+|---|---|
+| `total_shipped` | Pedidos con `shipped_at` en el periodo (envíos físicos despachados desde la oficina). |
+| `total_completed` | Pedidos con `delivered_at` en el periodo y `status='completado'` (cohorte distinta de `kpis.total_orders`, que filtra por `created_at`). |
+| `avg_handling_days` | Promedio `created → shipped` (en días). Lo que tarda el depto en preparar y enviar. Excluye `transferencias_saas` y `otro`. |
+| `avg_transit_days` | Promedio `shipped → delivered` (en días). Tiempo del transportista, no controlado por el depto. |
+| `on_time_shipping_pct` | % envíos físicos despachados en ≤ 5 días. |
+| `throughput_by_week` | Serie semanal con `created`, `shipped`, `delivered` por semana. |
+| `blocked_count` | Pedidos `status='bloqueado'` creados en el periodo. No penalizan al depto (causas externas: legal, cliente, etc.). |
+| `excluded_admin` | Pedidos `transferencias_saas` y `otro` completados en el periodo, excluidos del SLA físico (transparencia). |
+
 ### Notas sobre los campos
 
-- `kpis.completed_rate`, `sla.on_time_pct` están en **ratio 0-1**, no porcentaje.
+- `kpis.completed_rate` está en **porcentaje 0-100** (no ratio). Mide pedidos `completado` sobre activos (excluye `bloqueado` del denominador).
+- `sla.on_time_pct` está en **porcentaje 0-100**.
 - `*_revenue` y `amount` están en **euros** (no céntimos).
 - `comparison` compara contra el periodo inmediatamente anterior del mismo tamaño que `[from, to]`. Es `null` si no hay datos suficientes.
 - `recent_orders[].status` ∈ `nuevo | pendiente | enviado_proveedor | enviado | pagado | falta_informacion | bloqueado | completado`.

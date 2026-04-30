@@ -14,6 +14,13 @@ import OrdersTimeChart from './OrdersTimeChart'
 import PurchaseTypeChart from './PurchaseTypeChart'
 import ProductBreakdown from './ProductBreakdown'
 import StatusDistChart from './StatusDistChart'
+import OpsActivityRow from './OpsActivityRow'
+import ProcessTimingRow from './ProcessTimingRow'
+import RiskRow from './RiskRow'
+import ThroughputChart from './ThroughputChart'
+import ImprovementBanner from './ImprovementBanner'
+
+const METRICS_V2 = process.env.NEXT_PUBLIC_METRICS_V2 === '1'
 
 const DEFAULT_SLA: SlaMetrics = {
   total_delivered: 0,
@@ -117,30 +124,84 @@ export default function MetricsDashboard({ initialMetrics, initialComparison, in
         />
       </div>
 
-      {/* KPI cards */}
-      <KpiRow metrics={metrics} comparison={comparison} />
+      {METRICS_V2 ? (
+        <>
+          {/* Banner condicional cuando hay mejora vs periodo anterior */}
+          <ImprovementBanner metrics={metrics} comparison={comparison} />
 
-      {/* SLA KPI cards */}
-      <SlaKpiRow sla={sla} />
+          {/* Seccion 1: ACTIVIDAD OPERATIVA del depto */}
+          <SectionHeader title="Actividad operativa" subtitle="Lo que el departamento ha procesado en el periodo" />
+          <OpsActivityRow metrics={metrics} comparison={comparison} />
 
-      {/* SLA Chart */}
-      <SlaChart data={sla.sla_by_week} />
+          {/* Seccion 2: TIEMPOS DE PROCESO (separa fisico/admin) */}
+          <SectionHeader title="Tiempos de proceso" subtitle="Distincion entre lo que controla el depto y lo que depende del transportista" />
+          <ProcessTimingRow metrics={metrics} comparison={comparison} />
 
-      {/* Charts row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <OrdersTimeChart data={metrics.orders_by_date} />
-        </div>
-        <PurchaseTypeChart data={metrics.by_purchase_type} />
-      </div>
+          {/* Seccion 3: NEGOCIO (KPIs financieros) */}
+          <SectionHeader title="Negocio" subtitle="Volumen y facturacion del periodo" />
+          <KpiRow metrics={metrics} comparison={comparison} />
 
-      {/* Charts row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <ProductBreakdown data={metrics.by_product} />
-        </div>
-        <StatusDistChart data={metrics.by_status} />
-      </div>
+          {/* Seccion 4: SLA y RIESGO */}
+          <SectionHeader title="SLA y riesgo" subtitle="Cumplimiento del SLA fisico (excluye SaaS y otro)" />
+          <SlaKpiRow sla={sla} />
+          <RiskRow sla={sla} metrics={metrics} />
+
+          {/* Seccion 5: CHARTS */}
+          <SectionHeader title="Tendencias" />
+          <ThroughputChart data={metrics.ops_throughput_by_week ?? []} />
+          <SlaChart data={sla.sla_by_week} />
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <OrdersTimeChart data={metrics.orders_by_date} />
+            </div>
+            <PurchaseTypeChart data={metrics.by_purchase_type} />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <ProductBreakdown data={metrics.by_product} />
+            </div>
+            <StatusDistChart data={metrics.by_status} />
+          </div>
+        </>
+      ) : (
+        <>
+          {/* KPI cards (layout legacy) */}
+          <KpiRow metrics={metrics} comparison={comparison} />
+
+          {/* SLA KPI cards */}
+          <SlaKpiRow sla={sla} />
+
+          {/* SLA Chart */}
+          <SlaChart data={sla.sla_by_week} />
+
+          {/* Charts row 1 */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <OrdersTimeChart data={metrics.orders_by_date} />
+            </div>
+            <PurchaseTypeChart data={metrics.by_purchase_type} />
+          </div>
+
+          {/* Charts row 2 */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <ProductBreakdown data={metrics.by_product} />
+            </div>
+            <StatusDistChart data={metrics.by_status} />
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div className="border-b border-gray-100 pb-2">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-700">{title}</h2>
+      {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
     </div>
   )
 }
