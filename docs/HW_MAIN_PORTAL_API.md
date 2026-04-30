@@ -97,6 +97,7 @@ GET /api/external/metrics?from=2026-04-01&to=2026-04-30&purchase_type=all&recent
 - `comparison` compara contra el periodo inmediatamente anterior del mismo tamaño que `[from, to]`. Es `null` si no hay datos suficientes.
 - `recent_orders[].status` ∈ `nuevo | pendiente | enviado_proveedor | enviado | pagado | falta_informacion | bloqueado | completado`.
 - `recent_orders[].tracking_number` es `null` cuando aún no se ha creado envío.
+- **`sla.*` excluye los pedidos de tipo `transferencias_saas` y `otro`** (no implican envío físico desde la oficina y desvirtuaban el plazo medio de entrega y el cumplimiento del SLA de 7 días). El resto de bloques (`kpis`, `comparison`, `time_series`, `breakdowns`, `recent_orders`) sí los incluyen.
 
 ## Errores
 
