@@ -9,7 +9,7 @@ export interface ExternalMetricsKpis {
   total_orders: number
   total_revenue: number
   avg_order_value: number
-  /** Ratio 0-1 de pedidos en estado completado. */
+  /** Porcentaje 0-100 de pedidos completados sobre activos (excluye 'bloqueado'). */
   completed_rate: number
 }
 
@@ -70,6 +70,28 @@ export interface ExternalRecentOrder {
   tracking_number: string | null
 }
 
+export interface ExternalThroughputWeek {
+  week_start: string
+  created: number
+  shipped: number
+  delivered: number
+}
+
+export interface ExternalMetricsOps {
+  total_shipped: number
+  total_completed: number
+  /** Días promedio created → shipped (envíos físicos). */
+  avg_handling_days: number
+  /** Días promedio shipped → delivered (transportista). */
+  avg_transit_days: number
+  /** Porcentaje 0-100 de envíos físicos despachados en ≤ 5 días. */
+  on_time_shipping_pct: number
+  throughput_by_week: ExternalThroughputWeek[]
+  blocked_count: number
+  /** Pedidos SaaS/otro completados, excluidos del SLA físico (transparencia). */
+  excluded_admin: number
+}
+
 export interface ExternalMetricsResponse {
   generated_at: string
   range: { from: string; to: string }
@@ -85,4 +107,6 @@ export interface ExternalMetricsResponse {
   }
   sla: ExternalSla
   recent_orders: ExternalRecentOrder[]
+  /** KPIs operativos del departamento Hardware (opcional, opt-in). */
+  ops?: ExternalMetricsOps
 }

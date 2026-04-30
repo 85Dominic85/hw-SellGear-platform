@@ -4,6 +4,7 @@ import { validateApiKey } from '@/lib/external-auth'
 import { applyCors, handlePreflight } from '@/lib/external-cors'
 import type {
   ExternalMetricsResponse,
+  ExternalMetricsOps,
   ExternalSla,
 } from '@/types/external'
 import type { DashboardMetrics, DashboardComparison, SlaMetrics } from '@/types/metrics'
@@ -106,6 +107,20 @@ export async function GET(request: NextRequest) {
   const comparison = (comparisonRes.data ?? null) as DashboardComparison | null
   const sla = (slaRes.data ?? null) as SlaMetrics | null
 
+  const ops: ExternalMetricsOps | undefined =
+    metrics && metrics.ops_total_shipped !== undefined
+      ? {
+          total_shipped: metrics.ops_total_shipped ?? 0,
+          total_completed: metrics.ops_total_completed ?? 0,
+          avg_handling_days: metrics.ops_avg_handling_days ?? 0,
+          avg_transit_days: metrics.ops_avg_transit_days ?? 0,
+          on_time_shipping_pct: metrics.ops_on_time_shipping_pct ?? 0,
+          throughput_by_week: metrics.ops_throughput_by_week ?? [],
+          blocked_count: metrics.ops_blocked_count ?? 0,
+          excluded_admin: metrics.ops_excluded_admin ?? 0,
+        }
+      : undefined
+
   const payload: ExternalMetricsResponse = {
     generated_at: new Date().toISOString(),
     range: { from, to },
@@ -133,6 +148,7 @@ export async function GET(request: NextRequest) {
     },
     sla: sla ?? DEFAULT_SLA,
     recent_orders: (recentRes.data ?? []) as ExternalMetricsResponse['recent_orders'],
+    ops,
   }
 
   const response = NextResponse.json(payload)

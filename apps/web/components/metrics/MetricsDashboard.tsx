@@ -26,13 +26,13 @@ const DEFAULT_SLA: SlaMetrics = {
 
 interface MetricsDashboardProps {
   initialMetrics: DashboardMetrics
-  initialComparison: DashboardComparison
+  initialComparison: DashboardComparison | null
   initialSla?: SlaMetrics
 }
 
 export default function MetricsDashboard({ initialMetrics, initialComparison, initialSla }: MetricsDashboardProps) {
   const [metrics, setMetrics] = useState<DashboardMetrics>(initialMetrics)
-  const [comparison, setComparison] = useState<DashboardComparison>(initialComparison)
+  const [comparison, setComparison] = useState<DashboardComparison | null>(initialComparison)
   const [sla, setSla] = useState<SlaMetrics>(initialSla ?? DEFAULT_SLA)
   const [loading, setLoading] = useState(false)
   const [preset, setPreset] = useState<PeriodPreset>('this_month')
@@ -52,7 +52,7 @@ export default function MetricsDashboard({ initialMetrics, initialComparison, in
       }
       const data = await res.json()
       setMetrics(data.metrics)
-      setComparison(data.comparison)
+      setComparison(data.comparison ?? null)
       if (data.sla) setSla(data.sla)
     } catch (err) {
       console.error('Metrics fetch error:', err)

@@ -44,12 +44,8 @@ export default async function MetricsPage() {
     by_product: [],
   }
 
-  const comparison: DashboardComparison = comparisonRes.data ?? {
-    prev_total_orders: 0,
-    prev_total_revenue: 0,
-    prev_avg_order_value: 0,
-    prev_completed_rate: 0,
-  }
+  // comparison puede ser null si la RPC falla; el cliente hace null-checks.
+  const comparison: DashboardComparison | null = comparisonRes.data ?? null
 
   const sla: SlaMetrics = slaRes.data ?? {
     total_delivered: 0,

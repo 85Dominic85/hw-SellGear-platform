@@ -44,13 +44,19 @@ export async function GET(request: NextRequest) {
     supabase.rpc('get_sla_metrics', { p_from: from, p_to: to }),
   ])
 
+  // Si la principal falla devolvemos 500. Comparison y SLA degradan a null/default
+  // y se reportan como warnings para no romper el panel cuando solo una RPC falla.
   if (metricsRes.error) {
     return NextResponse.json({ error: metricsRes.error.message }, { status: 500 })
   }
 
+  const warnings: { source: string; message: string }[] = []
+  if (comparisonRes.error) warnings.push({ source: 'comparison', message: comparisonRes.error.message })
+  if (slaRes.error) warnings.push({ source: 'sla', message: slaRes.error.message })
+
   return NextResponse.json({
     metrics: metricsRes.data,
-    comparison: comparisonRes.data,
+    comparison: comparisonRes.data ?? null,
     sla: slaRes.data ?? {
       total_delivered: 0,
       avg_delivery_days: 0,
@@ -59,5 +65,6 @@ export async function GET(request: NextRequest) {
       active_at_risk: 0,
       sla_by_week: [],
     },
+    warnings: warnings.length ? warnings : undefined,
   })
 }

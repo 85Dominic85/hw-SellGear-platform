@@ -7,19 +7,21 @@ import type { DashboardMetrics, DashboardComparison } from '@/types/metrics'
 
 interface KpiRowProps {
   metrics: DashboardMetrics
-  comparison: DashboardComparison
+  comparison: DashboardComparison | null
 }
 
 export default function KpiRow({ metrics, comparison }: KpiRowProps) {
-  const revenueDelta = calcDelta(metrics.total_revenue, comparison.prev_total_revenue)
-  const ticketDelta = calcDelta(metrics.avg_order_value, comparison.prev_avg_order_value)
+  const revenueDelta = calcDelta(metrics.total_revenue, comparison?.prev_total_revenue ?? 0)
+  const ticketDelta = calcDelta(metrics.avg_order_value, comparison?.prev_avg_order_value ?? 0)
+  const ordersDelta = calcDelta(metrics.total_orders, comparison?.prev_total_orders ?? 0)
+  const completedDelta = calcDelta(metrics.completed_rate, comparison?.prev_completed_rate ?? 0)
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       <KpiCard
         label="Pedidos totales"
         value={metrics.total_orders.toLocaleString('es-ES')}
-        delta={calcDelta(metrics.total_orders, comparison.prev_total_orders)}
+        delta={ordersDelta}
         icon={
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -53,9 +55,9 @@ export default function KpiRow({ metrics, comparison }: KpiRowProps) {
         </div>
       </div>
       <KpiCard
-        label="Tasa completado"
-        value={`${metrics.completed_rate}%`}
-        delta={calcDelta(metrics.completed_rate, comparison.prev_completed_rate)}
+        label="Tasa entrega exitosa"
+        value={`${metrics.completed_rate.toFixed(1)}%`}
+        delta={completedDelta}
         icon={
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
