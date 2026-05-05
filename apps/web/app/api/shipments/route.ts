@@ -12,7 +12,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const SELECT =
-  'id, shipment_id, created_at, updated_at, created_by, sender_name, sender_address, sender_cp, sender_city, sender_phone, recipient_name, recipient_address, recipient_cp, recipient_city, recipient_phone, recipient_email, recipient_contact_person, service_code, packages, weight_kg, content, observations, return_shipment, reference, albaran, tracking_number, tracking_public_url, carrier_guid, tracking_last_status, tracking_last_checked_at, shipped_at, delivered_at, shipping_label_url, notes'
+  'id, shipment_id, created_at, updated_at, created_by, sender_name, sender_address, sender_cp, sender_city, sender_phone, recipient_name, recipient_address, recipient_cp, recipient_city, recipient_phone, recipient_email, recipient_contact_person, service_code, packages, weight_kg, content, observations, return_shipment, saturday_delivery, reference, albaran, tracking_number, tracking_public_url, carrier_guid, tracking_last_status, tracking_last_checked_at, shipped_at, delivered_at, shipping_label_url, notes'
 
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 100
@@ -138,6 +138,7 @@ export async function POST(request: NextRequest) {
       content: body.content ?? null,
       observations: body.observations ?? null,
       return_shipment: body.return_shipment ?? false,
+      saturday_delivery: body.saturday_delivery ?? false,
       reference: body.reference ?? null,
       notes: body.notes ?? null,
       created_by: user.id,
@@ -186,6 +187,7 @@ export async function POST(request: NextRequest) {
       observations: body.observations ?? undefined,
       reference: body.reference ?? shipment.shipment_id,
       returnShipment: body.return_shipment ?? false,
+      saturdayDelivery: body.saturday_delivery ?? false,
       recipient: {
         name: body.recipient.name,
         address: body.recipient.address,

@@ -35,6 +35,7 @@ interface DetailsState {
   content: string
   observations: string
   return_shipment: boolean
+  saturday_delivery: boolean
   reference: string
 }
 
@@ -64,6 +65,7 @@ export default function ShipmentForm({ services }: ShipmentFormProps) {
     content: '',
     observations: '',
     return_shipment: false,
+    saturday_delivery: false,
     reference: '',
   })
   const [pickerOpen, setPickerOpen] = useState<null | 'sender' | 'recipient'>(null)
@@ -123,6 +125,7 @@ export default function ShipmentForm({ services }: ShipmentFormProps) {
           content: details.content || null,
           observations: details.observations || null,
           return_shipment: details.return_shipment,
+          saturday_delivery: details.saturday_delivery,
           reference: details.reference || null,
         }),
       })
@@ -422,6 +425,19 @@ export default function ShipmentForm({ services }: ShipmentFormProps) {
                   className="h-4 w-4 rounded border-gray-300"
                 />
                 Envío con retorno (boRetorno TIPSA)
+              </label>
+            </div>
+            <div className="flex items-end">
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={details.saturday_delivery}
+                  onChange={(e) =>
+                    setDetails({ ...details, saturday_delivery: e.target.checked })
+                  }
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                Entrega en sábado (boSabado TIPSA)
               </label>
             </div>
           </div>

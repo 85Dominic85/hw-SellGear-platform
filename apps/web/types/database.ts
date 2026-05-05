@@ -109,6 +109,8 @@ export interface Order {
   shipping_province: string | null
   // TIPSA envio con retorno (tras aplicar migracion 20260423000001_shipping_return)
   shipping_return: boolean | null
+  // TIPSA entrega en sabado (tras aplicar migracion 20260505000005_add_saturday_delivery)
+  shipping_saturday: boolean
   // joins
   order_items?: OrderItem[]
   creator?: UserProfile
@@ -156,6 +158,7 @@ export interface Shipment {
   content: string | null
   observations: string | null
   return_shipment: boolean
+  saturday_delivery: boolean
   reference: string | null
   // TIPSA
   albaran: string | null
@@ -200,6 +203,7 @@ export interface ShipmentCreateInput {
   content?: string | null
   observations?: string | null
   return_shipment?: boolean
+  saturday_delivery?: boolean
   reference?: string | null
   notes?: string | null
 }

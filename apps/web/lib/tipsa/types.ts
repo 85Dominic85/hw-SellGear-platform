@@ -69,6 +69,11 @@ export interface TipsaCreateShipmentInput {
    * Por defecto false.
    */
   returnShipment?: boolean
+  /**
+   * Si true, activa boSabado en GrabaEnvio24 (entrega permitida en sabado).
+   * TIPSA aplica restricciones por zona/servicio. Por defecto false.
+   */
+  saturdayDelivery?: boolean
 }
 
 export interface TipsaCreateShipmentResult {

@@ -112,6 +112,7 @@ export function validateShipmentBody(
       content: trimOrNull(b.content),
       observations: trimOrNull(b.observations),
       return_shipment: b.return_shipment === true,
+      saturday_delivery: b.saturday_delivery === true,
       reference: trimOrNull(b.reference),
       notes: trimOrNull(b.notes),
     },

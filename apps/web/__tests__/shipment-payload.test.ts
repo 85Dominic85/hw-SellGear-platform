@@ -140,6 +140,21 @@ describe('validateShipmentBody — detalles', () => {
     expect(r.ok).toBe(true)
     if (r.ok) expect(r.data.return_shipment).toBe(true)
   })
+
+  it('saturday_delivery se normaliza a boolean (default false)', () => {
+    const off = validateShipmentBody(validBody)
+    expect(off.ok).toBe(true)
+    if (off.ok) expect(off.data.saturday_delivery).toBe(false)
+
+    const on = validateShipmentBody({ ...validBody, saturday_delivery: true })
+    expect(on.ok).toBe(true)
+    if (on.ok) expect(on.data.saturday_delivery).toBe(true)
+
+    // valores no booleanos -> false
+    const truthy = validateShipmentBody({ ...validBody, saturday_delivery: 1 })
+    expect(truthy.ok).toBe(true)
+    if (truthy.ok) expect(truthy.data.saturday_delivery).toBe(false)
+  })
 })
 
 describe('validateShipmentBody — body invalido', () => {

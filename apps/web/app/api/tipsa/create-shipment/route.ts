@@ -17,6 +17,8 @@ interface CreateShipmentBody {
   observations?: string
   /** Si true, envio con recogida de material al destinatario (boRetorno TIPSA). */
   return_shipment?: boolean
+  /** Si true, autoriza entrega en sabado (boSabado TIPSA). */
+  saturday_delivery?: boolean
 }
 
 export async function POST(request: NextRequest) {
@@ -60,6 +62,7 @@ export async function POST(request: NextRequest) {
   const packages = Math.max(1, Math.floor(body.packages ?? 1))
   const weightKg = Math.max(0.1, Number(body.weight_kg ?? 1))
   const returnShipment = body.return_shipment === true
+  const saturdayDelivery = body.saturday_delivery === true
 
   // 4. Load order (admin client para evitar problemas de RLS entre roles)
   const admin = createAdminClient()
@@ -145,6 +148,7 @@ export async function POST(request: NextRequest) {
       observations: body.observations,
       reference: order.operation_id,
       returnShipment,
+      saturdayDelivery,
       recipient: {
         name: order.customer_name || order.venue_name || 'Destinatario',
         address: recipientStreet,
@@ -203,6 +207,7 @@ export async function POST(request: NextRequest) {
         shipping_content: body.content ?? 'Productos hardware',
         shipping_observations: body.observations ?? null,
         shipping_return: returnShipment,
+        shipping_saturday: saturdayDelivery,
         shipped: true,
         shipped_at: now,
         tracking_last_status: '1',

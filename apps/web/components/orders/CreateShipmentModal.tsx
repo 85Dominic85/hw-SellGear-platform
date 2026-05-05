@@ -31,6 +31,7 @@ export default function CreateShipmentModal({
   const [content, setContent] = useState(defaultContent ?? 'Productos hardware')
   const [observations, setObservations] = useState('')
   const [returnShipment, setReturnShipment] = useState(false)
+  const [saturdayDelivery, setSaturdayDelivery] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -59,6 +60,7 @@ export default function CreateShipmentModal({
             content,
             observations: observations.trim() || undefined,
             return_shipment: returnShipment,
+            saturday_delivery: saturdayDelivery,
           }),
         })
         const data = await res.json()
@@ -82,6 +84,7 @@ export default function CreateShipmentModal({
       content,
       observations,
       returnShipment,
+      saturdayDelivery,
       router,
       onClose,
     ],
@@ -195,6 +198,22 @@ export default function CreateShipmentModal({
               <span className="font-medium text-gray-900">Con retorno de material</span>
               <span className="mt-0.5 block text-gray-500">
                 TIPSA recogerá material del destinatario tras la entrega (boRetorno).
+              </span>
+            </span>
+          </label>
+
+          <label className="flex cursor-pointer items-start gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-gray-100">
+            <input
+              type="checkbox"
+              checked={saturdayDelivery}
+              onChange={(e) => setSaturdayDelivery(e.target.checked)}
+              disabled={loading}
+              className="mt-0.5 h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-xs text-gray-700">
+              <span className="font-medium text-gray-900">Entrega en sábado</span>
+              <span className="mt-0.5 block text-gray-500">
+                Autoriza que TIPSA pueda entregar el sábado (boSabado). Sujeto a zona y tarifa.
               </span>
             </span>
           </label>

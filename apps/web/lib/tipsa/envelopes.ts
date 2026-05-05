@@ -111,6 +111,7 @@ export function buildGrabaEnvio24Envelope({
   // El strCPDes sigue enviandose por separado para routing.
   const pobDesWithCp = rcp.cp ? `${rcp.cp} ${rcp.city}` : rcp.city
   const boRetorno = input.returnShipment ? 'true' : 'false'
+  const boSabado = input.saturdayDelivery ? 'true' : 'false'
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
@@ -139,6 +140,7 @@ export function buildGrabaEnvio24Envelope({
       <tem:strTlfDes>${xmlEscape(rcp.phone ?? '')}</tem:strTlfDes>
       <tem:intPaq>${xmlEscape(input.packages)}</tem:intPaq>
       <tem:dPesoOri>${xmlEscape(input.weightKg)}</tem:dPesoOri>
+      <tem:boSabado>${boSabado}</tem:boSabado>
       <tem:boRetorno>${boRetorno}</tem:boRetorno>
       <tem:strRef>${xmlEscape(input.reference ?? '')}</tem:strRef>
       <tem:strObs>${xmlEscape(input.observations ?? '')}</tem:strObs>
