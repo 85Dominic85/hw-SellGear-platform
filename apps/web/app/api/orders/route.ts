@@ -5,6 +5,7 @@ import type { PurchaseType, Product, UserRole } from '@/types/database'
 import { cartTotals } from '@/lib/pricing'
 import { canCreateOrder } from '@/lib/auth'
 import { validateLineDiscount } from '@/lib/orders-validation'
+import { upsertAddressFromOrder } from '@/lib/address-book/upsert'
 
 const SHEET_TAB_MAP: Record<string, string> = {
   kit_digital: 'KIT Digital',
@@ -341,6 +342,22 @@ export async function POST(request: NextRequest) {
 
   if (historyError) {
     console.error('Error inserting status_history:', historyError.message)
+  }
+
+  // 7.5 A~adir al address_book si la direccion esta estructurada.
+  // No bloquea: silencia errores, dedupe natural via UNIQUE constraint.
+  if (shippingStreet && shippingCp && shippingCity) {
+    void upsertAddressFromOrder(admin, {
+      name: customerName,
+      address: shippingStreet,
+      cp: shippingCp,
+      city: shippingCity,
+      venue_name: typeof body.venue_name === 'string' ? body.venue_name.trim() || null : null,
+      province: shippingProvince || null,
+      phone: phone || null,
+      email: contactEmail || null,
+      created_by: user.id,
+    })
   }
 
   // 8. Call Edge Function notify-slack (fire and forget)

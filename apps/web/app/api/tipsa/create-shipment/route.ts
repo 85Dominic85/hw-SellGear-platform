@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { parseShippingAddress } from '@/lib/tipsa/address'
 import { createShipment, fetchLabel, login } from '@/lib/tipsa/client'
 import { buildPublicTrackingUrl, loadTipsaConfig } from '@/lib/tipsa/services'
+import { upsertAddressFromOrder } from '@/lib/address-book/upsert'
 
 export const runtime = 'nodejs'
 
@@ -220,6 +221,20 @@ export async function POST(request: NextRequest) {
       event_label: 'Alta',
       event_date: now,
       raw_payload: { albaran: shipResult.albaran, guid: shipResult.guid },
+    })
+
+    // 12.5 A~adir destinatario al address_book (silencia errores).
+    void upsertAddressFromOrder(admin, {
+      name: order.customer_name || order.venue_name || 'Destinatario',
+      address: recipientStreet,
+      cp: recipientCp,
+      city: recipientCity,
+      venue_name: order.venue_name ?? null,
+      province: order.shipping_province ?? null,
+      phone: order.phone ?? null,
+      email: order.contact_email ?? null,
+      contact_person: order.customer_name ?? null,
+      created_by: user.id,
     })
 
     // 13. Notificar Slack (fire-and-forget, no bloquea)
