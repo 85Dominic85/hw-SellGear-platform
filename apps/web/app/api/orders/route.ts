@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { PurchaseType, Product, UserRole } from '@/types/database'
 import { cartTotals } from '@/lib/pricing'
 import { canCreateOrder } from '@/lib/auth'
+import { validateLineDiscount } from '@/lib/orders-validation'
 
 const SHEET_TAB_MAP: Record<string, string> = {
   kit_digital: 'KIT Digital',
@@ -171,10 +172,12 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       )
     }
+    // Validacion completa (set + categoria) ocurre mas abajo, cuando tenemos
+    // el producto resuelto del catalogo. Aqui solo validamos que sea numero.
     const discountPct = typeof r.discount_pct === 'number' ? r.discount_pct : 0
-    if (discountPct < 0 || discountPct > 10) {
+    if (!Number.isFinite(discountPct)) {
       return NextResponse.json(
-        { error: 'El descuento debe estar entre 0 y 10 por ciento.' },
+        { error: 'Descuento invalido.' },
         { status: 400 },
       )
     }
@@ -226,6 +229,12 @@ export async function POST(request: NextRequest) {
         { error: 'Producto inactivo o inexistente en el carrito.' },
         { status: 400 },
       )
+    }
+    // Valida descuento contra el set permitido (0/10/100) y, si es 100,
+    // que la categoria sea 'printer' (Promocion Printer).
+    const discountCheck = validateLineDiscount(it.discount_pct, product.category)
+    if (!discountCheck.ok) {
+      return NextResponse.json({ error: discountCheck.error }, { status: 400 })
     }
     let unitPriceCents = product.price_cents
     let productName = product.name

@@ -9,7 +9,11 @@ export interface CartLineState {
   product_name_override: string
   unit_price_override_cents: number | null
   qty: number
-  discount_pct: 0 | 10
+  /**
+   * Descuento por linea. 100 solo es valido cuando el producto es de
+   * categoria 'printer' (Promocion Printer); para el resto, 0 o 10.
+   */
+  discount_pct: 0 | 10 | 100
 }
 
 export const EMPTY_LINE: CartLineState = {
@@ -62,13 +66,20 @@ export default function CartLine({
           </label>
           <ProductPicker
             value={line.product_id}
-            onChange={(productId) =>
+            onChange={(productId) => {
+              // Si el descuento actual es 100 (Promocion Printer) y el nuevo
+              // producto NO es de categoria printer, resetear a 0 para no
+              // dejar un estado invalido al usuario.
+              const newProduct = products.find((p) => p.id === productId)
+              const resetDiscount =
+                line.discount_pct === 100 && newProduct?.category !== 'printer'
               onChange(index, {
                 product_id: productId,
                 product_name_override: '',
                 unit_price_override_cents: null,
+                ...(resetDiscount ? { discount_pct: 0 as const } : {}),
               })
-            }
+            }}
             products={products}
           />
         </div>
@@ -98,15 +109,23 @@ export default function CartLine({
           </label>
           <select
             value={line.discount_pct}
-            onChange={(e) =>
-              onChange(index, {
-                discount_pct: parseInt(e.target.value) === 10 ? 10 : 0,
-              })
-            }
+            onChange={(e) => {
+              const v = parseInt(e.target.value)
+              const next: 0 | 10 | 100 =
+                v === 100 && product?.category === 'printer'
+                  ? 100
+                  : v === 10
+                    ? 10
+                    : 0
+              onChange(index, { discount_pct: next })
+            }}
             className={inputClass}
           >
             <option value={0}>Sin descuento</option>
             <option value={10}>-10 %</option>
+            {product?.category === 'printer' && (
+              <option value={100}>Promoción Printer (-100 %)</option>
+            )}
           </select>
         </div>
 

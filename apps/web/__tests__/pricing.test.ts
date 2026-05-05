@@ -35,6 +35,15 @@ describe('lineDiscountCents', () => {
   it('descuento 0% es cero', () => {
     expect(lineDiscountCents(62700, 2, 0)).toBe(0)
   })
+
+  // Promocion Printer: 100% sobre impresoras
+  it('descuento 100% de Impresora WiFi (136,40€)', () => {
+    expect(lineDiscountCents(13640, 1, 100)).toBe(13640)
+  })
+
+  it('descuento 100% sobre cantidad 2', () => {
+    expect(lineDiscountCents(13640, 2, 100)).toBe(27280)
+  })
 })
 
 describe('lineTaxableCents', () => {
@@ -63,6 +72,11 @@ describe('lineTotalCents', () => {
   it('TPV Estandar con 10% de descuento', () => {
     // base 56430, IVA 11850 → 68280
     expect(lineTotalCents(62700, 1, 10, 21)).toBe(68280)
+  })
+
+  it('Promocion Printer 100%: total = 0', () => {
+    // base imponible 0 → IVA 0 → total 0
+    expect(lineTotalCents(13640, 1, 100, 21)).toBe(0)
   })
 })
 
@@ -103,6 +117,18 @@ describe('cartTotals', () => {
     const t = cartTotals([{ priceCents: 4290, qty: 3, discountPct: 0, vatRate: 21 }])
     expect(t.subtotalCents).toBe(12870)
     expect(t.totalCents).toBe(12870 + 2703)
+  })
+
+  it('promocion printer mezclada con TPV normal', () => {
+    // Impresora WiFi 100% + TPV sin descuento
+    const t = cartTotals([
+      { priceCents: 13640, qty: 1, discountPct: 100, vatRate: 21 },
+      { priceCents: 62700, qty: 1, discountPct: 0, vatRate: 21 },
+    ])
+    expect(t.subtotalCents).toBe(76340)
+    expect(t.discountCents).toBe(13640)
+    expect(t.taxableCents).toBe(62700)
+    expect(t.totalCents).toBe(75867)
   })
 })
 
