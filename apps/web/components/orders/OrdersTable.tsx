@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type { Order, OrderItem, UserRole } from '@/types/database'
 import { formatCurrency, formatDate, PURCHASE_TYPE_LABELS, isCanaryIslands } from '@/lib/utils'
 import { getDaysElapsed, getSlaStatus, getSlaColor, formatDaysElapsed, getSlaLabel, SLA_TARGET_DAYS } from '@/lib/sla'
@@ -12,6 +13,9 @@ import { Eye, X, MapPin, Package, FileText, Phone, Mail, Truck, Clock, CheckCirc
 interface OrdersTableProps {
   orders: Order[]
   userRole?: UserRole | null
+  page?: number
+  perPage?: number
+  total?: number
 }
 
 function InvoiceCell({ orderId, value, canEdit }: { orderId: string; value: boolean; canEdit: boolean }) {
@@ -284,10 +288,71 @@ function SlaBadge({
   )
 }
 
-export default function OrdersTable({ orders, userRole }: OrdersTableProps) {
+export default function OrdersTable({
+  orders,
+  userRole,
+  page = 1,
+  perPage = 50,
+  total = 0,
+}: OrdersTableProps) {
   const canEditInvoice = userRole === 'admin' || userRole === 'manager'
   const [detailOrder, setDetailOrder] = useState<Order | null>(null)
   const [shippingLabelUrl, setShippingLabelUrl] = useState<string | null>(null)
+
+  // Estado para "Cargar 50 mas" (acumulativo en la misma pagina, sin
+  // navegar por URL). Se resetea cuando cambian las props server-side
+  // (cambio de filtro, cambio de pagina, refresh por Realtime).
+  const [extraOrders, setExtraOrders] = useState<Order[]>([])
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [errorMore, setErrorMore] = useState<string | null>(null)
+
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    setExtraOrders([])
+    setErrorMore(null)
+  }, [orders])
+
+  const allOrders = useMemo(() => [...orders, ...extraOrders], [orders, extraOrders])
+  const effectiveTotal = total > 0 ? total : allOrders.length
+  const totalLoaded = allOrders.length
+  const hasMore = totalLoaded < effectiveTotal
+  const totalPages = Math.max(1, Math.ceil(effectiveTotal / perPage))
+
+  async function handleLoadMore() {
+    if (loadingMore) return
+    setLoadingMore(true)
+    setErrorMore(null)
+    try {
+      const sp = new URLSearchParams(searchParams.toString())
+      const nextOffset = (page - 1) * perPage + totalLoaded
+      sp.set('offset', String(nextOffset))
+      sp.set('limit', String(perPage))
+      sp.delete('page')
+
+      const r = await fetch(`/api/orders/list?${sp.toString()}`, { cache: 'no-store' })
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}))
+        throw new Error(body.error ?? `HTTP ${r.status}`)
+      }
+      const json = (await r.json()) as { orders: Order[] }
+      setExtraOrders((prev) => [...prev, ...(json.orders ?? [])])
+    } catch (e) {
+      setErrorMore(e instanceof Error ? e.message : 'Error al cargar')
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
+  function navigateToPage(targetPage: number) {
+    const sp = new URLSearchParams(searchParams.toString())
+    if (targetPage <= 1) sp.delete('page')
+    else sp.set('page', String(targetPage))
+    const qs = sp.toString()
+    router.push(qs ? `${pathname}?${qs}` : pathname)
+  }
 
   if (orders.length === 0) {
     return (
@@ -355,7 +420,7 @@ export default function OrdersTable({ orders, userRole }: OrdersTableProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {orders.map((order) => {
+            {allOrders.map((order) => {
               const isFullyComplete = order.prepared && order.shipped && (!!order.shipping_label_url || !!order.tracking_number)
               return (
               <tr
@@ -485,6 +550,52 @@ export default function OrdersTable({ orders, userRole }: OrdersTableProps) {
           </tbody>
         </table>
       </div>
+
+      {/* Footer con paginacion + Cargar mas */}
+      <div className="flex flex-col gap-2 border-t border-gray-100 bg-gray-50 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+        <span className="text-gray-500">
+          Mostrando {totalLoaded} de {effectiveTotal} pedido{effectiveTotal !== 1 ? 's' : ''}
+          {totalPages > 1 && <> · pagina {page} de {totalPages}</>}
+        </span>
+        <div className="flex items-center gap-2">
+          {hasMore && (
+            <button
+              type="button"
+              onClick={handleLoadMore}
+              disabled={loadingMore}
+              className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+            >
+              {loadingMore ? 'Cargando...' : 'Cargar 50 mas'}
+            </button>
+          )}
+          {totalPages > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={() => navigateToPage(page - 1)}
+                disabled={page <= 1}
+                className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+              >
+                Anterior
+              </button>
+              <button
+                type="button"
+                onClick={() => navigateToPage(page + 1)}
+                disabled={page >= totalPages}
+                className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+              >
+                Siguiente
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {errorMore && (
+        <div className="border-t border-red-100 bg-red-50 px-4 py-2 text-xs text-red-700">
+          {errorMore}
+        </div>
+      )}
 
       {detailOrder && (
         <OrderDetailPopup

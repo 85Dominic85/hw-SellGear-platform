@@ -13,7 +13,10 @@ interface SearchParams {
   search?: string
   type?: string
   shipping?: string
+  page?: string
 }
+
+const PER_PAGE = 50
 
 export default async function OrdersPage({
   searchParams,
@@ -38,9 +41,13 @@ export default async function OrdersPage({
     userRole = (profile?.role as UserRole) ?? null
   }
 
+  // Paginacion server-side: ?page=N (default 1). 50 filas por pagina.
+  const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1)
+  const offset = (page - 1) * PER_PAGE
+
   let query = supabase
     .from('orders')
-    .select('*, order_items(*)')
+    .select('*, order_items(*)', { count: 'exact' })
     .order('created_at', { ascending: false })
 
   if (params.status) {
@@ -62,7 +69,8 @@ export default async function OrdersPage({
     )
   }
 
-  const { data: orders, error } = await query.limit(100)
+  const { data: orders, error, count } = await query.range(offset, offset + PER_PAGE - 1)
+  const total = count ?? 0
 
   return (
     <div className="px-6 py-8">
@@ -71,7 +79,7 @@ export default async function OrdersPage({
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Pedidos</h1>
           <p className="mt-1 text-sm text-gray-500">
-            {orders?.length ?? 0} pedido{orders?.length !== 1 ? 's' : ''}
+            {total} pedido{total !== 1 ? 's' : ''}
             {params.status || params.search ? ' encontrados' : ' en total'}
           </p>
         </div>
@@ -135,7 +143,13 @@ export default async function OrdersPage({
       )}
 
       {/* Table */}
-      <OrdersTable orders={orders ?? []} userRole={userRole} />
+      <OrdersTable
+        orders={orders ?? []}
+        userRole={userRole}
+        page={page}
+        perPage={PER_PAGE}
+        total={total}
+      />
     </div>
   )
 }
