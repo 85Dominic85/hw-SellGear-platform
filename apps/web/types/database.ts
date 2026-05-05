@@ -169,3 +169,27 @@ export interface OrderStatusLabel {
   color: string
   description: string
 }
+
+export interface AddressBookEntry {
+  id: string
+  created_at: string
+  updated_at: string
+  created_by: string | null
+  alias: string | null
+  name: string
+  venue_name: string | null
+  address: string
+  cp: string
+  city: string
+  province: string | null
+  phone: string | null
+  email: string | null
+  contact_person: string | null
+  notes: string | null
+  // search_text es columna generada, no se expone al cliente.
+}
+
+export type AddressBookInput = Omit<
+  AddressBookEntry,
+  'id' | 'created_at' | 'updated_at' | 'created_by'
+>

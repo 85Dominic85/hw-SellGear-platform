@@ -215,6 +215,23 @@ export default function SidebarNav({ userEmail, userRole, badgeCounts = {}, tota
         </div>
       )}
 
+      {/* Logistica - agenda y envios libres (Fase 4) */}
+      <div className="space-y-1">
+        <p className="px-2 text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
+          Logistica
+        </p>
+        <Link
+          href="/address-book"
+          className={linkClass(pathname.startsWith('/address-book'))}
+        >
+          <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          Agenda
+        </Link>
+      </div>
+
       {/* Admin - solo visible para admins */}
       {showAdmin && (
         <div className="space-y-1">

@@ -47,3 +47,21 @@ export function canRefreshTracking(role: UserRole | null | undefined): boolean {
 export function canComment(role: UserRole | null | undefined): boolean {
   return !!role && role !== 'viewer'
 }
+
+// ===== Agenda de direcciones (address_book) =====
+
+export function canReadAddressBook(role: UserRole | null | undefined): boolean {
+  return !!role
+}
+
+export function canCreateAddressBook(role: UserRole | null | undefined): boolean {
+  return !!role && (['hardware', 'admin'] as UserRole[]).includes(role)
+}
+
+export function canEditAddressBook(role: UserRole | null | undefined): boolean {
+  return canCreateAddressBook(role)
+}
+
+export function canDeleteAddressBook(role: UserRole | null | undefined): boolean {
+  return canCreateAddressBook(role)
+}
