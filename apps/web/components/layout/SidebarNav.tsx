@@ -215,11 +215,23 @@ export default function SidebarNav({ userEmail, userRole, badgeCounts = {}, tota
         </div>
       )}
 
-      {/* Logistica - agenda y envios libres (Fase 4) */}
+      {/* Logistica - agenda y envios libres */}
       <div className="space-y-1">
         <p className="px-2 text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
           Logistica
         </p>
+        <Link
+          href="/shipments"
+          className={linkClass(pathname.startsWith('/shipments'))}
+        >
+          <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 011 1h2m-9 0h6m4 0h2a1 1 0 001-1v-5a1 1 0 00-.293-.707L17 9V6a1 1 0 00-1-1h-3" />
+          </svg>
+          Envios
+        </Link>
         <Link
           href="/address-book"
           className={linkClass(pathname.startsWith('/address-book'))}

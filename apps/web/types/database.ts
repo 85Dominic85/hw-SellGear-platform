@@ -118,13 +118,90 @@ export interface Order {
 
 export interface ShippingEvent {
   id: number
-  order_id: string
+  /** XOR con shipment_id: exactamente uno de los dos viene rellenado. */
+  order_id: string | null
+  shipment_id: string | null
   carrier: string
   event_code: string
   event_label: string | null
   event_date: string
   raw_payload: Record<string, unknown> | null
   created_at: string
+}
+
+export interface Shipment {
+  id: string
+  shipment_id: string
+  created_at: string
+  updated_at: string
+  created_by: string | null
+  // Sender libre (no env vars)
+  sender_name: string
+  sender_address: string
+  sender_cp: string
+  sender_city: string
+  sender_phone: string | null
+  // Recipient
+  recipient_name: string
+  recipient_address: string
+  recipient_cp: string
+  recipient_city: string
+  recipient_phone: string | null
+  recipient_email: string | null
+  recipient_contact_person: string | null
+  // Detalles envio
+  service_code: string
+  packages: number
+  weight_kg: number
+  content: string | null
+  observations: string | null
+  return_shipment: boolean
+  reference: string | null
+  // TIPSA
+  albaran: string | null
+  tracking_number: string | null
+  tracking_public_url: string | null
+  carrier_guid: string | null
+  tracking_last_status: string | null
+  tracking_last_checked_at: string | null
+  shipped_at: string | null
+  delivered_at: string | null
+  shipping_label_url: string | null
+  notes: string | null
+  // joins (opcional)
+  shipping_events?: ShippingEvent[]
+  creator?: UserProfile
+}
+
+export interface ShipmentSenderInput {
+  name: string
+  address: string
+  cp: string
+  city: string
+  phone?: string | null
+}
+
+export interface ShipmentRecipientInput {
+  name: string
+  address: string
+  cp: string
+  city: string
+  phone?: string | null
+  email?: string | null
+  contact_person?: string | null
+}
+
+export interface ShipmentCreateInput {
+  sender: ShipmentSenderInput
+  recipient: ShipmentRecipientInput
+  service_code: string
+  packages?: number
+  weight_kg?: number
+  content?: string | null
+  observations?: string | null
+  return_shipment?: boolean
+  reference?: string | null
+  notes?: string | null
 }
 
 export interface OrderItem {

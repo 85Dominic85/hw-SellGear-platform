@@ -65,3 +65,17 @@ export function canEditAddressBook(role: UserRole | null | undefined): boolean {
 export function canDeleteAddressBook(role: UserRole | null | undefined): boolean {
   return canCreateAddressBook(role)
 }
+
+// ===== Envios libres (tabla shipments, sin order_id) =====
+
+export function canReadFreeShipments(role: UserRole | null | undefined): boolean {
+  return !!role
+}
+
+export function canCreateFreeShipment(role: UserRole | null | undefined): boolean {
+  return !!role && (['hardware', 'admin'] as UserRole[]).includes(role)
+}
+
+export function canDeleteFreeShipment(role: UserRole | null | undefined): boolean {
+  return role === 'admin'
+}
