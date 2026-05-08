@@ -278,17 +278,29 @@ describe('ConsEnvEstados', () => {
 // ==========================================================
 
 describe('parseTipsaDate', () => {
-  it('parses TIPSA date as MM/DD/YYYY (US format)', () => {
-    // TIPSA envia fechas en formato americano MM/DD/YYYY a pesar de ser
-    // servicio espanol. "02/06/2020" significa 6 de febrero de 2020 (mm=02, dd=06).
-    const iso = parseTipsaDate('02/06/2020 17:28:02')
-    expect(iso).toBe('2020-02-06T17:28:02.000Z')
+  it('treats TIPSA date as Europe/Madrid local time and converts to UTC (summer CEST +2)', () => {
+    // 06/15/2026 12:00:00 en horario verano espanol (CEST = UTC+2)
+    // -> UTC 10:00:00 del mismo dia
+    const iso = parseTipsaDate('06/15/2026 12:00:00')
+    expect(iso).toBe('2026-06-15T10:00:00.000Z')
   })
-  it('parses unambiguous MM/DD with day > 12', () => {
-    // El "28" solo puede ser dia. Esto desambigua MM/DD vs DD/MM.
-    // Fixture oficial: ConsEnvEstados_code4_response.txt
+  it('treats TIPSA date as Europe/Madrid and converts to UTC (winter CET +1)', () => {
+    // 01/15/2026 12:00:00 en horario invierno espanol (CET = UTC+1)
+    // -> UTC 11:00:00 del mismo dia
+    const iso = parseTipsaDate('01/15/2026 12:00:00')
+    expect(iso).toBe('2026-01-15T11:00:00.000Z')
+  })
+  it('parses unambiguous MM/DD with day > 12 (winter CET +1)', () => {
+    // El "28" solo puede ser dia. Desambigua MM/DD vs DD/MM.
+    // Noviembre 28 esta en horario CET (+1) => UTC = 17:50:44 - 1h = 16:50:44
     const iso = parseTipsaDate('11/28/2019 17:50:44')
-    expect(iso).toBe('2019-11-28T17:50:44.000Z')
+    expect(iso).toBe('2019-11-28T16:50:44.000Z')
+  })
+  it('parses summer date with CEST offset', () => {
+    // 02/06/2020 = 6 febrero 2020 17:28:02 hora Madrid (invierno CET +1)
+    // -> UTC 16:28:02
+    const iso = parseTipsaDate('02/06/2020 17:28:02')
+    expect(iso).toBe('2020-02-06T16:28:02.000Z')
   })
   it('returns a valid ISO string on malformed input', () => {
     const iso = parseTipsaDate('not a date')

@@ -74,6 +74,57 @@ export function isTerminalEvent(code: TipsaEventCode): boolean {
 }
 
 /**
+ * Codigo TIPSA que representa una "anotacion" (no un cambio de estado real).
+ * Codigo 3 = "Incidencia" pero TIPSA lo emite tambien para anotaciones
+ * post-entrega (ej. "entregado al portero", "ausente y dejado en buzon").
+ */
+const NOTE_CODE = '3'
+
+/**
+ * Calcula el "estado oficial" del envio entre una lista cronologica de eventos.
+ * El codigo 3 (Incidencia) DESPUES de un codigo 2 (Entregado) NO altera el estado:
+ * TIPSA usa el codigo 3 tambien para anotaciones post-entrega del repartidor.
+ * Devuelve el ultimo evento que NO sea solo una anotacion.
+ *
+ * Si todos los eventos son codigo 3 (incidencia previa real), devuelve el ultimo.
+ * Si la lista esta vacia devuelve null.
+ *
+ * Generico: acepta cualquier objeto via funcion `getCode` extractora. Asi sirve
+ * tanto para `TipsaShippingEvent` (parser SOAP) como para `ShippingEvent` (DB).
+ *
+ * Asume que `events` esta ordenado cronologicamente ascendente (del mas antiguo al mas reciente).
+ */
+export function resolveOfficialStatus<T>(
+  events: T[],
+  getCode: (e: T) => string,
+): T | null {
+  if (events.length === 0) return null
+  for (let i = events.length - 1; i >= 0; i--) {
+    if (getCode(events[i]) !== NOTE_CODE) return events[i]
+  }
+  return events[events.length - 1]
+}
+
+/**
+ * Devuelve true si el evento `events[index]` es una "anotacion post-entrega"
+ * (codigo 3 que vino despues de un codigo 2). En ese caso debe renderizarse
+ * con estilo secundario (no como incidencia real).
+ *
+ * Asume `events` ordenado cronologicamente ascendente.
+ */
+export function isPostDeliveryNote<T>(
+  events: T[],
+  index: number,
+  getCode: (e: T) => string,
+): boolean {
+  if (!events[index] || getCode(events[index]) !== NOTE_CODE) return false
+  for (let i = 0; i < index; i++) {
+    if (getCode(events[i]) === '2') return true
+  }
+  return false
+}
+
+/**
  * Lee TipsaConfig desde process.env.
  * Separa credenciales por entorno para poder flipar sin code deploy.
  */

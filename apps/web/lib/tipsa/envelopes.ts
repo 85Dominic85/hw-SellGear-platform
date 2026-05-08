@@ -308,22 +308,69 @@ export function parseEnvEstadosCdata(cdata: string): TipsaShippingEvent[] {
 /**
  * Fecha TIPSA "MM/DD/YYYY HH:MM:SS" -> ISO UTC.
  *
- * IMPORTANTE: TIPSA envia las fechas en formato AMERICANO (MM/DD/YYYY)
- * a pesar de ser un servicio espanol. Esto esta confirmado en los
- * fixtures oficiales (ej. ConsEnvEstados_code4_response.txt:
- *   D_FEC_HORA_ALTA="11/28/2019 17:50:44"
- * El "28" solo puede ser dia, asi que el orden es MM/DD).
+ * IMPORTANTE 1: TIPSA envia las fechas en formato AMERICANO (MM/DD/YYYY)
+ * a pesar de ser un servicio espanol. Confirmado en fixtures oficiales
+ * (ej. ConsEnvEstados_code4_response.txt: D_FEC_HORA_ALTA="11/28/2019 17:50:44").
+ * El "28" solo puede ser dia, asi que el orden es MM/DD.
  *
- * No usamos zona horaria precisa: al no tener tzdata en runtime, guardamos
- * como naive local converted a UTC. En la practica TIPSA devuelve hora
- * local del servicio; la diferencia <=2h es aceptable para el timeline.
+ * IMPORTANTE 2: TIPSA emite las horas como hora LOCAL Europe/Madrid
+ * (sin sufijo de timezone), no UTC. Esta funcion convierte correctamente
+ * a UTC respetando el horario de verano (CEST/CET) via Intl.DateTimeFormat.
  */
 export function parseTipsaDate(raw: string): string {
   const m = raw.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})$/)
   if (!m) return new Date().toISOString()
   const [, mm, dd, yyyy, hh, mi, ss] = m
-  // Tratamos como UTC para no depender de locale; acepta +/-2h vs local Spain.
-  return new Date(`${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}Z`).toISOString()
+  return tipsaLocalToUtcIso(yyyy, mm, dd, hh, mi, ss)
+}
+
+/**
+ * Convierte una fecha "ingenua" (sin timezone) interpretada como hora local
+ * Europe/Madrid a un ISO UTC string.
+ *
+ * Tecnica estandar V8 sin dependencias externas:
+ *  1. Construir Date "ingenuo" como si los componentes fueran UTC.
+ *  2. Formatear ese Date con timezone Madrid y comparar componentes.
+ *  3. La diferencia es el offset Madrid->UTC para esa fecha (DST aplicado).
+ *
+ * Ejemplos:
+ *  - 06/15/2026 12:00:00 (CEST, +2h) -> 2026-06-15T10:00:00.000Z
+ *  - 01/15/2026 12:00:00 (CET, +1h)  -> 2026-01-15T11:00:00.000Z
+ */
+function tipsaLocalToUtcIso(
+  yyyy: string,
+  mm: string,
+  dd: string,
+  hh: string,
+  mi: string,
+  ss: string,
+): string {
+  const naiveUtc = Date.UTC(+yyyy, +mm - 1, +dd, +hh, +mi, +ss)
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Madrid',
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+  const parts = Object.fromEntries(
+    fmt.formatToParts(new Date(naiveUtc)).map((p) => [p.type, p.value]),
+  )
+  // Algunos runtimes devuelven "hour=24" para medianoche; normalizamos.
+  const hourVal = parts.hour === '24' ? 0 : +parts.hour
+  const madridAsUtc = Date.UTC(
+    +parts.year,
+    +parts.month - 1,
+    +parts.day,
+    hourVal,
+    +parts.minute,
+    +parts.second,
+  )
+  const offsetMs = madridAsUtc - naiveUtc
+  return new Date(naiveUtc - offsetMs).toISOString()
 }
 
 // =========================================================

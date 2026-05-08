@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { fetchTracking } from '@/lib/tipsa/client'
-import { isTerminalEvent, loadTipsaConfig } from '@/lib/tipsa/services'
+import { isTerminalEvent, loadTipsaConfig, resolveOfficialStatus } from '@/lib/tipsa/services'
 
 export const runtime = 'nodejs'
 
@@ -84,16 +84,19 @@ export async function POST(request: NextRequest) {
       if (!insertError) inserted++
     }
 
-    const lastEvent = tracking.events[tracking.events.length - 1]
+    // Estado "oficial": ignora codigo 3 (Incidencia) cuando viene tras codigo 2 (Entregado).
+    // TIPSA usa codigo 3 tambien para anotaciones post-entrega del repartidor.
+    // Asumimos que tracking.events viene ordenado cronologicamente ascendente.
+    const officialEvent = resolveOfficialStatus(tracking.events, (e) => e.code)
     const now = new Date().toISOString()
 
     const updates: Record<string, unknown> = {
-      tracking_last_status: lastEvent?.code ?? null,
+      tracking_last_status: officialEvent?.code ?? null,
       tracking_last_checked_at: now,
     }
-    // Si el ultimo evento es terminal (entregado=2), marcar delivered_at si no estaba
-    if (lastEvent && isTerminalEvent(lastEvent.code)) {
-      updates.delivered_at = lastEvent.date
+    // Si el estado oficial es terminal (entregado=2 o devuelto=6), marcar delivered_at.
+    if (officialEvent && isTerminalEvent(officialEvent.code)) {
+      updates.delivered_at = officialEvent.date
     }
 
     await admin.from('orders').update(updates).eq('id', order.id)
@@ -102,7 +105,7 @@ export async function POST(request: NextRequest) {
       ok: true,
       events_count: tracking.events.length,
       inserted,
-      last_status: lastEvent?.code ?? null,
+      last_status: officialEvent?.code ?? null,
     })
   } catch (err) {
     const error = err as Error

@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ExternalLink, RefreshCw, Truck, Loader2, Trash2 } from 'lucide-react'
+import { AlertCircle, ExternalLink, Info, RefreshCw, Truck, Loader2, Trash2 } from 'lucide-react'
 import CreateShipmentModal from './CreateShipmentModal'
 import ShippingLabelViewer from './ShippingLabelViewer'
+import { isPostDeliveryNote, resolveOfficialStatus } from '@/lib/tipsa/services'
 import type { ShippingEvent } from '@/types/database'
 
 interface ShippingTrackingPanelProps {
@@ -137,10 +138,25 @@ export default function ShippingTrackingPanel({
   }
 
   // Con envio: tracking + timeline
+  // Eventos descendentes para render (mas reciente arriba)
   const sortedEvents = [...events].sort(
     (a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime(),
   )
-  const lastLabel = sortedEvents[0]?.event_label ?? labelForCode(trackingLastStatus)
+  // Eventos ascendentes para los helpers (mas antiguo primero)
+  const eventsAsc = [...events].sort(
+    (a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime(),
+  )
+  // Estado oficial: ignora codigo 3 (Incidencia) post-entrega.
+  const officialEvent = resolveOfficialStatus(eventsAsc, (e) => e.event_code)
+  const lastLabel =
+    officialEvent?.event_label ?? labelForCode(officialEvent?.event_code ?? trackingLastStatus)
+  // Set de IDs de eventos que son anotaciones post-entrega (codigo 3 tras codigo 2).
+  const postDeliveryNoteIds = new Set<number>(
+    eventsAsc
+      .filter((_, i) => isPostDeliveryNote(eventsAsc, i, (e) => e.event_code))
+      .map((e) => e.id),
+  )
+  const hasPostDeliveryNotes = postDeliveryNoteIds.size > 0
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -174,6 +190,14 @@ export default function ShippingTrackingPanel({
           <dt className="text-gray-500">Estado</dt>
           <dd className="font-medium text-gray-900">{lastLabel}</dd>
         </div>
+        {hasPostDeliveryNotes && (
+          <div className="mt-1 flex items-start gap-1.5 rounded-md bg-amber-50 px-2 py-1.5 text-[11px] text-amber-800">
+            <Info className="mt-0.5 h-3 w-3 flex-shrink-0" />
+            <span>
+              TIPSA registró una anotación posterior a la entrega (ver timeline).
+            </span>
+          </div>
+        )}
         <div className="flex justify-between">
           <dt className="text-gray-500">Albarán</dt>
           <dd className="font-mono text-gray-900">{trackingNumber}</dd>
@@ -216,15 +240,31 @@ export default function ShippingTrackingPanel({
         <>
           <h4 className="mb-2 text-xs font-medium text-gray-700">Timeline</h4>
           <ol className="space-y-1.5">
-            {sortedEvents.map((ev) => (
-              <li key={ev.id} className="flex items-start gap-2 text-xs">
-                <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-gray-400" />
-                <div>
-                  <p className="font-medium text-gray-900">{ev.event_label ?? ev.event_code}</p>
-                  <p className="text-gray-400">{formatDateTime(ev.event_date)}</p>
-                </div>
-              </li>
-            ))}
+            {sortedEvents.map((ev) => {
+              const isNote = postDeliveryNoteIds.has(ev.id)
+              const obs = extractObservation(ev.raw_payload)
+              return (
+                <li key={ev.id} className="flex items-start gap-2 text-xs">
+                  <span
+                    className={`mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full ${
+                      isNote ? 'bg-amber-400' : 'bg-gray-400'
+                    }`}
+                  />
+                  <div className="flex-1">
+                    <p
+                      className={`flex items-center gap-1 font-medium ${
+                        isNote ? 'text-amber-700' : 'text-gray-900'
+                      }`}
+                    >
+                      {isNote && <AlertCircle className="h-3 w-3" />}
+                      {isNote ? 'Anotación TIPSA' : ev.event_label ?? ev.event_code}
+                    </p>
+                    <p className="text-gray-400">{formatDateTime(ev.event_date)}</p>
+                    {obs && <p className="mt-0.5 text-gray-500">{obs}</p>}
+                  </div>
+                </li>
+              )
+            })}
           </ol>
         </>
       )}
@@ -295,6 +335,7 @@ function labelForCode(code: string | null): string {
 function formatDateTime(iso: string): string {
   try {
     return new Date(iso).toLocaleString('es-ES', {
+      timeZone: 'Europe/Madrid',
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -304,6 +345,21 @@ function formatDateTime(iso: string): string {
   } catch {
     return iso
   }
+}
+
+/**
+ * Intenta extraer una observacion humana del raw_payload del evento.
+ * ConsEnvEstados no devuelve observaciones, pero si en el futuro se anaden
+ * eventos de ConsEnvIncidencias (campo T_OBS), aqui se renderizarian.
+ */
+function extractObservation(raw: Record<string, unknown> | null): string | null {
+  if (!raw) return null
+  const candidates = ['T_OBS', 'V_OBS', 'observation', 'obs', 'comment']
+  for (const key of candidates) {
+    const v = raw[key]
+    if (typeof v === 'string' && v.trim().length > 0) return v.trim()
+  }
+  return null
 }
 
 function relativeTime(iso: string): string {
