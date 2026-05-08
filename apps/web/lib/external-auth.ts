@@ -2,21 +2,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import { timingSafeEqual } from 'crypto'
 
 /**
- * Valida el header `X-API-Key` contra `MAIN_PORTAL_API_KEY` (env).
- * Comparación con timingSafeEqual para mitigar timing attacks.
+ * Valida el header `X-API-Key` contra la env var indicada (default
+ * `MAIN_PORTAL_API_KEY`). Comparación con timingSafeEqual para mitigar
+ * timing attacks.
  *
  * Reusable para futuros endpoints de integración server-to-server.
+ * Para endpoints con scope distinto, pasar otra env var (ej. `HWTOOLBOX_API_KEY`).
  */
 export function validateApiKey(
   request: NextRequest,
+  envVarName: string = 'MAIN_PORTAL_API_KEY',
 ):
   | { ok: true }
   | { ok: false; response: NextResponse } {
-  const expected = process.env.MAIN_PORTAL_API_KEY
+  const expected = process.env[envVarName]
 
   // Config inválida — la app no está lista para servir este endpoint.
   if (!expected) {
-    console.error('[external-auth] MAIN_PORTAL_API_KEY no configurada')
+    console.error(`[external-auth] ${envVarName} no configurada`)
     return {
       ok: false,
       response: NextResponse.json(

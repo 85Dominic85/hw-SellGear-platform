@@ -110,3 +110,88 @@ export interface ExternalMetricsResponse {
   /** KPIs operativos del departamento Hardware (opcional, opt-in). */
   ops?: ExternalMetricsOps
 }
+
+// =============================================================
+// Tipos públicos del endpoint /api/external/hwtoolbox/orders
+// Consumido por HWToolbox (gestión de inventario read-only).
+// Solo expone pedidos en estados de envío:
+//   preparado | enviado | enviado_proveedor | completado | bloqueado
+// =============================================================
+
+export interface HwToolboxOrderListItem {
+  operation_id: string
+  customer_name: string
+  venue_name: string | null
+  purchase_type: PurchaseType | null
+  status: OrderStatus
+  /** Importe total con IVA en EUR (puede ser null para pedidos legacy sin items). */
+  amount: number | null
+  created_at: string
+}
+
+export interface HwToolboxListPagination {
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface HwToolboxListResponse {
+  generated_at: string
+  pagination: HwToolboxListPagination
+  orders: HwToolboxOrderListItem[]
+}
+
+export interface HwToolboxAe {
+  full_name: string | null
+  email: string | null
+  /** Referencia AE manual (texto libre en el pedido). */
+  ae_ref: string | null
+}
+
+export interface HwToolboxOrderItem {
+  product_code: string | null
+  product_name: string
+  qty: number
+  unit_price_cents: number
+  vat_rate: number
+  discount_pct: number
+  /** Base imponible (subtotal sin IVA, descuento aplicado). */
+  subtotal_cents: number
+  vat_amount_cents: number
+  /** Total con IVA. */
+  total_cents: number
+  currency: 'EUR'
+}
+
+export interface HwToolboxOrderTotals {
+  /** Suma de qty * unit_price antes de descuentos. */
+  subtotal_cents: number
+  /** Suma de descuentos aplicados. */
+  discount_cents: number
+  /** Base imponible (subtotal - descuento). */
+  taxable_cents: number
+  vat_amount_cents: number
+  /** Total con IVA. */
+  total_cents: number
+  currency: 'EUR'
+}
+
+export interface HwToolboxOrderDetail {
+  operation_id: string
+  customer_name: string
+  venue_name: string | null
+  purchase_type: PurchaseType | null
+  /** Etiqueta humana en es-ES (ej. "Hardware One Off"). */
+  purchase_type_label: string | null
+  status: OrderStatus
+  created_at: string
+  /** Null si el pedido no tiene created_by (legacy Typeform). */
+  ae: HwToolboxAe | null
+  items: HwToolboxOrderItem[]
+  totals: HwToolboxOrderTotals
+}
+
+export interface HwToolboxDetailResponse {
+  generated_at: string
+  order: HwToolboxOrderDetail
+}
