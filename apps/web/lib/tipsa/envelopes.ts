@@ -306,14 +306,22 @@ export function parseEnvEstadosCdata(cdata: string): TipsaShippingEvent[] {
 }
 
 /**
- * Fecha TIPSA "DD/MM/YYYY HH:MM:SS" -> ISO UTC (asumimos Europe/Madrid y convertimos aproximadamente).
- * No usamos zona horaria precisa: al no tener tzdata en runtime, guardamos como naive local converted a UTC.
- * En la practica TIPSA devuelve hora local del servicio; la diferencia <=2h es aceptable para el timeline.
+ * Fecha TIPSA "MM/DD/YYYY HH:MM:SS" -> ISO UTC.
+ *
+ * IMPORTANTE: TIPSA envia las fechas en formato AMERICANO (MM/DD/YYYY)
+ * a pesar de ser un servicio espanol. Esto esta confirmado en los
+ * fixtures oficiales (ej. ConsEnvEstados_code4_response.txt:
+ *   D_FEC_HORA_ALTA="11/28/2019 17:50:44"
+ * El "28" solo puede ser dia, asi que el orden es MM/DD).
+ *
+ * No usamos zona horaria precisa: al no tener tzdata en runtime, guardamos
+ * como naive local converted a UTC. En la practica TIPSA devuelve hora
+ * local del servicio; la diferencia <=2h es aceptable para el timeline.
  */
 export function parseTipsaDate(raw: string): string {
   const m = raw.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})$/)
   if (!m) return new Date().toISOString()
-  const [, dd, mm, yyyy, hh, mi, ss] = m
+  const [, mm, dd, yyyy, hh, mi, ss] = m
   // Tratamos como UTC para no depender de locale; acepta +/-2h vs local Spain.
   return new Date(`${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}Z`).toISOString()
 }
