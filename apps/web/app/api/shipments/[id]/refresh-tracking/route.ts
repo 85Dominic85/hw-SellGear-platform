@@ -37,7 +37,7 @@ export async function POST(_request: NextRequest, { params }: Ctx) {
   const admin = createAdminClient()
   const { data: shipment, error } = await admin
     .from('shipments')
-    .select('id, shipment_id, tracking_number')
+    .select('id, shipment_id, tracking_number, status')
     .eq('id', id)
     .single()
   if (error || !shipment) {
@@ -79,6 +79,36 @@ export async function POST(_request: NextRequest, { params }: Ctx) {
     }
     if (lastEvent && isTerminalEvent(lastEvent.code)) {
       updates.delivered_at = lastEvent.date
+    }
+
+    // Auto-sync del estado manual SOLO si sigue en 'pendiente' (no tocado por usuario):
+    //   - TIPSA 2 (Entregado) -> 'entregado'
+    //   - TIPSA 6 (Devuelto origen) -> 'devuelto'
+    //   - TIPSA 3 (Incidencia) -> 'incidencia'
+    //   - TIPSA 4 (En transito) o 5 (En reparto) -> 'en_curso'
+    // Si el usuario ya cambio el estado manualmente, NO se pisa.
+    const currentStatus = shipment.status as string | undefined
+    if (currentStatus === 'pendiente' && lastEvent) {
+      const map: Record<string, string> = {
+        '2': 'entregado',
+        '3': 'incidencia',
+        '4': 'en_curso',
+        '5': 'en_curso',
+        '6': 'devuelto',
+      }
+      const newManualStatus = map[lastEvent.code]
+      if (newManualStatus && newManualStatus !== currentStatus) {
+        updates.status = newManualStatus
+        // Auditoria del cambio automatico.
+        await admin.from('status_history').insert({
+          shipment_id: shipment.id,
+          shipment_from_status: 'pendiente',
+          shipment_to_status: newManualStatus,
+          changed_by: null,
+          changed_at: now,
+          comment: `Auto-sync desde TIPSA evento ${lastEvent.code}`,
+        })
+      }
     }
 
     await admin.from('shipments').update(updates).eq('id', shipment.id)

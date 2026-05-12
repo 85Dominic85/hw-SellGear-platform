@@ -12,7 +12,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const SELECT =
-  'id, shipment_id, created_at, updated_at, created_by, sender_name, sender_address, sender_cp, sender_city, sender_phone, recipient_name, recipient_address, recipient_cp, recipient_city, recipient_phone, recipient_email, recipient_contact_person, service_code, packages, weight_kg, content, observations, return_shipment, saturday_delivery, reference, albaran, tracking_number, tracking_public_url, carrier_guid, tracking_last_status, tracking_last_checked_at, shipped_at, delivered_at, shipping_label_url, notes'
+  'id, shipment_id, status, created_at, updated_at, created_by, sender_name, sender_address, sender_cp, sender_city, sender_phone, recipient_name, recipient_address, recipient_cp, recipient_city, recipient_phone, recipient_email, recipient_contact_person, service_code, packages, weight_kg, content, observations, return_shipment, saturday_delivery, reference, albaran, tracking_number, tracking_public_url, carrier_guid, tracking_last_status, tracking_last_checked_at, shipped_at, delivered_at, shipping_label_url, notes'
 
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 100

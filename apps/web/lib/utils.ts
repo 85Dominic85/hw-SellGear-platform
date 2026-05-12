@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import type { OrderStatus, PurchaseType } from '@/types/database'
+import type { OrderStatus, PurchaseType, ShipmentStatus } from '@/types/database'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -46,6 +46,40 @@ export const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   falta_informacion:        ['nuevo', 'pendiente', 'enviado_proveedor', 'enviado', 'pagado', 'completado', 'bloqueado'],
   bloqueado:                ['nuevo', 'pendiente', 'enviado_proveedor', 'enviado', 'pagado', 'completado', 'falta_informacion'],
   completado:               ['nuevo', 'pendiente'],
+}
+
+// =============================================================
+// Shipments (envios libres) - estado manual
+// =============================================================
+
+export const SHIPMENT_STATUS_LABELS: Record<ShipmentStatus, string> = {
+  pendiente:    'Pendiente',
+  en_curso:     'En curso',
+  entregado:    'Entregado',
+  incidencia:   'Incidencia',
+  devuelto:     'Devuelto',
+  cancelado:    'Cancelado',
+}
+
+export const SHIPMENT_STATUS_COLORS: Record<ShipmentStatus, string> = {
+  pendiente:    'bg-gray-100 text-gray-800',
+  en_curso:     'bg-blue-100 text-blue-800',
+  entregado:    'bg-green-50 text-green-700 ring-2 ring-green-500 font-semibold',
+  incidencia:   'bg-red-100 text-red-800',
+  devuelto:     'bg-amber-100 text-amber-800',
+  cancelado:    'bg-gray-200 text-gray-700 line-through',
+}
+
+// Transiciones permitidas. 'cancelado' es semi-terminal (solo se puede
+// revertir a pendiente). 'entregado' tambien lo es: si necesitas
+// revertir, vuelve a pendiente y de ahi se reabre el flujo.
+export const SHIPMENT_STATUS_TRANSITIONS: Record<ShipmentStatus, ShipmentStatus[]> = {
+  pendiente:    ['en_curso', 'entregado', 'incidencia', 'devuelto', 'cancelado'],
+  en_curso:     ['pendiente', 'entregado', 'incidencia', 'devuelto', 'cancelado'],
+  entregado:    ['pendiente', 'incidencia'],
+  incidencia:   ['pendiente', 'en_curso', 'entregado', 'devuelto', 'cancelado'],
+  devuelto:     ['pendiente', 'incidencia'],
+  cancelado:    ['pendiente'],
 }
 
 // Canarias: detección estricta por código postal.

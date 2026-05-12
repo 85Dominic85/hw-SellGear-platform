@@ -131,9 +131,18 @@ export interface ShippingEvent {
   created_at: string
 }
 
+export type ShipmentStatus =
+  | 'pendiente'
+  | 'en_curso'
+  | 'entregado'
+  | 'incidencia'
+  | 'devuelto'
+  | 'cancelado'
+
 export interface Shipment {
   id: string
   shipment_id: string
+  status: ShipmentStatus
   created_at: string
   updated_at: string
   created_by: string | null
