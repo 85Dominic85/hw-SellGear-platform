@@ -44,9 +44,9 @@ Variables requeridas en Edge Functions (Supabase Dashboard → Settings → Edge
 
 ```bash
 # Con Supabase CLI
-npx supabase login
-npx supabase link --project-ref <project-ref>
-npx supabase db push
+pnpm dlx supabase login
+pnpm dlx supabase link --project-ref <project-ref>
+pnpm dlx supabase db push
 
 # O manualmente: copiar y ejecutar en Supabase SQL Editor:
 # supabase/migrations/20260219000001_create_schema.sql
@@ -64,17 +64,19 @@ npx supabase db push
 
 ```bash
 cd apps/web
-npm install
-npm run dev
+pnpm install
+pnpm dev
 # → http://localhost:3000
 ```
+
+> Requiere **pnpm 11+**. Si tienes una versión distinta, activa corepack: `corepack enable && corepack prepare pnpm@11 --activate`.
 
 ### 5. Deploy Edge Functions
 
 ```bash
-npx supabase functions deploy typeform-webhook
-npx supabase functions deploy sync-to-sheets
-npx supabase functions deploy notify-slack
+pnpm dlx supabase functions deploy typeform-webhook
+pnpm dlx supabase functions deploy sync-to-sheets
+pnpm dlx supabase functions deploy notify-slack
 ```
 
 ### 6. Configurar webhook en Typeform
@@ -118,8 +120,8 @@ npx supabase functions deploy notify-slack
 
 ```bash
 cd apps/web
-npm test          # 36 tests (typeform parsing, sheets sync, utils)
-npm run test:coverage
+pnpm test          # 36 tests (typeform parsing, sheets sync, utils)
+pnpm test:coverage
 ```
 
 ## Migración histórica

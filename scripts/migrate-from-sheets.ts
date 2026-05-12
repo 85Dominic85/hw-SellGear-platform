@@ -1,14 +1,14 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S pnpm dlx tsx
 // =============================================================
 // Script: migrate-from-sheets.ts
 // Migra datos históricos de Google Sheets → Supabase
 //
 // Uso:
-//   npx tsx scripts/migrate-from-sheets.ts --csv ./data/pedidos.csv --tab Pedidos
-//   npx tsx scripts/migrate-from-sheets.ts --csv ./data/kit-digital.csv --tab "KIT Digital"
+//   pnpm dlx tsx scripts/migrate-from-sheets.ts --csv ./data/pedidos.csv --tab Pedidos
+//   pnpm dlx tsx scripts/migrate-from-sheets.ts --csv ./data/kit-digital.csv --tab "KIT Digital"
 //
 // Requisitos:
-//   npm install tsx @supabase/supabase-js csv-parse
+//   pnpm add -D tsx @supabase/supabase-js csv-parse   (en apps/web)
 //   SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY en .env
 // =============================================================
 
@@ -34,7 +34,7 @@ const csvIndex = args.indexOf('--csv')
 const tabIndex = args.indexOf('--tab')
 
 if (csvIndex === -1 || tabIndex === -1) {
-  console.error('❌ Uso: npx tsx scripts/migrate-from-sheets.ts --csv <file.csv> --tab <nombre_pestaña>')
+  console.error('❌ Uso: pnpm dlx tsx scripts/migrate-from-sheets.ts --csv <file.csv> --tab <nombre_pestaña>')
   process.exit(1)
 }
 

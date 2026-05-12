@@ -5,14 +5,16 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 First, run the development server:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
+
+> This project uses **pnpm 11+** as its package manager (enforced via `packageManager` in `package.json`). If you have a different version, enable [corepack](https://nodejs.org/api/corepack.html):
+>
+> ```bash
+> corepack enable
+> corepack prepare pnpm@11 --activate
+> ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
