@@ -5,11 +5,11 @@
 Importa pedidos históricos desde CSV exportado de Google Sheets.
 
 ```bash
-# Instalar dependencias locales del script
-npm install tsx @supabase/supabase-js csv-parse
+# Instalar dependencias usadas por el script (en apps/web)
+cd apps/web && pnpm add -D tsx @supabase/supabase-js csv-parse && cd ../..
 
 # Dry run (no escribe en Supabase)
-npx tsx scripts/migrate-from-sheets.ts \
+pnpm dlx tsx scripts/migrate-from-sheets.ts \
   --csv ./data/pedidos.csv \
   --tab "Pedidos" \
   --dry-run
@@ -17,7 +17,7 @@ npx tsx scripts/migrate-from-sheets.ts \
 # Importación real
 SUPABASE_URL=https://xxx.supabase.co \
 SUPABASE_SERVICE_ROLE_KEY=xxx \
-npx tsx scripts/migrate-from-sheets.ts \
+pnpm dlx tsx scripts/migrate-from-sheets.ts \
   --csv ./data/pedidos.csv \
   --tab "Pedidos"
 ```
@@ -34,7 +34,7 @@ npx tsx scripts/migrate-from-sheets.ts \
 
 ```bash
 for tab in "Pedidos" "KIT Digital" "Hardware One Off" "Hardware Financiación" "Transferencias SaaS"; do
-  npx tsx scripts/migrate-from-sheets.ts \
+  pnpm dlx tsx scripts/migrate-from-sheets.ts \
     --csv "./data/${tab}.csv" \
     --tab "${tab}"
 done

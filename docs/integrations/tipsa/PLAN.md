@@ -331,7 +331,7 @@ Validaciones client + server:
 ## 9. Testing
 
 ```bash
-cd apps/web && npm test
+cd apps/web && pnpm test
 
 # Nuevos tests:
 # - lib/tipsa/envelopes.test.ts → builders y parsers con fixtures de docs/integrations/tipsa/extracted/Ejemplos/
@@ -346,7 +346,7 @@ Fixtures: usar los `.txt` de los ejemplos de TIPSA (ya descargados en `docs/inte
 
 ```bash
 # 1. Aplicar migración
-npx supabase db push
+pnpm dlx supabase db push
 
 # 2. Crear bucket Storage
 # (Dashboard → Storage → New bucket → "shipping-labels" privado)
@@ -354,7 +354,7 @@ npx supabase db push
 # 3. Configurar .env.local con TIPSA_TEST_*
 
 # 4. Arrancar dev
-cd apps/web && npm run dev
+cd apps/web && pnpm dev
 
 # 5. Flujo manual:
 # - Abrir un pedido en estado "pendiente" con dirección completa
@@ -476,7 +476,7 @@ curl -H "X-Cron-Secret: $CRON_SECRET" http://localhost:3000/api/cron/tipsa-refre
 
 ### 14.6 Decisiones explícitas de no hacer
 
-- **No** usar `npm soap` (overkill para 4 métodos, añade ~1MB).
+- **No** usar el paquete `soap` (overkill para 4 métodos, añade ~1MB).
 - **No** crear agentes/skills nuevos: los existentes cubren el caso.
 - **No** activar MCP Slack/Gmail en esta fase.
 - **No** introducir ORM: seguimos con cliente Supabase directo.

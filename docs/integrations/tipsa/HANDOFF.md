@@ -11,7 +11,7 @@
 1. **Lee este archivo + [PLAN.md](./PLAN.md) primero.** Todo el contexto está ahí.
 2. El código de la Fase 1 está **completo y en `feature/mvp-foundation`**. El usuario tendrá que hacer `git pull` en el ordenador nuevo.
 3. El bloqueo actual es **credenciales TIPSA**: Heliopolis (@tip-sa.com) nos dio unas credenciales que `wsval.tipsa-dinapaq.com` rechaza con `1: Cliente o password incorrecto.`. Se les escribió un email pidiendo confirmación.
-4. Cuando Heliopolis responda con credenciales válidas, el flujo es: actualizar `TIPSA_TEST_*` en `.env.local`, reiniciar `npm run dev`, abrir pedido → pulsar **Crear envío TIPSA**. Debería funcionar a la primera.
+4. Cuando Heliopolis responda con credenciales válidas, el flujo es: actualizar `TIPSA_TEST_*` en `.env.local`, reiniciar `pnpm dev`, abrir pedido → pulsar **Crear envío TIPSA**. Debería funcionar a la primera.
 
 ---
 
@@ -91,7 +91,7 @@ Contenido del email mandado a `heliopolis@tip-sa.com` con el payload SOAP exacto
    TIPSA_TEST_CLIENT_CODE=<el-correcto>
    TIPSA_TEST_PASSWORD=<el-correcto>
    ```
-2. `Ctrl+C` en la terminal del `npm run dev` → `npm run dev` (Next.js lee `.env.local` solo al arrancar).
+2. `Ctrl+C` en la terminal del `pnpm dev` → `pnpm dev` (Next.js lee `.env.local` solo al arrancar).
 3. Refrescar el navegador, abrir un pedido con `shipping_address` que tenga CP de 5 dígitos (ej: `Calle Betis 12, 41010 Sevilla`).
 4. Sidebar → **Crear envío TIPSA** → servicio `24h estándar (48)`, 1 bulto, 1 kg → **Crear**.
 

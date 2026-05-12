@@ -12,7 +12,7 @@ Generate comprehensive test suite for: $ARGUMENTS
 
 - Test framework: @package.json or @jest.config.js or @vitest.config.js (detect framework)
 - Existing tests: !`find . -name "*.test.*" -o -name "*.spec.*" | head -5`
-- Test coverage: !`npm run test:coverage 2>/dev/null || echo "No coverage script"`
+- Test coverage: !`pnpm test:coverage 2>/dev/null || echo "No coverage script"`
 - Target file: @$ARGUMENTS (if file path provided)
 
 ## Task
