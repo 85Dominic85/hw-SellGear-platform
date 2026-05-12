@@ -6,6 +6,7 @@ import { cartTotals } from '@/lib/pricing'
 import { canCreateOrder } from '@/lib/auth'
 import { validateLineDiscount } from '@/lib/orders-validation'
 import { upsertAddressFromOrder } from '@/lib/address-book/upsert'
+import { isCanaryIslands } from '@/lib/utils'
 
 const SHEET_TAB_MAP: Record<string, string> = {
   kit_digital: 'KIT Digital',
@@ -222,6 +223,11 @@ export async function POST(request: NextRequest) {
     unit_price_cents: number
     vat_rate: number
   }
+  // IGIC 7 % si el CP de envio es de Canarias (35xxx / 38xxx). Snapshot
+  // inmutable en order_items.vat_rate. Solo afecta a pedidos nuevos.
+  const igicApplies = isCanaryIslands(shippingCp)
+  const overrideVatRate: number | null = igicApplies ? 7 : null
+
   const resolved: ResolvedLine[] = []
   for (const it of cartInputs) {
     const product = productMap.get(it.product_id)
@@ -261,7 +267,9 @@ export async function POST(request: NextRequest) {
       qty: it.qty,
       discount_pct: it.discount_pct,
       unit_price_cents: unitPriceCents,
-      vat_rate: Number(product.vat_rate),
+      // Snapshot: si el envio es a Canarias aplicamos IGIC 7 %; si no, IVA
+      // del producto (21 % por defecto). Decision por shipping_cp.
+      vat_rate: overrideVatRate ?? Number(product.vat_rate),
     })
   }
 

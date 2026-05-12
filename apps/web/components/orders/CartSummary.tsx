@@ -1,12 +1,18 @@
 'use client'
 
-import { cartTotals, formatEurosCents } from '@/lib/pricing'
+import { cartTotals, effectiveTaxLabel, formatEurosCents } from '@/lib/pricing'
 import type { Product } from '@/types/database'
 import type { CartLineState } from './CartLine'
 
 interface CartSummaryProps {
   lines: CartLineState[]
   products: Product[]
+  /**
+   * Si se provee, sobreescribe vat_rate para todas las lineas en el preview.
+   * Lo usa NewOrderPage para mostrar IGIC 7 % cuando el shipping_cp es canario.
+   * Es solo preview UI; el servidor recalcula al insertar.
+   */
+  vatRateOverride?: number | null
 }
 
 interface RowProps {
@@ -29,7 +35,11 @@ function Row({ label, value, bold, highlight }: RowProps) {
   )
 }
 
-export default function CartSummary({ lines, products }: CartSummaryProps) {
+export default function CartSummary({
+  lines,
+  products,
+  vatRateOverride = null,
+}: CartSummaryProps) {
   const productById = new Map(products.map((p) => [p.id, p]))
 
   const computed = lines
@@ -42,7 +52,7 @@ export default function CartSummary({ lines, products }: CartSummaryProps) {
         priceCents,
         qty: l.qty,
         discountPct: l.discount_pct,
-        vatRate: Number(p.vat_rate),
+        vatRate: vatRateOverride ?? Number(p.vat_rate),
         packageCount: p.package_count,
       }
     })
@@ -69,7 +79,10 @@ export default function CartSummary({ lines, products }: CartSummaryProps) {
           label="Base imponible"
           value={formatEurosCents(totals.taxableCents)}
         />
-        <Row label="IVA (21 %)" value={`+ ${formatEurosCents(totals.vatCents)}`} />
+        <Row
+          label={effectiveTaxLabel(computed.map((c) => c.vatRate))}
+          value={`+ ${formatEurosCents(totals.vatCents)}`}
+        />
         <div className="my-2 border-t border-gray-200" />
         <Row
           label="TOTAL"

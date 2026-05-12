@@ -78,6 +78,16 @@ describe('lineTotalCents', () => {
     // base imponible 0 → IVA 0 → total 0
     expect(lineTotalCents(13640, 1, 100, 21)).toBe(0)
   })
+
+  it('TPV con IGIC 7% (Canarias)', () => {
+    // 62700 * 1.07 = 67089
+    expect(lineTotalCents(62700, 1, 0, 7)).toBe(67089)
+  })
+
+  it('IGIC 7% con descuento 10%', () => {
+    // base 56430, IGIC 56430 * 0.07 = 3950.1 → 3950 ; total 60380
+    expect(lineTotalCents(62700, 1, 10, 7)).toBe(60380)
+  })
 })
 
 describe('cartTotals', () => {
@@ -129,6 +139,27 @@ describe('cartTotals', () => {
     expect(t.discountCents).toBe(13640)
     expect(t.taxableCents).toBe(62700)
     expect(t.totalCents).toBe(75867)
+  })
+
+  it('Canarias: TPV con IGIC 7%', () => {
+    const t = cartTotals([{ priceCents: 62700, qty: 1, discountPct: 0, vatRate: 7 }])
+    expect(t.subtotalCents).toBe(62700)
+    expect(t.discountCents).toBe(0)
+    expect(t.taxableCents).toBe(62700)
+    expect(t.vatCents).toBe(4389)
+    expect(t.totalCents).toBe(67089)
+  })
+
+  it('Mezcla IVA + IGIC en distintas lineas', () => {
+    // 1 linea TPV 21% peninsular + 1 linea TPV 7% Canarias
+    const t = cartTotals([
+      { priceCents: 62700, qty: 1, discountPct: 0, vatRate: 21 },
+      { priceCents: 62700, qty: 1, discountPct: 0, vatRate: 7 },
+    ])
+    expect(t.subtotalCents).toBe(125400)
+    expect(t.taxableCents).toBe(125400)
+    expect(t.vatCents).toBe(13167 + 4389)
+    expect(t.totalCents).toBe(125400 + 13167 + 4389)
   })
 })
 

@@ -86,3 +86,34 @@ export function formatEurosCents(cents: number): string {
     maximumFractionDigits: 2,
   }).format(cents / 100)
 }
+
+// =============================================================
+// Tipo de impuesto (IVA peninsular 21% / IGIC Canarias 7% / none)
+// Convencion: vat_rate=7 -> IGIC; vat_rate=0 -> ninguno; resto -> IVA.
+// =============================================================
+
+export type TaxType = 'iva' | 'igic' | 'none'
+
+export function taxType(vatRate: number): TaxType {
+  if (vatRate === 0) return 'none'
+  if (vatRate === 7) return 'igic'
+  return 'iva'
+}
+
+export function taxLabel(vatRate: number): string {
+  const tt = taxType(vatRate)
+  if (tt === 'igic') return `IGIC ${vatRate} %`
+  if (tt === 'none') return 'Sin impuesto'
+  return `IVA ${vatRate} %`
+}
+
+/**
+ * Etiqueta para un conjunto de tasas. Si todas las lineas comparten tasa,
+ * devuelve la etiqueta de esa tasa; si hay mezcla, "Impuestos (mixto)".
+ */
+export function effectiveTaxLabel(rates: number[]): string {
+  const unique = Array.from(new Set(rates))
+  if (unique.length === 0) return ''
+  if (unique.length === 1) return taxLabel(unique[0])
+  return 'Impuestos (mixto)'
+}

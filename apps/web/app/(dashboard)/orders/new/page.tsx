@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { PurchaseType, Product } from '@/types/database'
-import { PURCHASE_TYPE_LABELS } from '@/lib/utils'
+import { PURCHASE_TYPE_LABELS, isCanaryIslands } from '@/lib/utils'
 import CartLine, { EMPTY_LINE, type CartLineState } from '@/components/orders/CartLine'
 import CartSummary from '@/components/orders/CartSummary'
 import BankReceiptInput from '@/components/orders/BankReceiptInput'
@@ -484,6 +484,7 @@ export default function NewOrderPage() {
                   canRemove={items.length > 1}
                   onChange={updateItem}
                   onRemove={removeItem}
+                  vatRateOverride={isCanaryIslands(form.shipping_cp) ? 7 : null}
                 />
               ))}
             </div>
@@ -496,7 +497,11 @@ export default function NewOrderPage() {
 
         {/* Cart summary */}
         {!loadingCatalog && !catalogError && (
-          <CartSummary lines={items} products={products} />
+          <CartSummary
+            lines={items}
+            products={products}
+            vatRateOverride={isCanaryIslands(form.shipping_cp) ? 7 : null}
+          />
         )}
 
         {/* Error + Submit */}

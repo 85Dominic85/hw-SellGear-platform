@@ -31,6 +31,12 @@ interface CartLineProps {
   canRemove: boolean
   onChange: (index: number, partial: Partial<CartLineState>) => void
   onRemove: (index: number) => void
+  /**
+   * Si se provee, sobreescribe vat_rate del producto en el preview de la
+   * linea (ej. IGIC 7 % cuando shipping_cp es canario). Es solo UI; el
+   * servidor recalcula al insertar.
+   */
+  vatRateOverride?: number | null
 }
 
 export default function CartLine({
@@ -40,6 +46,7 @@ export default function CartLine({
   canRemove,
   onChange,
   onRemove,
+  vatRateOverride = null,
 }: CartLineProps) {
   const product = products.find((p) => p.id === line.product_id) ?? null
   const isOtro = product?.code === 'otro'
@@ -47,7 +54,8 @@ export default function CartLine({
   const priceCents = isOtro
     ? line.unit_price_override_cents ?? 0
     : product?.price_cents ?? 0
-  const vatRate = product ? Number(product.vat_rate) : 21
+  const vatRate =
+    vatRateOverride ?? (product ? Number(product.vat_rate) : 21)
 
   const lineTotal = product
     ? lineTotalCents(priceCents, line.qty, line.discount_pct, vatRate)
