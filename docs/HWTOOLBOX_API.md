@@ -160,6 +160,11 @@ Si el pedido no existe **o** está en un estado no visible (borrador): respuesta
   total_cents = subtotal_cents + vat_amount_cents
   ```
   El redondeo se aplica en cada paso para coincidir con la facturación en `/orders/new`.
+- **Política de tasas (IVA vs IGIC)** — desde el 12-may-2026, MainOps aplica automáticamente la tasa correcta en cada línea según el destino:
+  - **IVA 21 %** (`vat_rate: 21`) para envíos peninsulares y Baleares.
+  - **IGIC 7 %** (`vat_rate: 7`) cuando `shipping_cp` del pedido empieza por `35` o `38` (Canarias).
+  - Snapshot inmutable: la tasa se congela al crear el pedido. Pedidos canarios creados antes del 12-may-2026 mantienen su tasa original (21 %).
+  - Para distinguir IVA vs IGIC desde HWToolbox: comprueba `vat_rate` por línea. No usar el CP para inferir, ya que el snapshot manda. Convención: `vat_rate === 7` → IGIC, `vat_rate === 21` → IVA, `vat_rate === 0` → exento.
 - **`product_code`** existe solo si la línea está vinculada a un producto del catálogo. Para líneas legacy con `product_name` libre, vale `null`.
 - **`ae`** procede de `orders.created_by` join `user_profiles`. Si el pedido entró por Typeform y no tiene `created_by`, pero sí tiene `ae_ref`, devolvemos `{ full_name: null, email: null, ae_ref: "..." }`. Si no hay nada, `ae: null`.
 - **`purchase_type_label`** es la etiqueta humana (es-ES) usada en la app. Mapping:
