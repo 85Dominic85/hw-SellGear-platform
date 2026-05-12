@@ -57,10 +57,10 @@ export default function SlaChart({ data }: SlaChartProps) {
               tickFormatter={(v: number) => `${v}d`}
             />
             <Tooltip
-              formatter={(value: number | undefined, name: string | undefined) => {
-                const v = value ?? 0
+              formatter={(value, name) => {
+                const v = typeof value === 'number' ? value : Number(value) || 0
                 if (name === 'avg_days') return [`${v}d`, 'Media dias']
-                return [v, name ?? '']
+                return [v, String(name ?? '')]
               }}
               labelFormatter={(label) => `Semana del ${formatWeekLabel(String(label))}`}
             />

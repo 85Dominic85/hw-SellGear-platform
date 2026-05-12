@@ -47,10 +47,11 @@ export default function ThroughputChart({ data }: ThroughputChartProps) {
             <XAxis dataKey="week_start" tickFormatter={formatWeekLabel} tick={{ fontSize: 11 }} />
             <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
             <Tooltip
-              formatter={(value: number | undefined, name: string | undefined) => [
-                value ?? 0,
-                SERIES_LABELS[name ?? ''] ?? name ?? '',
-              ]}
+              formatter={(value, name) => {
+                const v = typeof value === 'number' ? value : Number(value) || 0
+                const key = String(name ?? '')
+                return [v, SERIES_LABELS[key] ?? key]
+              }}
               labelFormatter={(label) => `Semana del ${formatWeekLabel(String(label))}`}
             />
             <Legend

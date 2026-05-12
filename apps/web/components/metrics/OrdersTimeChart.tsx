@@ -43,8 +43,8 @@ export default function OrdersTimeChart({ data }: OrdersTimeChartProps) {
             <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
             <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
             <Tooltip
-              formatter={(value: number | undefined, name: string | undefined) => {
-                const v = value ?? 0
+              formatter={(value, name) => {
+                const v = typeof value === 'number' ? value : Number(value) || 0
                 if (name === 'revenue') return [`${v.toLocaleString('es-ES')} €`, 'Ingresos']
                 return [v, 'Pedidos']
               }}
