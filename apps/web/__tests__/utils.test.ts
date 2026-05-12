@@ -35,9 +35,24 @@ describe('STATUS_COLORS', () => {
 })
 
 describe('STATUS_TRANSITIONS', () => {
-  it('every status can transition to all others', () => {
+  // 'completado' es semi-terminal: solo puede revertirse a 'nuevo' o 'pendiente'
+  // (decision de producto). El resto de estados puede transicionar a todos los demas.
+  const SEMI_TERMINAL: OrderStatus[] = ['completado']
+
+  it('non-terminal statuses can transition to all others', () => {
     for (const s of ALL_STATUSES) {
+      if (SEMI_TERMINAL.includes(s)) continue
       expect(STATUS_TRANSITIONS[s].length).toBe(ALL_STATUSES.length - 1)
+    }
+  })
+
+  it('completado is semi-terminal (solo se puede revertir)', () => {
+    expect(STATUS_TRANSITIONS['completado']).toEqual(['nuevo', 'pendiente'])
+  })
+
+  it('no status can transition to itself', () => {
+    for (const s of ALL_STATUSES) {
+      expect(STATUS_TRANSITIONS[s]).not.toContain(s)
     }
   })
 
