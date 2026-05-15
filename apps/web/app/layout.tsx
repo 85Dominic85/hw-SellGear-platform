@@ -7,6 +7,15 @@ const geist = Geist({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "MainOperation — Hardware",
   description: "Plataforma de gestión de operaciones de Hardware",
+  // Herramienta interna: bloquear indexacion, archivado y scraping de IA.
+  // Se complementa con public/robots.txt y X-Robots-Tag en next.config.ts.
+  robots: {
+    index: false,
+    follow: false,
+    noarchive: true,
+    nosnippet: true,
+    noimageindex: true,
+  },
 };
 
 export default function RootLayout({
