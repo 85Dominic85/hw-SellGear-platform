@@ -93,6 +93,10 @@ function normalizePurchaseType(raw: string | null): string | null {
     'hardware_financiacion': 'hardware_financiacion',
     'transferencias saas':   'transferencias_saas',
     'transferencias_saas':   'transferencias_saas',
+    'saas + hardware':       'saas_hardware',
+    'saas+hardware':         'saas_hardware',
+    'saas hardware':         'saas_hardware',
+    'saas_hardware':         'saas_hardware',
   }
   return map[raw.toLowerCase()] ?? 'otro'
 }

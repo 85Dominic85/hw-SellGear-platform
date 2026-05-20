@@ -56,6 +56,10 @@ function normalizePurchaseType(raw: string | null): string | null {
     'hardware_financiacion':  'hardware_financiacion',
     'transferencias saas':    'transferencias_saas',
     'transferencias_saas':    'transferencias_saas',
+    'saas + hardware':        'saas_hardware',
+    'saas+hardware':          'saas_hardware',
+    'saas hardware':          'saas_hardware',
+    'saas_hardware':          'saas_hardware',
   }
   return map[raw.toLowerCase()] ?? 'otro'
 }
@@ -151,6 +155,13 @@ describe('normalizePurchaseType', () => {
     expect(normalizePurchaseType('TRANSFERENCIAS SAAS')).toBe('transferencias_saas')
   })
 
+  it('normalizes SaaS + Hardware variants', () => {
+    expect(normalizePurchaseType('SaaS + Hardware')).toBe('saas_hardware')
+    expect(normalizePurchaseType('saas hardware')).toBe('saas_hardware')
+    expect(normalizePurchaseType('SAAS+HARDWARE')).toBe('saas_hardware')
+    expect(normalizePurchaseType('saas_hardware')).toBe('saas_hardware')
+  })
+
   it('defaults unknown to "otro"', () => {
     expect(normalizePurchaseType('Algo desconocido')).toBe('otro')
   })
@@ -166,6 +177,9 @@ describe('sheet tab mapping from purchase type', () => {
     hardware_one_off:      'Hardware One Off',
     hardware_financiacion: 'Hardware Financiación',
     transferencias_saas:   'Transferencias SaaS',
+    // saas_hardware reusa la pestana de Transferencias SaaS para agrupar
+    // todo lo que toca software en el Sheet.
+    saas_hardware:         'Transferencias SaaS',
     otro:                  'Pedidos',
   }
 
@@ -174,6 +188,7 @@ describe('sheet tab mapping from purchase type', () => {
     expect(sheetTabMap['hardware_one_off']).toBe('Hardware One Off')
     expect(sheetTabMap['hardware_financiacion']).toBe('Hardware Financiación')
     expect(sheetTabMap['transferencias_saas']).toBe('Transferencias SaaS')
+    expect(sheetTabMap['saas_hardware']).toBe('Transferencias SaaS')
     expect(sheetTabMap['otro']).toBe('Pedidos')
   })
 })

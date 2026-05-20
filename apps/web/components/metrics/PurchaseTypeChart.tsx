@@ -14,6 +14,7 @@ const TYPE_COLORS: Record<string, string> = {
   hardware_one_off: '#8b5cf6',
   hardware_financiacion: '#06b6d4',
   transferencias_saas: '#f59e0b',
+  saas_hardware: '#ec4899',
   otro: '#6b7280',
   sin_tipo: '#d1d5db',
 }

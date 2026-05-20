@@ -33,6 +33,7 @@ export const PURCHASE_TYPE_LABELS: Record<PurchaseType, string> = {
   hardware_one_off:       'Hardware One Off',
   hardware_financiacion:  'Hardware Financiación',
   transferencias_saas:    'Transferencias SaaS',
+  saas_hardware:          'SaaS + Hardware',
   otro:                   'Otro',
 }
 

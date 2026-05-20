@@ -18,6 +18,7 @@ export type PurchaseType =
   | 'hardware_one_off'
   | 'hardware_financiacion'
   | 'transferencias_saas'
+  | 'saas_hardware'
   | 'otro'
 
 export type UserRole = 'viewer' | 'commercial' | 'hardware' | 'manager' | 'admin'

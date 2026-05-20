@@ -28,7 +28,7 @@ GET /api/external/metrics?from=2026-04-01&to=2026-04-30&purchase_type=all&recent
 |---|---|---|---|
 | `from` | `YYYY-MM-DD` | inicio del mes en curso (UTC) | Inclusivo |
 | `to` | `YYYY-MM-DD` | hoy (UTC) | Inclusivo |
-| `purchase_type` | `kit_digital \| hardware_one_off \| hardware_financiacion \| transferencias_saas \| otro \| all` | `all` | Filtra todos los agregados excepto SLA. `recent_orders` también se filtra. |
+| `purchase_type` | `kit_digital \| hardware_one_off \| hardware_financiacion \| transferencias_saas \| saas_hardware \| otro \| all` | `all` | Filtra todos los agregados excepto SLA. `recent_orders` también se filtra. `saas_hardware` (añadido 2026-05-20) son ofertas mixtas SaaS + equipos físicos; quedan excluidas del SLA físico igual que `transferencias_saas` y `otro`. |
 | `recent_limit` | int 1-50 | 10 | Tamaño de `recent_orders` |
 
 ## Response 200

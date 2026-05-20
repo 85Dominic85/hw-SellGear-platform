@@ -17,6 +17,7 @@ const VALID_PURCHASE_TYPES = new Set([
   'hardware_one_off',
   'hardware_financiacion',
   'transferencias_saas',
+  'saas_hardware',
   'otro',
 ])
 

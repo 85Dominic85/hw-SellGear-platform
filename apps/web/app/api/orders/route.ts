@@ -13,6 +13,9 @@ const SHEET_TAB_MAP: Record<string, string> = {
   hardware_one_off: 'Hardware One Off',
   hardware_financiacion: 'Hardware Financiación',
   transferencias_saas: 'Transferencias SaaS',
+  // SaaS + Hardware reusa la pestana de Transferencias SaaS para agrupar
+  // todo lo que toca software en el Sheet (decision del usuario).
+  saas_hardware: 'Transferencias SaaS',
   otro: 'Pedidos',
 }
 
@@ -21,6 +24,7 @@ const VALID_PURCHASE_TYPES = new Set<string>([
   'hardware_one_off',
   'hardware_financiacion',
   'transferencias_saas',
+  'saas_hardware',
   'otro',
 ])
 
