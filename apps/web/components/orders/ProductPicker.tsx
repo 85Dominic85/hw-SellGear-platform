@@ -16,6 +16,7 @@ const CATEGORY_LABELS: Record<ProductCategory, string> = {
   printer: 'Impresoras',
   accessory: 'Periféricos',
   network: 'Red',
+  saas_hardware: 'SaaS + Hardware',
   custom: 'Otros',
 }
 
@@ -26,6 +27,7 @@ const CATEGORY_ORDER: ProductCategory[] = [
   'printer',
   'accessory',
   'network',
+  'saas_hardware',
   'custom',
 ]
 
@@ -55,7 +57,9 @@ export default function ProductPicker({
           {grouped.get(category)!.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
-              {p.code !== 'otro' && ` — ${(p.price_cents / 100).toFixed(2)} €`}
+              {p.code !== 'otro' &&
+                p.code !== 'saas_hardware' &&
+                ` — ${(p.price_cents / 100).toFixed(2)} €`}
             </option>
           ))}
         </optgroup>

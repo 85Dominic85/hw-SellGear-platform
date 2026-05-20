@@ -49,9 +49,14 @@ export default function CartLine({
   vatRateOverride = null,
 }: CartLineProps) {
   const product = products.find((p) => p.id === line.product_id) ?? null
-  const isOtro = product?.code === 'otro'
+  // Productos con precio libre negociado por el AE/AM:
+  //   - code='otro' (cualquier item ad-hoc)
+  //   - category='saas_hardware' (ofertas SaaS + Hardware)
+  // Ambos activan los inputs extra de descripcion + precio en euros.
+  const isFreePrice =
+    product?.code === 'otro' || product?.category === 'saas_hardware'
 
-  const priceCents = isOtro
+  const priceCents = isFreePrice
     ? line.unit_price_override_cents ?? 0
     : product?.price_cents ?? 0
   const vatRate =
@@ -75,12 +80,18 @@ export default function CartLine({
           <ProductPicker
             value={line.product_id}
             onChange={(productId) => {
-              // Si el descuento actual es 100 (Promocion Printer) y el nuevo
-              // producto NO es de categoria printer, resetear a 0 para no
-              // dejar un estado invalido al usuario.
+              // Resets de descuento al cambiar de producto para no dejar
+              // estados invalidos al usuario:
+              //   - 100 (Promocion Printer) si el nuevo NO es printer.
+              //   - Cualquier descuento != 0 si el nuevo es saas_hardware
+              //     (precio libre negociado: el precio ES el final).
               const newProduct = products.find((p) => p.id === productId)
-              const resetDiscount =
+              const resetForPrinterPromo =
                 line.discount_pct === 100 && newProduct?.category !== 'printer'
+              const resetForSaasHw =
+                newProduct?.category === 'saas_hardware' &&
+                line.discount_pct !== 0
+              const resetDiscount = resetForPrinterPromo || resetForSaasHw
               onChange(index, {
                 product_id: productId,
                 product_name_override: '',
@@ -118,6 +129,11 @@ export default function CartLine({
           <select
             value={line.discount_pct}
             onChange={(e) => {
+              // saas_hardware fuerza 0 (precio negociado = precio final).
+              if (product?.category === 'saas_hardware') {
+                onChange(index, { discount_pct: 0 })
+                return
+              }
               const v = parseInt(e.target.value)
               const next: 0 | 10 | 100 =
                 v === 100 && product?.category === 'printer'
@@ -128,9 +144,17 @@ export default function CartLine({
               onChange(index, { discount_pct: next })
             }}
             className={inputClass}
+            disabled={product?.category === 'saas_hardware'}
+            title={
+              product?.category === 'saas_hardware'
+                ? 'SaaS + Hardware no admite descuento (precio negociado es el final).'
+                : undefined
+            }
           >
             <option value={0}>Sin descuento</option>
-            <option value={10}>-10 %</option>
+            {product?.category !== 'saas_hardware' && (
+              <option value={10}>-10 %</option>
+            )}
             {product?.category === 'printer' && (
               <option value={100}>Promoción Printer (-100 %)</option>
             )}
@@ -173,12 +197,15 @@ export default function CartLine({
         </div>
       </div>
 
-      {/* Inputs extra cuando code='otro' */}
-      {isOtro && (
+      {/* Inputs extra cuando code='otro' o category='saas_hardware' (precio libre) */}
+      {isFreePrice && (
         <div className="mt-3 grid grid-cols-1 gap-3 border-t border-gray-200 pt-3 sm:grid-cols-2">
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-700">
-              Descripción del producto <span className="text-red-500">*</span>
+              {product?.category === 'saas_hardware'
+                ? 'Descripción de la oferta SaaS + Hardware'
+                : 'Descripción del producto'}{' '}
+              <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -186,14 +213,21 @@ export default function CartLine({
               onChange={(e) =>
                 onChange(index, { product_name_override: e.target.value })
               }
-              placeholder="Ej: Soporte para tablet personalizado"
+              placeholder={
+                product?.category === 'saas_hardware'
+                  ? 'Ej: SaaS 12 meses + 2 TPV + 1 KDS'
+                  : 'Ej: Soporte para tablet personalizado'
+              }
               maxLength={200}
               className={inputClass}
             />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-700">
-              Precio unitario s/IVA (€) <span className="text-red-500">*</span>
+              {product?.category === 'saas_hardware'
+                ? 'Precio negociado s/IVA (€)'
+                : 'Precio unitario s/IVA (€)'}{' '}
+              <span className="text-red-500">*</span>
             </label>
             <input
               type="number"

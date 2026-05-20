@@ -245,16 +245,34 @@ export async function POST(request: NextRequest) {
     }
     let unitPriceCents = product.price_cents
     let productName = product.name
-    if (product.code === 'otro') {
+    // Productos con precio libre negociado por el AE/AM:
+    //   - code='otro' (cualquier item ad-hoc)
+    //   - category='saas_hardware' (ofertas SaaS + Hardware)
+    // Exigimos descripcion y precio > 0; mensajes diferenciados.
+    const isFreePriceProduct =
+      product.code === 'otro' || product.category === 'saas_hardware'
+    if (isFreePriceProduct) {
+      const isSaasHw = product.category === 'saas_hardware'
       if (!it.product_name_override) {
         return NextResponse.json(
-          { error: 'Las líneas "Otro" requieren descripción del producto.' },
+          {
+            error: isSaasHw
+              ? 'Las lineas SaaS + Hardware requieren descripcion de la oferta.'
+              : 'Las líneas "Otro" requieren descripción del producto.',
+          },
           { status: 400 },
         )
       }
-      if (it.unit_price_override_cents === null || it.unit_price_override_cents <= 0) {
+      if (
+        it.unit_price_override_cents === null ||
+        it.unit_price_override_cents <= 0
+      ) {
         return NextResponse.json(
-          { error: 'Las líneas "Otro" requieren un precio unitario mayor que 0.' },
+          {
+            error: isSaasHw
+              ? 'Las lineas SaaS + Hardware requieren un precio negociado mayor que 0.'
+              : 'Las líneas "Otro" requieren un precio unitario mayor que 0.',
+          },
           { status: 400 },
         )
       }

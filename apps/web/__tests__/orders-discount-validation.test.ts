@@ -50,4 +50,25 @@ describe('validateLineDiscount', () => {
     expect(validateLineDiscount(100, null).ok).toBe(false)
     expect(validateLineDiscount(100, undefined).ok).toBe(false)
   })
+
+  it('acepta 0 con categoria saas_hardware (precio libre, sin descuento)', () => {
+    const r = validateLineDiscount(0, 'saas_hardware')
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.pct).toBe(0)
+    }
+  })
+
+  it('rechaza 10 con categoria saas_hardware (el precio libre ya es el final)', () => {
+    const r = validateLineDiscount(10, 'saas_hardware')
+    expect(r.ok).toBe(false)
+    if (!r.ok) {
+      expect(r.error).toMatch(/saas \+ hardware/i)
+    }
+  })
+
+  it('rechaza 100 con categoria saas_hardware', () => {
+    const r = validateLineDiscount(100, 'saas_hardware')
+    expect(r.ok).toBe(false)
+  })
 })

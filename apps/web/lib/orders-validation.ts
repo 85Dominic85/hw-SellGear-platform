@@ -33,5 +33,15 @@ export function validateLineDiscount(
       error: 'La promocion 100% solo aplica a productos de categoria printer.',
     }
   }
+  // Las ofertas SaaS + Hardware llevan precio libre negociado por el AE/AM.
+  // No se permiten descuentos sobre ese precio: el numero introducido en
+  // unit_price_override_cents ES el precio final acordado con el cliente.
+  if (category === 'saas_hardware' && pct !== 0) {
+    return {
+      ok: false,
+      error:
+        'Las lineas SaaS + Hardware no admiten descuento (el precio negociado ya es el final).',
+    }
+  }
   return { ok: true, pct: pct as AllowedDiscount }
 }

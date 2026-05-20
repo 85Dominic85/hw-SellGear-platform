@@ -30,6 +30,7 @@ export type ProductCategory =
   | 'accessory'
   | 'network'
   | 'custom'
+  | 'saas_hardware'
 
 export interface Product {
   id: string
