@@ -88,8 +88,18 @@ export function formatEurosCents(cents: number): string {
 }
 
 // =============================================================
-// Tipo de impuesto (IVA peninsular 21% / IGIC Canarias 7% / none)
-// Convencion: vat_rate=7 -> IGIC; vat_rate=0 -> ninguno; resto -> IVA.
+// Tipo de impuesto (IVA peninsular 21% / IGIC Canarias 7% legacy / exento)
+//
+// Convencion actual:
+//   vat_rate = 0  -> Exento (Canarias, desde acuerdo del 21-may-2026)
+//   vat_rate = 7  -> IGIC 7% (pedidos canarios creados 12-may a 20-may-2026,
+//                    se mantienen por snapshot inmutable)
+//   vat_rate cualquier otro -> IVA (21% por defecto en peninsula/Baleares)
+//
+// Asuncion del negocio: el unico caso de vat_rate=0 en este modelo es
+// Canarias. Si en el futuro hay productos con otras exenciones (libros,
+// formacion, exportaciones), se debe pasar contexto adicional al helper
+// (region, motivo) para diferenciar la etiqueta.
 // =============================================================
 
 export type TaxType = 'iva' | 'igic' | 'none'
@@ -103,7 +113,7 @@ export function taxType(vatRate: number): TaxType {
 export function taxLabel(vatRate: number): string {
   const tt = taxType(vatRate)
   if (tt === 'igic') return `IGIC ${vatRate} %`
-  if (tt === 'none') return 'Sin impuesto'
+  if (tt === 'none') return 'Exento (Canarias)'
   return `IVA ${vatRate} %`
 }
 

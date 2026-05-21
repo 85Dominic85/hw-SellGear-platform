@@ -484,7 +484,7 @@ export default function NewOrderPage() {
                   canRemove={items.length > 1}
                   onChange={updateItem}
                   onRemove={removeItem}
-                  vatRateOverride={isCanaryIslands(form.shipping_cp) ? 7 : null}
+                  vatRateOverride={isCanaryIslands(form.shipping_cp) ? 0 : null}
                 />
               ))}
             </div>
@@ -500,7 +500,7 @@ export default function NewOrderPage() {
           <CartSummary
             lines={items}
             products={products}
-            vatRateOverride={isCanaryIslands(form.shipping_cp) ? 7 : null}
+            vatRateOverride={isCanaryIslands(form.shipping_cp) ? 0 : null}
           />
         )}
 

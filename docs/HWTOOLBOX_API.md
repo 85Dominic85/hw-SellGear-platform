@@ -160,11 +160,12 @@ Si el pedido no existe **o** está en un estado no visible (borrador): respuesta
   total_cents = subtotal_cents + vat_amount_cents
   ```
   El redondeo se aplica en cada paso para coincidir con la facturación en `/orders/new`.
-- **Política de tasas (IVA vs IGIC)** — desde el 12-may-2026, MainOps aplica automáticamente la tasa correcta en cada línea según el destino:
+- **Política de tasas (actualizada 21-may-2026)** — MainOps aplica automáticamente la tasa según el destino del envío:
   - **IVA 21 %** (`vat_rate: 21`) para envíos peninsulares y Baleares.
-  - **IGIC 7 %** (`vat_rate: 7`) cuando `shipping_cp` del pedido empieza por `35` o `38` (Canarias).
-  - Snapshot inmutable: la tasa se congela al crear el pedido. Pedidos canarios creados antes del 12-may-2026 mantienen su tasa original (21 %).
-  - Para distinguir IVA vs IGIC desde HWToolbox: comprueba `vat_rate` por línea. No usar el CP para inferir, ya que el snapshot manda. Convención: `vat_rate === 7` → IGIC, `vat_rate === 21` → IVA, `vat_rate === 0` → exento.
+  - **Exento (`vat_rate: 0`)** cuando `shipping_cp` del pedido empieza por `35` o `38` (Canarias). Por acuerdo comercial de la empresa, las ventas/envíos a Canarias **no llevan impuesto** desde el 21-may-2026.
+  - **IGIC 7 % (legacy, `vat_rate: 7`)** — pedidos canarios creados entre el 12-may-2026 y el 20-may-2026 mantienen IGIC 7 % por snapshot inmutable. Filtrar por `created_at` para distinguir.
+  - **Snapshot inmutable**: la tasa se congela al crear el pedido y no se rectifica desde la app. Pedidos canarios creados antes del 12-may-2026 mantienen IVA 21 %.
+  - **Convención para distinguir desde HWToolbox**: comprueba `vat_rate` por línea. No uses el CP para inferir, el snapshot manda. `vat_rate === 7` → IGIC legacy, `vat_rate === 21` → IVA, `vat_rate === 0` → exento (Canarias).
 - **`product_code`** existe solo si la línea está vinculada a un producto del catálogo. Para líneas legacy con `product_name` libre, vale `null`.
 - **`ae`** procede de `orders.created_by` join `user_profiles`. Si el pedido entró por Typeform y no tiene `created_by`, pero sí tiene `ae_ref`, devolvemos `{ full_name: null, email: null, ae_ref: "..." }`. Si no hay nada, `ae: null`.
 - **`purchase_type_label`** es la etiqueta humana (es-ES) usada en la app. Mapping:
@@ -172,6 +173,7 @@ Si el pedido no existe **o** está en un estado no visible (borrador): respuesta
   - `hardware_one_off` → `Hardware One Off`
   - `hardware_financiacion` → `Hardware Financiación`
   - `transferencias_saas` → `Transferencias SaaS`
+  - `saas_hardware` → `SaaS + Hardware` (añadido 20-may-2026)
   - `otro` → `Otro`
 
 ### Errores

@@ -15,8 +15,10 @@ describe('taxType', () => {
 
 describe('taxLabel', () => {
   it('21 → "IVA 21 %"', () => expect(taxLabel(21)).toBe('IVA 21 %'))
-  it('7 → "IGIC 7 %"', () => expect(taxLabel(7)).toBe('IGIC 7 %'))
-  it('0 → "Sin impuesto"', () => expect(taxLabel(0)).toBe('Sin impuesto'))
+  it('7 → "IGIC 7 %" (pedidos legacy 12-may a 20-may-2026)', () =>
+    expect(taxLabel(7)).toBe('IGIC 7 %'))
+  it('0 → "Exento (Canarias)" (politica desde 21-may-2026)', () =>
+    expect(taxLabel(0)).toBe('Exento (Canarias)'))
 })
 
 describe('effectiveTaxLabel', () => {

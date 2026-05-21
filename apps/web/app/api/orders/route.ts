@@ -227,10 +227,15 @@ export async function POST(request: NextRequest) {
     unit_price_cents: number
     vat_rate: number
   }
-  // IGIC 7 % si el CP de envio es de Canarias (35xxx / 38xxx). Snapshot
-  // inmutable en order_items.vat_rate. Solo afecta a pedidos nuevos.
-  const igicApplies = isCanaryIslands(shippingCp)
-  const overrideVatRate: number | null = igicApplies ? 7 : null
+  // Politica fiscal Canarias (actualizada 21-may-2026):
+  //   - Por acuerdo comercial de la empresa, las ventas/envios a Canarias
+  //     se facturan SIN impuesto (vat_rate = 0). Antes (12-may a 20-may)
+  //     se aplicaba IGIC 7%; pedidos creados en ese rango lo mantienen
+  //     por snapshot inmutable.
+  //   - Sigue gobernado por isCanaryIslands(shipping_cp) -> CP 35xxx/38xxx.
+  // Snapshot inmutable en order_items.vat_rate. Solo afecta a pedidos nuevos.
+  const isCanaryExempt = isCanaryIslands(shippingCp)
+  const overrideVatRate: number | null = isCanaryExempt ? 0 : null
 
   const resolved: ResolvedLine[] = []
   for (const it of cartInputs) {
