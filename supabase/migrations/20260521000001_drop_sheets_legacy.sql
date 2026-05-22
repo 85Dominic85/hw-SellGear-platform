@@ -1,0 +1,41 @@
+-- =============================================================
+-- DROP del sync legacy a Google Sheets
+-- Migration: 20260521000001_drop_sheets_legacy
+-- =============================================================
+--
+-- La app Next.js + Supabase es ahora la unica source of truth de la
+-- operativa. El sync a Google Sheets que existia como espejo durante
+-- la transicion se elimina entero en este commit:
+--
+--   - Edge function `sync-to-sheets` borrada del repo.
+--   - Endpoint /api/orders/[id]/sync borrado.
+--   - Componente SyncButton.tsx borrado.
+--   - Constante SHEET_TAB_MAP eliminada del POST /api/orders.
+--   - Test sheets-sync.test.ts borrado.
+--   - Env vars GOOGLE_SHEET_ID, GOOGLE_SERVICE_ACCOUNT_PATH y
+--     GOOGLE_SERVICE_ACCOUNT_B64 borradas de .env.example.
+--
+-- Este archivo SQL completa la limpieza droppeando las columnas y la
+-- tabla auxiliar. Aplicar MANUALMENTE en Supabase SQL Editor (segun
+-- CLAUDE.md: cambios SQL siempre son manuales).
+--
+-- VERIFICACION PREVIA recomendada antes de ejecutar:
+--   SELECT COUNT(*) FROM orders WHERE sheet_tab IS NOT NULL;
+--   SELECT COUNT(*) FROM sheet_tab_mapping;
+-- Confirmar que no hay consumers activos.
+--
+-- ROLLBACK manual si fuera necesario:
+--   ALTER TABLE orders ADD COLUMN sheet_tab TEXT;
+--   ALTER TABLE orders ADD COLUMN sheet_row INT;
+--   (los datos se pierden; la estructura vuelve)
+--
+-- Acciones manuales adicionales del usuario (fuera de este archivo):
+--   1. Supabase Dashboard -> Edge Functions: eliminar la funcion
+--      `sync-to-sheets` desplegada.
+--   2. Vercel Dashboard: borrar las env vars GOOGLE_SHEET_ID,
+--      GOOGLE_SERVICE_ACCOUNT_PATH y GOOGLE_SERVICE_ACCOUNT_B64.
+-- =============================================================
+
+ALTER TABLE public.orders DROP COLUMN IF EXISTS sheet_tab;
+ALTER TABLE public.orders DROP COLUMN IF EXISTS sheet_row;
+DROP TABLE IF EXISTS public.sheet_tab_mapping;

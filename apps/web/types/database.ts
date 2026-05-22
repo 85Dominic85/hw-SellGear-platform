@@ -71,7 +71,6 @@ export interface Order {
   contact_email: string | null
   phone: string | null
   purchase_type: PurchaseType | null
-  sheet_tab: string | null
   amount: number | null
   bank_receipt_url: string | null
   requester_name: string | null
@@ -83,7 +82,6 @@ export interface Order {
   status: OrderStatus
   assigned_to: string | null
   notes: string | null
-  sheet_row: number | null
   typeform_response_id: string | null
   supplier: string | null
   invoiced: boolean

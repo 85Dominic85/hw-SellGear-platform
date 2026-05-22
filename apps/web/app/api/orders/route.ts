@@ -9,18 +9,6 @@ import { upsertAddressFromOrder } from '@/lib/address-book/upsert'
 import { isCanaryIslands } from '@/lib/utils'
 import { isValidPurchaseType } from '@/lib/purchase-type'
 
-// SHEET_TAB_MAP es LEGACY del sync a Google Sheets (deprecated, ver Bloque E
-// del plan). Se mantiene mientras la columna orders.sheet_tab siga viva.
-// Eliminar junto con el resto del sync en un commit dedicado.
-const SHEET_TAB_MAP: Record<string, string> = {
-  kit_digital: 'KIT Digital',
-  hardware_one_off: 'Hardware One Off',
-  hardware_financiacion: 'Hardware Financiación',
-  transferencias_saas: 'Transferencias SaaS',
-  saas_hardware: 'Transferencias SaaS',
-  otro: 'Pedidos',
-}
-
 export async function POST(request: NextRequest) {
   // 1. Authenticate via user session
   const supabase = await createClient()
@@ -125,11 +113,10 @@ export async function POST(request: NextRequest) {
     .filter((part) => part && part.trim().length > 0)
     .join(', ')
 
-  // 4. Determine sheet_tab from purchase_type
+  // 4. Validar purchase_type
   const purchaseType = isValidPurchaseType(body.purchase_type)
     ? body.purchase_type
     : null
-  const sheetTab = purchaseType ? SHEET_TAB_MAP[purchaseType] ?? 'Pedidos' : 'Pedidos'
 
   // 5. Validar y resolver items del carrito ANTES de crear el pedido.
   // El servidor recalcula precios desde products (no se confia en el cliente).
@@ -311,7 +298,6 @@ export async function POST(request: NextRequest) {
       contact_email: contactEmail || null,
       phone,
       purchase_type: purchaseType,
-      sheet_tab: sheetTab,
       amount: computedAmount,
       bank_receipt_url: bankReceiptUrl || null,
       requester_name: typeof body.requester_name === 'string' ? body.requester_name.trim() || null : null,
