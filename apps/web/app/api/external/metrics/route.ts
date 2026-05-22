@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { validateApiKey } from '@/lib/external-auth'
 import { applyCors, handlePreflight } from '@/lib/external-cors'
+import { isValidPurchaseType } from '@/lib/purchase-type'
 import type {
   ExternalMetricsResponse,
   ExternalMetricsOps,
@@ -12,14 +13,9 @@ import type { DashboardMetrics, DashboardComparison, SlaMetrics } from '@/types/
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const VALID_PURCHASE_TYPES = new Set([
-  'kit_digital',
-  'hardware_one_off',
-  'hardware_financiacion',
-  'transferencias_saas',
-  'saas_hardware',
-  'otro',
-])
+// VALID_PURCHASE_TYPES (centralizado en lib/purchase-type.ts).
+// El wildcard 'all' que acepta este endpoint NO es un PurchaseType y se
+// trata aparte ANTES de invocar el helper (ver check abajo).
 
 const DEFAULT_RECENT_LIMIT = 10
 const MAX_RECENT_LIMIT = 50
@@ -61,7 +57,7 @@ export async function GET(request: NextRequest) {
   }
   if (
     purchaseTypeRaw !== 'all' &&
-    !VALID_PURCHASE_TYPES.has(purchaseTypeRaw)
+    !isValidPurchaseType(purchaseTypeRaw)
   ) {
     return applyCors(
       NextResponse.json({ error: 'purchase_type inválido' }, { status: 400 }),

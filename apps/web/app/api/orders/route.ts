@@ -7,26 +7,19 @@ import { canCreateOrder } from '@/lib/auth'
 import { validateLineDiscount } from '@/lib/orders-validation'
 import { upsertAddressFromOrder } from '@/lib/address-book/upsert'
 import { isCanaryIslands } from '@/lib/utils'
+import { isValidPurchaseType } from '@/lib/purchase-type'
 
+// SHEET_TAB_MAP es LEGACY del sync a Google Sheets (deprecated, ver Bloque E
+// del plan). Se mantiene mientras la columna orders.sheet_tab siga viva.
+// Eliminar junto con el resto del sync en un commit dedicado.
 const SHEET_TAB_MAP: Record<string, string> = {
   kit_digital: 'KIT Digital',
   hardware_one_off: 'Hardware One Off',
   hardware_financiacion: 'Hardware Financiación',
   transferencias_saas: 'Transferencias SaaS',
-  // SaaS + Hardware reusa la pestana de Transferencias SaaS para agrupar
-  // todo lo que toca software en el Sheet (decision del usuario).
   saas_hardware: 'Transferencias SaaS',
   otro: 'Pedidos',
 }
-
-const VALID_PURCHASE_TYPES = new Set<string>([
-  'kit_digital',
-  'hardware_one_off',
-  'hardware_financiacion',
-  'transferencias_saas',
-  'saas_hardware',
-  'otro',
-])
 
 export async function POST(request: NextRequest) {
   // 1. Authenticate via user session
@@ -133,10 +126,9 @@ export async function POST(request: NextRequest) {
     .join(', ')
 
   // 4. Determine sheet_tab from purchase_type
-  const purchaseType =
-    typeof body.purchase_type === 'string' && VALID_PURCHASE_TYPES.has(body.purchase_type)
-      ? (body.purchase_type as PurchaseType)
-      : null
+  const purchaseType = isValidPurchaseType(body.purchase_type)
+    ? body.purchase_type
+    : null
   const sheetTab = purchaseType ? SHEET_TAB_MAP[purchaseType] ?? 'Pedidos' : 'Pedidos'
 
   // 5. Validar y resolver items del carrito ANTES de crear el pedido.

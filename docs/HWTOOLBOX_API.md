@@ -40,7 +40,7 @@ GET /api/external/hwtoolbox/orders?q=Pepe&purchase_type=hardware_one_off&from=20
 | Param | Tipo | Default | Notas |
 |---|---|---|---|
 | `q` | string | — | Búsqueda fuzzy (ILIKE) en `operation_id`, `customer_name`, `venue_name`. |
-| `purchase_type` | enum | — | `kit_digital \| hardware_one_off \| hardware_financiacion \| transferencias_saas \| otro` |
+| `purchase_type` | enum | — | `kit_digital \| hardware_one_off \| hardware_financiacion \| transferencias_saas \| saas_hardware \| otro`. `saas_hardware` añadido el 21-may-2026 (ofertas mixtas SaaS + equipos físicos). |
 | `from` | `YYYY-MM-DD` | — | Filtro inclusivo sobre `created_at`. |
 | `to` | `YYYY-MM-DD` | — | Filtro inclusivo sobre `created_at`. |
 | `limit` | int 1-50 | 25 | Tamaño de página. |

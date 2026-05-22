@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { validateApiKey } from '@/lib/external-auth'
 import { applyCors, handlePreflight } from '@/lib/external-cors'
 import type { OrderStatus, PurchaseType } from '@/types/database'
+import { isValidPurchaseType } from '@/lib/purchase-type'
 import type {
   HwToolboxListResponse,
   HwToolboxOrderListItem,
@@ -21,13 +22,10 @@ export const HWTOOLBOX_VISIBLE_STATUSES: OrderStatus[] = [
   'bloqueado',
 ]
 
-const VALID_PURCHASE_TYPES = new Set<PurchaseType>([
-  'kit_digital',
-  'hardware_one_off',
-  'hardware_financiacion',
-  'transferencias_saas',
-  'otro',
-])
+// VALID_PURCHASE_TYPES centralizado en lib/purchase-type.ts. Antes este
+// Set local omitia 'saas_hardware' (mismo bug que el PATCH del detalle).
+// Tras la centralizacion HWToolbox puede filtrar por saas_hardware sin
+// devolver 400.
 
 const DEFAULT_LIMIT = 25
 const MAX_LIMIT = 50
@@ -51,7 +49,7 @@ export async function GET(request: NextRequest) {
   const offset = clampInt(searchParams.get('offset'), 0, 100_000, 0)
 
   // Validacion purchase_type (si viene)
-  if (purchaseTypeRaw && !VALID_PURCHASE_TYPES.has(purchaseTypeRaw as PurchaseType)) {
+  if (purchaseTypeRaw && !isValidPurchaseType(purchaseTypeRaw)) {
     return applyCors(
       NextResponse.json({ error: 'purchase_type inválido' }, { status: 400 }),
       request,

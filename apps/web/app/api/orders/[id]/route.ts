@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminUser } from '@/lib/auth'
 import type { UserRole } from '@/types/database'
+import { isValidPurchaseType } from '@/lib/purchase-type'
 
 async function verifyAdmin() {
   const supabase = await createClient()
@@ -86,13 +87,10 @@ const SHIPPING_STRUCTURED_FIELDS = new Set([
   'shipping_province',
 ])
 
-const VALID_PURCHASE_TYPES = new Set([
-  'kit_digital',
-  'hardware_one_off',
-  'hardware_financiacion',
-  'transferencias_saas',
-  'otro',
-])
+// VALID_PURCHASE_TYPES y la validacion exhaustiva viven en lib/purchase-type.ts
+// (importado al inicio). Antes este Set se quedo desactualizado cuando se
+// anadio saas_hardware al union (commit dea6301) y rompia el PATCH del
+// detalle con un 400 "purchase_type invalido" => badge "Error" rojo en UI.
 
 export async function PATCH(
   request: NextRequest,
@@ -133,7 +131,7 @@ export async function PATCH(
     }
     value = (value as string).trim()
   } else if (field === 'purchase_type') {
-    if (value !== null && !VALID_PURCHASE_TYPES.has(value as string)) {
+    if (value !== null && !isValidPurchaseType(value)) {
       return NextResponse.json({ error: 'purchase_type invalido' }, { status: 400 })
     }
   } else if (field === 'amount') {
