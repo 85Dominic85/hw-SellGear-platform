@@ -6,7 +6,12 @@ import InvoiceCheckbox from './InvoiceCheckbox'
 import OrderCheckbox from './OrderCheckbox'
 import ShippingLabelViewer from './ShippingLabelViewer'
 import { formatCurrency, formatDate, PURCHASE_TYPE_LABELS, isCanaryIslands } from '@/lib/utils'
-import type { PurchaseType } from '@/types/database'
+import {
+  computeOrderTotals,
+  effectiveTaxLabel,
+  formatEurosCents,
+} from '@/lib/pricing'
+import type { PurchaseType, OrderItem, Order } from '@/types/database'
 
 interface OrderData {
   id: string
@@ -36,6 +41,9 @@ interface OrderData {
   shipping_city: string | null
   shipping_province: string | null
   notes: string | null
+  // Items con desglose moderno (unit_price_cents). Opcional: si no hay
+  // items o todos son legacy, se muestra el "Importe" plano editable.
+  order_items?: OrderItem[] | null
 }
 
 interface OrderDetailFieldsProps {
@@ -50,6 +58,16 @@ const PURCHASE_TYPE_OPTIONS = Object.entries(PURCHASE_TYPE_LABELS).map(([value, 
 }))
 
 export default function OrderDetailFields({ order, canEdit, isViewer }: OrderDetailFieldsProps) {
+  // Desglose economico desde order_items modernos. Si null -> fallback al
+  // amount plano editable (pedidos legacy de Typeform sin desglose por linea).
+  const totals = computeOrderTotals({
+    order_items: order.order_items ?? [],
+  } as Order)
+  const taxRates = (order.order_items ?? [])
+    .filter((i) => i.unit_price_cents !== null && i.unit_price_cents !== undefined)
+    .map((i) => i.vat_rate ?? 21)
+  const taxRowLabel = effectiveTaxLabel(taxRates)
+
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <h3 className="mb-4 text-sm font-semibold text-gray-900">Detalles del pedido</h3>
@@ -76,16 +94,43 @@ export default function OrderDetailFields({ order, canEdit, isViewer }: OrderDet
           }
         />
 
-        {/* amount — editable number */}
-        <EditableField
-          orderId={order.id}
-          fieldName="amount"
-          value={order.amount}
-          fieldType="number"
-          canEdit={canEdit}
-          label="Importe"
-          formatDisplay={(v) => formatCurrency(v as number | null)}
-        />
+        {/* Importe: desglose si el pedido tiene order_items modernos (unit_price_cents);
+            fallback al campo editable plano para pedidos legacy (Typeform sin desglose). */}
+        {totals ? (
+          <div className="sm:col-span-1">
+            <dt className="text-xs text-gray-500">Importe</dt>
+            <dd className="mt-1 space-y-0.5">
+              <div className="flex items-baseline justify-between text-xs text-gray-600">
+                <span>Base imponible</span>
+                <span className="font-mono tabular-nums">
+                  {formatEurosCents(totals.taxableCents)}
+                </span>
+              </div>
+              <div className="flex items-baseline justify-between text-xs text-gray-600">
+                <span>{taxRowLabel}</span>
+                <span className="font-mono tabular-nums">
+                  {formatEurosCents(totals.vatCents)}
+                </span>
+              </div>
+              <div className="mt-1 flex items-baseline justify-between border-t border-gray-100 pt-1 text-sm font-semibold text-gray-900">
+                <span>Total</span>
+                <span className="font-mono tabular-nums">
+                  {formatEurosCents(totals.totalCents)}
+                </span>
+              </div>
+            </dd>
+          </div>
+        ) : (
+          <EditableField
+            orderId={order.id}
+            fieldName="amount"
+            value={order.amount}
+            fieldType="number"
+            canEdit={canEdit}
+            label="Importe"
+            formatDisplay={(v) => formatCurrency(v as number | null)}
+          />
+        )}
 
         {/* invoiced — dedicated component */}
         <div>

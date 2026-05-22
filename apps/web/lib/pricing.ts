@@ -127,3 +127,35 @@ export function effectiveTaxLabel(rates: number[]): string {
   if (unique.length === 1) return taxLabel(unique[0])
   return 'Impuestos (mixto)'
 }
+
+// =============================================================
+// Desglose de totales a partir de order_items modernos.
+// =============================================================
+
+import type { Order } from '@/types/database'
+
+/**
+ * Calcula los totales del pedido a partir de sus order_items con desglose
+ * "moderno" (unit_price_cents poblado). Devuelve null si el pedido no
+ * tiene desglose por linea: el caller debe hacer fallback al order.amount
+ * plano (pedidos legacy de Typeform y similares).
+ *
+ * Items mixtos (alguno moderno + alguno legacy) -> usa solo los modernos.
+ * Items con vat_rate=null -> fallback a 21 % (peninsular).
+ * Items con discount_pct=null -> fallback a 0.
+ */
+export function computeOrderTotals(order: Order): CartTotals | null {
+  const items = order.order_items ?? []
+  const modern = items.filter(
+    (i) => i.unit_price_cents !== null && i.unit_price_cents !== undefined,
+  )
+  if (modern.length === 0) return null
+  return cartTotals(
+    modern.map((i) => ({
+      priceCents: i.unit_price_cents!,
+      qty: i.qty,
+      discountPct: i.discount_pct ?? 0,
+      vatRate: i.vat_rate ?? 21,
+    })),
+  )
+}

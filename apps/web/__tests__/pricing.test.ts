@@ -11,7 +11,9 @@ import {
   lineTotalCents,
   cartTotals,
   formatEurosCents,
+  computeOrderTotals,
 } from '@/lib/pricing'
+import type { Order, OrderItem } from '@/types/database'
 
 describe('lineSubtotalCents', () => {
   it('multiplica precio por cantidad', () => {
@@ -171,5 +173,93 @@ describe('formatEurosCents', () => {
 
   it('cero', () => {
     expect(formatEurosCents(0)).toMatch(/0,00/)
+  })
+})
+
+// Helper: construye un OrderItem mock (campos solo relevantes para totals).
+function mockItem(partial: Partial<OrderItem>): OrderItem {
+  return {
+    id: 'item-id',
+    order_id: 'order-id',
+    product_name: null,
+    qty: 1,
+    unit_price: null,
+    notes: null,
+    created_at: '2026-05-21T00:00:00Z',
+    product_id: null,
+    unit_price_cents: null,
+    discount_pct: null,
+    vat_rate: null,
+    ...partial,
+  }
+}
+
+function mockOrder(items: OrderItem[]): Order {
+  // Solo importan order_items para el helper. El resto del Order se omite
+  // como `as Order` porque el helper no toca esos campos.
+  return { order_items: items } as Order
+}
+
+describe('computeOrderTotals', () => {
+  it('pedido moderno con 2 items IVA 21% calcula totales correctos', () => {
+    const order = mockOrder([
+      mockItem({ qty: 2, unit_price_cents: 50000, discount_pct: 0, vat_rate: 21 }),
+      mockItem({ qty: 1, unit_price_cents: 30000, discount_pct: 0, vat_rate: 21 }),
+    ])
+    const totals = computeOrderTotals(order)
+    expect(totals).not.toBeNull()
+    // subtotal 100000 + 30000 = 130000; vat 130000 * 0.21 = 27300; total 157300
+    expect(totals!.subtotalCents).toBe(130000)
+    expect(totals!.taxableCents).toBe(130000)
+    expect(totals!.vatCents).toBe(27300)
+    expect(totals!.totalCents).toBe(157300)
+  })
+
+  it('pedido canario (vat_rate=0, exento) total == base sin impuesto', () => {
+    const order = mockOrder([
+      mockItem({ qty: 1, unit_price_cents: 199900, discount_pct: 0, vat_rate: 0 }),
+    ])
+    const totals = computeOrderTotals(order)
+    expect(totals).not.toBeNull()
+    expect(totals!.taxableCents).toBe(199900)
+    expect(totals!.vatCents).toBe(0)
+    expect(totals!.totalCents).toBe(199900)
+  })
+
+  it('pedido todo legacy (unit_price_cents=null) devuelve null', () => {
+    const order = mockOrder([
+      mockItem({ qty: 1, unit_price_cents: null, unit_price: 100 }),
+      mockItem({ qty: 2, unit_price_cents: null, unit_price: 50 }),
+    ])
+    expect(computeOrderTotals(order)).toBeNull()
+  })
+
+  it('pedido mixto solo usa los modernos para el calculo', () => {
+    const order = mockOrder([
+      mockItem({ qty: 1, unit_price_cents: 100000, discount_pct: 0, vat_rate: 21 }),
+      mockItem({ qty: 5, unit_price_cents: null, unit_price: 50 }), // legacy, ignorado
+    ])
+    const totals = computeOrderTotals(order)
+    expect(totals).not.toBeNull()
+    expect(totals!.subtotalCents).toBe(100000)
+    expect(totals!.vatCents).toBe(21000)
+    expect(totals!.totalCents).toBe(121000)
+  })
+
+  it('pedido sin order_items devuelve null', () => {
+    expect(computeOrderTotals(mockOrder([]))).toBeNull()
+    // Tambien cuando order_items es undefined directamente
+    expect(computeOrderTotals({} as Order)).toBeNull()
+  })
+
+  it('item moderno con vat_rate=null hace fallback a 21%', () => {
+    const order = mockOrder([
+      mockItem({ qty: 1, unit_price_cents: 10000, discount_pct: null, vat_rate: null }),
+    ])
+    const totals = computeOrderTotals(order)
+    expect(totals).not.toBeNull()
+    // 10000 * 0.21 = 2100; total 12100
+    expect(totals!.vatCents).toBe(2100)
+    expect(totals!.totalCents).toBe(12100)
   })
 })
