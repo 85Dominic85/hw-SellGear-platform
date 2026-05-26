@@ -29,3 +29,9 @@ service-account.json
 
 # Claude Code worktrees
 .claude/worktrees/
+
+# Temp working files (PDFs descargados, txt extraidos, etc.)
+.tmp-*
+
+# Supabase CLI cache
+supabase/.temp/
