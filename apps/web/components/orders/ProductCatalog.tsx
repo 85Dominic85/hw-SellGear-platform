@@ -91,15 +91,30 @@ export default function ProductCatalog({
     return map
   }, [items])
 
-  // Lineas libres = product_id null (recien anadidas) o con SKU 'otro' /
-  // category 'saas_hardware'. Estas mantienen CartLine completo.
-  const freeLineIndexes: number[] = items
-    .map((it, idx) => {
-      if (!it.product_id) return idx
-      const p = products.find((x) => x.id === it.product_id)
-      return p?.code === 'otro' || p?.category === 'saas_hardware' ? idx : -1
-    })
-    .filter((idx) => idx >= 0)
+  // Clasificacion de cada linea para mostrarla debajo del cat con CartLine.
+  // - 'standard': producto del cat publico (tile). lockProduct=true para que
+  //   el AE no pueda cambiar el SKU desde aqui (debe usar las tiles).
+  // - 'free': SKU especial ('otro' o categoria 'saas_hardware'), o linea
+  //   recien anadida sin producto (product_id null). lockProduct=false:
+  //   permite al AE elegir entre los dos SKUs libres.
+  // Lineas EMPTY iniciales (sin producto ni overrides) se ocultan.
+  type LineKind = 'standard' | 'free' | 'empty'
+  function classifyLine(line: CartLineState): LineKind {
+    if (!line.product_id) {
+      const isPristine =
+        line.product_name_override === '' &&
+        line.unit_price_override_cents === null
+      return isPristine ? 'empty' : 'free'
+    }
+    const p = products.find((x) => x.id === line.product_id)
+    if (p?.code === 'otro' || p?.category === 'saas_hardware') return 'free'
+    return 'standard'
+  }
+  const visibleLines: { idx: number; kind: 'standard' | 'free' }[] = items
+    .map((line, idx) => ({ idx, kind: classifyLine(line) }))
+    .filter((x): x is { idx: number; kind: 'standard' | 'free' } =>
+      x.kind !== 'empty',
+    )
 
   function addProduct(product: Product) {
     // Si la unica linea es la EMPTY inicial, sustituyela en vez de anadir.
@@ -217,27 +232,35 @@ export default function ProductCatalog({
         </div>
       </div>
 
-      {/* Lineas libres existentes (CartLine completo con UI de overrides).
-          El picker se restringe a SKUs libres ('otro' / 'saas_hardware')
-          para evitar que el AE pique productos estandar aqui (esos van por
-          tiles del catalogo). */}
-      {freeLineIndexes.length > 0 && (
+      {/* Resumen de lineas del pedido: aqui el AE aplica descuento por linea
+          y ajusta cantidad. Las lineas estandar (anadidas via tile) llevan
+          lockProduct=true para que no se pueda cambiar el SKU desde aqui
+          — solo qty / descuento / quitar. Las lineas libres ('otro' /
+          'saas_hardware') permiten elegir entre esos dos SKUs y editar
+          descripcion + precio negociado. */}
+      {visibleLines.length > 0 && (
         <div className="space-y-3">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Líneas libres
+            Líneas del pedido
           </h4>
-          {freeLineIndexes.map((idx) => (
+          {visibleLines.map(({ idx, kind }) => (
             <CartLine
               key={idx}
               index={idx}
               line={items[idx]}
-              products={products.filter(
-                (p) => p.code === 'otro' || p.category === 'saas_hardware',
-              )}
+              products={
+                kind === 'standard'
+                  ? products
+                  : products.filter(
+                      (p) =>
+                        p.code === 'otro' || p.category === 'saas_hardware',
+                    )
+              }
               canRemove
               onChange={updateLine}
               onRemove={removeLine}
               vatRateOverride={vatRateOverride}
+              lockProduct={kind === 'standard'}
             />
           ))}
         </div>

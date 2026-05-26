@@ -37,6 +37,14 @@ interface CartLineProps {
    * servidor recalcula al insertar.
    */
   vatRateOverride?: number | null
+  /**
+   * Si es true, el ProductPicker queda deshabilitado. Lo usa el wizard
+   * cuando el producto se anadio via tile del cat (ProductCatalog) — el
+   * AE no debe cambiar el SKU desde aqui, solo qty / descuento / quitar.
+   * Para lineas libres ('otro' / 'saas_hardware') es false: el AE sigue
+   * pudiendo elegir entre los dos SKUs especiales.
+   */
+  lockProduct?: boolean
 }
 
 export default function CartLine({
@@ -47,6 +55,7 @@ export default function CartLine({
   onChange,
   onRemove,
   vatRateOverride = null,
+  lockProduct = false,
 }: CartLineProps) {
   const product = products.find((p) => p.id === line.product_id) ?? null
   // Productos con precio libre negociado por el AE/AM:
@@ -100,6 +109,7 @@ export default function CartLine({
               })
             }}
             products={products}
+            disabled={lockProduct}
           />
         </div>
 
