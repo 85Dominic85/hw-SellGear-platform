@@ -8,6 +8,7 @@ import { validateLineDiscount } from '@/lib/orders-validation'
 import { upsertAddressFromOrder } from '@/lib/address-book/upsert'
 import { isCanaryIslands } from '@/lib/utils'
 import { isValidPurchaseType } from '@/lib/purchase-type'
+import { fieldRequirementsFor } from '@/lib/order-requirements'
 
 export async function POST(request: NextRequest) {
   // 1. Authenticate via user session
@@ -43,59 +44,81 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Cuerpo de petición inválido' }, { status: 400 })
   }
 
-  // 3. Validate required fields
+  // 3. Validar purchase_type primero: condiciona que campos son required.
+  //    transferencias_saas no exige envio ni telefono (transferencia bancaria).
+  const purchaseType = isValidPurchaseType(body.purchase_type)
+    ? body.purchase_type
+    : null
+  const req = fieldRequirementsFor(purchaseType)
+
+  // 4. Validate required fields (segun fieldRequirementsFor).
   const customerName = typeof body.customer_name === 'string' ? body.customer_name.trim() : ''
-  if (!customerName) {
+  if (req.customer_name && !customerName) {
     return NextResponse.json(
       { error: 'El nombre del cliente es obligatorio.' },
       { status: 400 }
     )
   }
 
-  // Telefono del cliente obligatorio para pedidos manuales (decision 2026-04-24).
+  // Nombre del solicitante (decision 2026-05-26: obligatorio en todos los tipos).
+  const requesterName = typeof body.requester_name === 'string' ? body.requester_name.trim() : ''
+  if (req.requester_name && !requesterName) {
+    return NextResponse.json(
+      { error: 'El nombre del solicitante es obligatorio.' },
+      { status: 400 }
+    )
+  }
+
+  // Email del cliente (decision 2026-05-26: obligatorio en todos los tipos).
+  const contactEmail = typeof body.contact_email === 'string' ? body.contact_email.trim() : ''
+  if (req.contact_email && !contactEmail) {
+    return NextResponse.json(
+      { error: 'El email del cliente es obligatorio.' },
+      { status: 400 }
+    )
+  }
+  if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+    return NextResponse.json({ error: 'Email de contacto inválido.' }, { status: 400 })
+  }
+
+  // Email del solicitante (decision 2026-05-26: obligatorio en todos los tipos).
+  const requesterEmail = typeof body.requester_email === 'string' ? body.requester_email.trim() : ''
+  if (req.requester_email && !requesterEmail) {
+    return NextResponse.json(
+      { error: 'El email del solicitante es obligatorio.' },
+      { status: 400 }
+    )
+  }
+  if (requesterEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(requesterEmail)) {
+    return NextResponse.json({ error: 'Email del solicitante inválido.' }, { status: 400 })
+  }
+
+  // Telefono del cliente obligatorio para pedidos manuales (excepto transferencias_saas).
   const phone = typeof body.phone === 'string' ? body.phone.trim() : ''
-  if (!phone) {
+  if (req.phone && !phone) {
     return NextResponse.json(
       { error: 'El teléfono del cliente es obligatorio.' },
       { status: 400 }
     )
   }
 
-  // Direccion estructurada (4 campos). CP, calle y ciudad obligatorios; provincia opcional.
-  const shippingStreet   = typeof body.shipping_street   === 'string' ? body.shipping_street.trim()   : ''
-  const shippingCp       = typeof body.shipping_cp       === 'string' ? body.shipping_cp.trim()       : ''
-  const shippingCity     = typeof body.shipping_city     === 'string' ? body.shipping_city.trim()     : ''
-  const shippingProvince = typeof body.shipping_province === 'string' ? body.shipping_province.trim() : ''
-
-  if (!shippingStreet) {
-    return NextResponse.json({ error: 'La dirección (calle) es obligatoria.' }, { status: 400 })
-  }
-  if (!shippingCp) {
-    return NextResponse.json({ error: 'El código postal es obligatorio.' }, { status: 400 })
-  }
-  if (!/^\d{5}$/.test(shippingCp)) {
+  // HubSpot ref (decision 2026-05-26: obligatorio en todos los tipos).
+  const hubspotRef = typeof body.hubspot_ref === 'string' ? body.hubspot_ref.trim() : ''
+  if (req.hubspot_ref && !hubspotRef) {
     return NextResponse.json(
-      { error: 'El código postal debe tener 5 dígitos exactos.' },
+      { error: 'La referencia de HubSpot es obligatoria.' },
       { status: 400 }
     )
   }
-  if (!shippingCity) {
-    return NextResponse.json({ error: 'La ciudad es obligatoria.' }, { status: 400 })
-  }
 
-  // Validate email format if provided
-  const contactEmail = typeof body.contact_email === 'string' ? body.contact_email.trim() : ''
-  if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
-    return NextResponse.json({ error: 'Email de contacto inválido.' }, { status: 400 })
-  }
-
-  const requesterEmail = typeof body.requester_email === 'string' ? body.requester_email.trim() : ''
-  if (requesterEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(requesterEmail)) {
-    return NextResponse.json({ error: 'Email del solicitante inválido.' }, { status: 400 })
-  }
-
-  // Validate URL format if provided
+  // Justificante bancario: obligatorio en todos los tipos. Validar URL si llega.
   const bankReceiptUrl = typeof body.bank_receipt_url === 'string' ? body.bank_receipt_url.trim() : ''
+  if (req.bank_receipt_url && !bankReceiptUrl) {
+    return NextResponse.json(
+      { error: 'El justificante bancario es obligatorio.' },
+      { status: 400 }
+    )
+  }
   if (bankReceiptUrl) {
     try {
       new URL(bankReceiptUrl)
@@ -104,19 +127,44 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Serializar los 4 campos estructurados a shipping_address (compat Google Sheets y vistas legacy).
-  const serializedAddress = [
-    shippingStreet,
-    `${shippingCp} ${shippingCity}`,
-    shippingProvince || null,
-  ]
-    .filter((part) => part && part.trim().length > 0)
-    .join(', ')
+  // Direccion estructurada (4 campos). Obligatoria solo si req.shipping (no en transferencias_saas).
+  // Provincia siempre opcional.
+  const shippingStreet   = typeof body.shipping_street   === 'string' ? body.shipping_street.trim()   : ''
+  const shippingCp       = typeof body.shipping_cp       === 'string' ? body.shipping_cp.trim()       : ''
+  const shippingCity     = typeof body.shipping_city     === 'string' ? body.shipping_city.trim()     : ''
+  const shippingProvince = typeof body.shipping_province === 'string' ? body.shipping_province.trim() : ''
 
-  // 4. Validar purchase_type
-  const purchaseType = isValidPurchaseType(body.purchase_type)
-    ? body.purchase_type
-    : null
+  if (req.shipping) {
+    if (!shippingStreet) {
+      return NextResponse.json({ error: 'La dirección (calle) es obligatoria.' }, { status: 400 })
+    }
+    if (!shippingCp) {
+      return NextResponse.json({ error: 'El código postal es obligatorio.' }, { status: 400 })
+    }
+    if (!/^\d{5}$/.test(shippingCp)) {
+      return NextResponse.json(
+        { error: 'El código postal debe tener 5 dígitos exactos.' },
+        { status: 400 }
+      )
+    }
+    if (!shippingCity) {
+      return NextResponse.json({ error: 'La ciudad es obligatoria.' }, { status: 400 })
+    }
+  } else if (shippingCp && !/^\d{5}$/.test(shippingCp)) {
+    // Si el cliente envio un CP por error en un tipo sin envio, validamos el formato pero no lo exigimos.
+    return NextResponse.json(
+      { error: 'El código postal debe tener 5 dígitos exactos.' },
+      { status: 400 }
+    )
+  }
+
+  // Serializar los 4 campos estructurados a shipping_address (compat con vistas legacy).
+  // Vacio si no hay datos de envio (transferencias_saas).
+  const serializedAddress = req.shipping
+    ? [shippingStreet, `${shippingCp} ${shippingCity}`, shippingProvince || null]
+        .filter((part) => part && part.trim().length > 0)
+        .join(', ')
+    : ''
 
   // 5. Validar y resolver items del carrito ANTES de crear el pedido.
   // El servidor recalcula precios desde products (no se confia en el cliente).
@@ -296,21 +344,21 @@ export async function POST(request: NextRequest) {
       customer_name: customerName,
       venue_name: typeof body.venue_name === 'string' ? body.venue_name.trim() || null : null,
       contact_email: contactEmail || null,
-      phone,
+      phone: phone || null,
       purchase_type: purchaseType,
       amount: computedAmount,
       bank_receipt_url: bankReceiptUrl || null,
-      requester_name: typeof body.requester_name === 'string' ? body.requester_name.trim() || null : null,
+      requester_name: requesterName || null,
       requester_email: requesterEmail || null,
       ae_ref: typeof body.ae_ref === 'string' ? body.ae_ref.trim() || null : null,
-      hubspot_ref: typeof body.hubspot_ref === 'string' ? body.hubspot_ref.trim() || null : null,
-      // 4 columnas estructuradas (uso primario para TIPSA).
-      shipping_street: shippingStreet,
-      shipping_cp: shippingCp,
-      shipping_city: shippingCity,
-      shipping_province: shippingProvince || null,
-      // Serializado para compat con Google Sheets y vistas legacy.
-      shipping_address: serializedAddress,
+      hubspot_ref: hubspotRef || null,
+      // 4 columnas estructuradas (uso primario para TIPSA). Vacias en transferencias_saas.
+      shipping_street: req.shipping ? shippingStreet : null,
+      shipping_cp: req.shipping ? shippingCp : null,
+      shipping_city: req.shipping ? shippingCity : null,
+      shipping_province: req.shipping ? (shippingProvince || null) : null,
+      // Serializado para compat con vistas legacy. Vacio si no hay envio.
+      shipping_address: serializedAddress || null,
       notes: typeof body.notes === 'string' ? body.notes.trim() || null : null,
       created_by: user.id,
       status: 'nuevo',
@@ -357,9 +405,9 @@ export async function POST(request: NextRequest) {
     console.error('Error inserting status_history:', historyError.message)
   }
 
-  // 7.5 A~adir al address_book si la direccion esta estructurada.
-  // No bloquea: silencia errores, dedupe natural via UNIQUE constraint.
-  if (shippingStreet && shippingCp && shippingCity) {
+  // 7.5 A~adir al address_book si la direccion esta estructurada y el tipo
+  // de compra exige envio. No bloquea: silencia errores, dedupe natural.
+  if (req.shipping && shippingStreet && shippingCp && shippingCity) {
     void upsertAddressFromOrder(admin, {
       name: customerName,
       address: shippingStreet,
