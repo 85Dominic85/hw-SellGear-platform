@@ -6,8 +6,9 @@ import Link from 'next/link'
 import type { PurchaseType, Product } from '@/types/database'
 import { PURCHASE_TYPE_LABELS, isCanaryIslands } from '@/lib/utils'
 import { fieldRequirementsFor } from '@/lib/order-requirements'
-import CartLine, { EMPTY_LINE, type CartLineState } from '@/components/orders/CartLine'
+import { EMPTY_LINE, type CartLineState } from '@/components/orders/CartLine'
 import CartSummary from '@/components/orders/CartSummary'
+import ProductCatalog from '@/components/orders/ProductCatalog'
 import BankReceiptInput from '@/components/orders/BankReceiptInput'
 
 interface FormData {
@@ -77,20 +78,6 @@ export default function NewOrderPage() {
 
   function setField<K extends keyof FormData>(key: K, value: FormData[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
-  }
-
-  function addItem() {
-    setItems((prev) => [...prev, { ...EMPTY_LINE }])
-  }
-
-  function removeItem(index: number) {
-    setItems((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  function updateItem(index: number, partial: Partial<CartLineState>) {
-    setItems((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, ...partial } : item)),
-    )
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -480,31 +467,18 @@ export default function NewOrderPage() {
           </div>
         </div>
 
-        {/* Cart: artículos */}
+        {/* Catalogo visual de productos. Sustituye al ProductPicker plano
+            por tiles con imagen / precio / descripcion (catalogo Qamarero
+            2026). Las lineas libres ('otro' / 'saas_hardware') siguen
+            usando CartLine completo. */}
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-900">Artículos</h2>
-            <button
-              type="button"
-              onClick={addItem}
-              disabled={loadingCatalog || !!catalogError}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <svg
-                className="h-3.5 w-3.5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Añadir línea
-            </button>
+          <div className="mb-4">
+            <h2 className="text-sm font-semibold text-gray-900">
+              Productos
+            </h2>
+            <p className="mt-0.5 text-xs text-gray-500">
+              Selecciona productos del catálogo o añade una línea libre.
+            </p>
           </div>
 
           {loadingCatalog && (
@@ -520,25 +494,13 @@ export default function NewOrderPage() {
           )}
 
           {!loadingCatalog && !catalogError && (
-            <div className="space-y-3">
-              {items.map((line, index) => (
-                <CartLine
-                  key={index}
-                  index={index}
-                  line={line}
-                  products={products}
-                  canRemove={items.length > 1}
-                  onChange={updateItem}
-                  onRemove={removeItem}
-                  vatRateOverride={isCanaryIslands(form.shipping_cp) ? 0 : null}
-                />
-              ))}
-            </div>
+            <ProductCatalog
+              products={products}
+              items={items}
+              onItemsChange={setItems}
+              vatRateOverride={isCanaryIslands(form.shipping_cp) ? 0 : null}
+            />
           )}
-
-          <p className="mt-3 text-xs text-gray-400">
-            Selecciona &quot;Otro (fuera de catálogo)&quot; para introducir productos puntuales con descripción y precio libres.
-          </p>
         </div>
 
         {/* Cart summary */}
