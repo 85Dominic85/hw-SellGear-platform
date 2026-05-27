@@ -12,6 +12,7 @@ import DeleteOrderButton from '@/components/orders/DeleteOrderButton'
 import AutoMarkSeen from '@/components/orders/AutoMarkSeen'
 import EditableHeader from '@/components/orders/EditableHeader'
 import OrderDetailFields from '@/components/orders/OrderDetailFields'
+import FinancingPaymentsPanel from '@/components/orders/FinancingPaymentsPanel'
 import MessageToHardwarePanel from '@/components/orders/MessageToHardwarePanel'
 import { isAdminUser, canCreateShipment } from '@/lib/auth'
 import SlaIndicator from '@/components/orders/SlaIndicator'
@@ -62,6 +63,7 @@ export default async function OrderDetailPage({
       creator:user_profiles!orders_created_by_fkey(id, full_name, email, role, department, created_at, updated_at),
       assignee:user_profiles!orders_assigned_to_fkey(id, full_name, email, role, department, created_at, updated_at),
       order_items(*, product:products(id, code, name, package_count, vat_rate)),
+      order_payments(*),
       status_history:status_history(
         id, order_id, from_status, to_status, changed_by, changed_at, comment,
         changer:user_profiles!status_history_changed_by_fkey(id, full_name, email, role, department, created_at, updated_at)
@@ -153,6 +155,15 @@ export default async function OrderDetailPage({
 
           {/* Items */}
           <ItemsList orderId={order.id} items={items} readOnly={isViewer} />
+
+          {/* Plan de pagos (solo financiación) */}
+          {order.purchase_type === 'hardware_financiacion' && (
+            <FinancingPaymentsPanel
+              orderId={order.id}
+              initialPayments={order.order_payments ?? []}
+              canEdit={canEdit}
+            />
+          )}
 
           {/* Comments */}
           <CommentsList orderId={order.id} comments={comments} readOnly={isViewer} />
