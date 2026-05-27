@@ -1,28 +1,203 @@
 @import "tailwindcss";
 
+/* =============================================================
+   Qamarero Design Tokens (Figma Design System)
+   Portados desde los tokens oficiales entregados por Diseño.
+   Marca: naranja #ff592f. Tipografía: DM Sans + Space Mono.
+   Light-first (sin dark mode automático del SO).
+   ============================================================= */
+
 :root {
+  /* ── Superficies / texto ── */
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0d0d12; /* más oscuro que gray-900 para máxima legibilidad */
+  --card: #ffffff;
+  --card-foreground: #0d0d12;
+
+  /* ── Marca (naranja) — estrategia 2 tokens para AA ── */
+  --brand: #ff592f;        /* 4.6:1 AA sobre blanco — texto, botones, acentos */
+  --brand-hover: #c03818;  /* hover / active */
+  --brand-foreground: #ffffff;
+
+  /* ── Escala Orange ── */
+  --orange-50: #fae9e8;
+  --orange-100: #feccbf;
+  --orange-200: #feac96;
+  --orange-300: #fe8b6c;
+  --orange-400: #ff714c;
+  --orange-500: #ff592f;
+  --orange-600: #f4532b;
+  --orange-700: #e64c26;
+  --orange-800: #d84522;
+  --orange-900: #be391a;
+
+  /* ── Escala Gray (neutros oficiales) ── */
+  --gray-50: #fafafa;
+  --gray-100: #f5f5f5;
+  --gray-200: #eeeeee;
+  --gray-300: #e0e0e0;
+  --gray-400: #bdbdbd;
+  --gray-500: #9e9e9e;
+  --gray-600: #757575;
+  --gray-700: #616161;
+  --gray-800: #424242;
+  --gray-900: #212121;
+
+  /* ── Escala Purple ── */
+  --purple-50: #f5ebff;
+  --purple-100: #f1e0ff;
+  --purple-200: #e7ccff;
+  --purple-300: #deb8ff;
+  --purple-400: #cb8fff;
+  --purple-500: #b56cf5;
+  --purple-600: #953fe0;
+  --purple-700: #7818cc;
+  --purple-800: #5a07a3;
+  --purple-900: #360066;
+
+  /* ── Escala Red / Error ── */
+  --red-50: #ffecf1;
+  --red-100: #fdd8e2;
+  --red-200: #fb9db6;
+  --red-300: #f9628a;
+  --red-400: #f93267;
+  --red-500: #f50a48;
+  --red-600: #cc083c;
+  --red-700: #b80736;
+  --red-800: #a30630;
+  --red-900: #700025;
+
+  /* ── Escala Green / Success ── */
+  --green-50: #ebf7f2;
+  --green-100: #d6efe5;
+  --green-200: #8be4bf;
+  --green-300: #1ad68b;
+  --green-400: #19b878;
+  --green-500: #02995d;
+  --green-600: #008561;
+  --green-700: #047053;
+  --green-800: #045c44;
+  --green-900: #023d2e;
+
+  /* ── Escala Blue / Info ── */
+  --blue-50: #ebf4fd;
+  --blue-100: #d6e8f9;
+  --blue-200: #bad8f5;
+  --blue-300: #9ac6f1;
+  --blue-400: #5ea4e9;
+  --blue-500: #0370dd;
+  --blue-600: #025db8;
+  --blue-700: #0253a3;
+  --blue-800: #03498f;
+  --blue-900: #023466;
+
+  /* ── Escala Amber / Warning ── */
+  --amber-50: #fff9eb;
+  --amber-100: #fff1d6;
+  --amber-200: #ffe0a3;
+  --amber-300: #ffd070;
+  --amber-400: #ffc247;
+  --amber-500: #ffaa00;
+  --amber-600: #eb8d00;
+  --amber-700: #d67900;
+  --amber-800: #c26700;
+  --amber-900: #a34c00;
+
+  /* ── Semánticos ── */
+  --success: var(--green-500);
+  --success-foreground: #ffffff;
+  --info: var(--blue-500);
+  --info-foreground: #ffffff;
+  --warning: var(--amber-500);
+  --warning-foreground: var(--gray-900);
+  --destructive: var(--red-500);
+  --destructive-foreground: #ffffff;
+
+  --border: var(--gray-300);
+  --input: var(--gray-300);
+  --ring: var(--brand); /* focus ring = naranja de marca */
+
+  /* ── Radios (Qamarero Style Guide) ── */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+
+  /* ── Sombras ── */
+  --shadow-soft:
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    0px 8px 12px -4px rgba(16, 12, 12, 0.08),
+    0px 4px 6px -2px rgba(16, 12, 12, 0.03);
+  --shadow-light: 0 2px 4px 0 rgba(13, 13, 18, 0.04);
+
+  /* ── Tipografía — DM Sans (texto) + Space Mono (números/datos) ── */
+  --font-sans:
+    var(--font-dm-sans), system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono:
+    var(--font-space-mono), ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    Consolas, monospace;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Marca como utilities (bg-brand, text-brand, ring-brand, …) */
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-foreground: var(--brand-foreground);
+
+  /* Semánticos como utilities */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-ring: var(--ring);
+
+  /* Override de la escala gris de Tailwind con los neutros Qamarero.
+     Recolorea TODOS los gray-* de la app de golpe (tonos casi idénticos). */
+  --color-gray-50: var(--gray-50);
+  --color-gray-100: var(--gray-100);
+  --color-gray-200: var(--gray-200);
+  --color-gray-300: var(--gray-300);
+  --color-gray-400: var(--gray-400);
+  --color-gray-500: var(--gray-500);
+  --color-gray-600: var(--gray-600);
+  --color-gray-700: var(--gray-700);
+  --color-gray-800: var(--gray-800);
+  --color-gray-900: var(--gray-900);
+
+  /* Escala naranja como utilities (orange-*) por si se necesita */
+  --color-orange-50: var(--orange-50);
+  --color-orange-100: var(--orange-100);
+  --color-orange-200: var(--orange-200);
+  --color-orange-300: var(--orange-300);
+  --color-orange-400: var(--orange-400);
+  --color-orange-500: var(--orange-500);
+  --color-orange-600: var(--orange-600);
+  --color-orange-700: var(--orange-700);
+  --color-orange-800: var(--orange-800);
+  --color-orange-900: var(--orange-900);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 
 @media print {

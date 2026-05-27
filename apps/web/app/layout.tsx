@@ -1,8 +1,20 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { DM_Sans, Space_Mono } from "next/font/google";
 import "./globals.css";
 
-const geist = Geist({ subsets: ["latin"] });
+// Tipografía de marca Qamarero: DM Sans (texto/títulos) + Space Mono (números/datos).
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-dm-sans",
+  display: "swap",
+});
+
+const spaceMono = Space_Mono({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-space-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "MainOperation — Hardware",
@@ -24,8 +36,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es">
-      <body className={`${geist.className} bg-gray-50 text-gray-900 antialiased`}>
+    <html lang="es" className={`${dmSans.variable} ${spaceMono.variable}`}>
+      <body className="font-sans bg-gray-50 text-foreground antialiased">
         {children}
       </body>
     </html>
