@@ -47,7 +47,7 @@ export default async function OrdersPage({
 
   let query = supabase
     .from('orders')
-    .select('*, order_items(*)', { count: 'exact' })
+    .select('*, order_items(*), order_payments(installment_no, status)', { count: 'exact' })
     .order('created_at', { ascending: false })
 
   if (params.status) {

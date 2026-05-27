@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 
   let q = supabase
     .from('orders')
-    .select('*, order_items(*)')
+    .select('*, order_items(*), order_payments(installment_no, status)')
     .order('created_at', { ascending: false })
 
   const status = sp.get('status')

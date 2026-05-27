@@ -7,6 +7,7 @@ import type { Order, OrderItem, UserRole } from '@/types/database'
 import { formatCurrency, formatDate, PURCHASE_TYPE_LABELS, isCanaryIslands } from '@/lib/utils'
 import { getDaysElapsed, getSlaStatus, getSlaColor, formatDaysElapsed, getSlaLabel, SLA_TARGET_DAYS } from '@/lib/sla'
 import StatusBadge from './StatusBadge'
+import FinancingProgressBadge from './FinancingProgressBadge'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, X, MapPin, Package, FileText, Phone, Mail, Truck, Clock, CheckCircle2, AlertTriangle } from 'lucide-react'
 
@@ -310,6 +311,10 @@ export default function OrdersTable({
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
+  // Vista específica de financiación: añade la columna "Pagos" con el badge
+  // de progreso de los plazos. El resto de categorías ven la tabla normal.
+  const isFinancingView = searchParams.get('type') === 'hardware_financiacion'
+
   useEffect(() => {
     setExtraOrders([])
     setErrorMore(null)
@@ -396,6 +401,11 @@ export default function OrdersTable({
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                 Tipo
               </th>
+              {isFinancingView && (
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Pagos
+                </th>
+              )}
               <th className="px-2 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">
                 <span className="sr-only">Detalle</span>
               </th>
@@ -467,6 +477,13 @@ export default function OrdersTable({
                     </span>
                   </Link>
                 </td>
+                {isFinancingView && (
+                  <td className="whitespace-nowrap px-4 py-3">
+                    <Link href={`/orders/${order.id}`} className="block">
+                      <FinancingProgressBadge payments={order.order_payments} />
+                    </Link>
+                  </td>
+                )}
                 <td className="whitespace-nowrap px-2 py-3 text-center">
                   <div className="inline-flex items-center gap-0.5">
                     <button
