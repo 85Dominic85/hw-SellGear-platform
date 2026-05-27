@@ -9,6 +9,9 @@ import { fieldRequirementsFor } from '@/lib/order-requirements'
 import { EMPTY_LINE, type CartLineState } from '@/components/orders/CartLine'
 import CartSummary from '@/components/orders/CartSummary'
 import ProductCatalog from '@/components/orders/ProductCatalog'
+import FinancingCatalog from '@/components/orders/FinancingCatalog'
+import FinancingSummary from '@/components/orders/FinancingSummary'
+import { isFinanceableCode } from '@/lib/financing'
 import BankReceiptInput from '@/components/orders/BankReceiptInput'
 import WizardSteps from '@/components/orders/WizardSteps'
 import PurchaseTypeTile, {
@@ -100,6 +103,20 @@ export default function NewOrderPage() {
   // Reglas de obligatoriedad segun purchase_type (espejo del server).
   const purchaseTypeOrNull = form.purchase_type === '' ? null : form.purchase_type
   const req = fieldRequirementsFor(purchaseTypeOrNull)
+  const isFinancing = form.purchase_type === 'hardware_financiacion'
+  // IVA aplicable al plan de financiación: 0 si Canarias, 21 resto.
+  const financingVatRate = isCanaryIslands(form.shipping_cp) ? 0 : 21
+
+  // Cambiar el tipo de compra resetea el carrito al cruzar la frontera de
+  // financiación (los productos financiables y el resto no son intercambiables).
+  function selectPurchaseType(type: PurchaseType) {
+    const wasFinancing = form.purchase_type === 'hardware_financiacion'
+    const willBeFinancing = type === 'hardware_financiacion'
+    if (wasFinancing !== willBeFinancing) {
+      setItems([{ ...EMPTY_LINE }])
+    }
+    setField('purchase_type', type)
+  }
 
   function goToStep(target: StepNum) {
     setError(null)
@@ -150,7 +167,19 @@ export default function NewOrderPage() {
   function validateStep3(): string | null {
     const filled = items.filter((it) => it.product_id)
     if (filled.length === 0) {
-      return 'Debes añadir al menos un producto al pedido.'
+      return isFinancing
+        ? 'Selecciona un producto financiable.'
+        : 'Debes añadir al menos un producto al pedido.'
+    }
+    if (isFinancing) {
+      if (filled.length !== 1) {
+        return 'Un pedido de financiación debe tener un único producto.'
+      }
+      const product = products.find((p) => p.id === filled[0].product_id)
+      if (!product || !isFinanceableCode(product.code)) {
+        return 'El producto seleccionado no es financiable.'
+      }
+      return null
     }
     for (const it of filled) {
       const product = products.find((p) => p.id === it.product_id)
@@ -296,7 +325,7 @@ export default function NewOrderPage() {
                     key={type}
                     type={type}
                     selected={form.purchase_type === type}
-                    onSelect={() => setField('purchase_type', type)}
+                    onSelect={() => selectPurchaseType(type)}
                   />
                 ))}
               </div>
@@ -535,9 +564,13 @@ export default function NewOrderPage() {
             <>
               <div className={sectionClass}>
                 <div className="mb-4">
-                  <h2 className="text-sm font-semibold text-gray-900">Productos</h2>
+                  <h2 className="text-sm font-semibold text-gray-900">
+                    {isFinancing ? 'Producto a financiar' : 'Productos'}
+                  </h2>
                   <p className="mt-0.5 text-xs text-gray-500">
-                    Selecciona productos del catálogo Qamarero 2026 o añade una línea libre.
+                    {isFinancing
+                      ? 'Solo Pack Pro, Pack Premium y KDS Estándar admiten financiación. Selecciona uno.'
+                      : 'Selecciona productos del catálogo Qamarero 2026 o añade una línea libre.'}
                   </p>
                 </div>
 
@@ -554,21 +587,38 @@ export default function NewOrderPage() {
                 )}
 
                 {!loadingCatalog && !catalogError && (
-                  <ProductCatalog
-                    products={products}
-                    items={items}
-                    onItemsChange={setItems}
-                    vatRateOverride={isCanaryIslands(form.shipping_cp) ? 0 : null}
-                  />
+                  isFinancing ? (
+                    <FinancingCatalog
+                      products={products}
+                      items={items}
+                      onItemsChange={setItems}
+                      vatRate={financingVatRate}
+                    />
+                  ) : (
+                    <ProductCatalog
+                      products={products}
+                      items={items}
+                      onItemsChange={setItems}
+                      vatRateOverride={isCanaryIslands(form.shipping_cp) ? 0 : null}
+                    />
+                  )
                 )}
               </div>
 
               {!loadingCatalog && !catalogError && (
-                <CartSummary
-                  lines={items}
-                  products={products}
-                  vatRateOverride={isCanaryIslands(form.shipping_cp) ? 0 : null}
-                />
+                isFinancing ? (
+                  <FinancingSummary
+                    lines={items}
+                    products={products}
+                    vatRate={financingVatRate}
+                  />
+                ) : (
+                  <CartSummary
+                    lines={items}
+                    products={products}
+                    vatRateOverride={isCanaryIslands(form.shipping_cp) ? 0 : null}
+                  />
+                )
               )}
             </>
           )}
