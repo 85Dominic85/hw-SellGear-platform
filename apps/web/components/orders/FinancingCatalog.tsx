@@ -88,7 +88,7 @@ function FinancingTile({ product, selected, vatRate, onSelect }: FinancingTilePr
       onClick={onSelect}
       aria-pressed={selected}
       className={`group flex flex-col rounded-xl border bg-white text-left shadow-sm transition-all hover:shadow-md ${
-        selected ? 'border-gray-900 ring-2 ring-gray-900' : 'border-gray-200 hover:border-gray-300'
+        selected ? 'border-brand ring-2 ring-brand' : 'border-gray-200 hover:border-gray-300'
       }`}
     >
       {/* Imagen */}
@@ -108,7 +108,7 @@ function FinancingTile({ product, selected, vatRate, onSelect }: FinancingTilePr
           </div>
         )}
         {selected && (
-          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-gray-900 px-2.5 py-1 text-xs font-semibold text-white">
+          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-brand px-2.5 py-1 text-xs font-semibold text-white">
             ✓ Seleccionado
           </span>
         )}

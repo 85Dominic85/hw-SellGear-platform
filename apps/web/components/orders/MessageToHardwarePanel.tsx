@@ -58,7 +58,7 @@ export default function MessageToHardwarePanel({ orderId }: MessageToHardwarePan
           rows={4}
           maxLength={2000}
           placeholder="Escribe tu mensaje..."
-          className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
+          className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           disabled={loading}
         />
         {error && <p className="text-xs text-red-600">{error}</p>}
@@ -68,7 +68,7 @@ export default function MessageToHardwarePanel({ orderId }: MessageToHardwarePan
         <button
           type="submit"
           disabled={loading || !message.trim()}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading && <Loader2 className="h-3 w-3 animate-spin" />}
           {loading ? 'Enviando...' : 'Enviar a Hardware'}

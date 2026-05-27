@@ -57,7 +57,7 @@ export default function SupplierSelect({ orderId, currentSupplier, onSupplierCha
         value={supplier}
         onChange={(e) => handleChange(e.target.value)}
         disabled={saving}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 disabled:opacity-50"
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand disabled:opacity-50"
       >
         <option value="">Sin proveedor</option>
         {SUPPLIERS.map((s) => (

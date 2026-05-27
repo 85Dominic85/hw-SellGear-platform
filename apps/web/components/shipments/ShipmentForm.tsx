@@ -6,7 +6,7 @@ import type { AddressBookEntry } from '@/types/database'
 import AddressPicker from '@/components/address-book/AddressPicker'
 
 const inputClass =
-  'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500'
+  'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand'
 const labelClass = 'mb-1 block text-xs font-medium text-gray-700'
 const cardClass = 'rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4'
 
@@ -455,7 +455,7 @@ export default function ShipmentForm({ services }: ShipmentFormProps) {
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-hover disabled:opacity-50"
           >
             {submitting ? 'Creando envío...' : 'Crear envío TIPSA'}
           </button>

@@ -282,7 +282,7 @@ export default function NewOrderPage() {
   }
 
   const inputClass =
-    'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500'
+    'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand'
   const labelClass = 'block text-xs font-medium text-gray-700 mb-1'
   const sectionClass = 'rounded-xl border border-gray-200 bg-white p-5 shadow-sm'
 
@@ -657,7 +657,7 @@ export default function NewOrderPage() {
                 <button
                   type="button"
                   onClick={nextStep}
-                  className="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-700"
+                  className="rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover"
                 >
                   Continuar →
                 </button>
@@ -665,7 +665,7 @@ export default function NewOrderPage() {
                 <button
                   type="submit"
                   disabled={saving || loadingCatalog || !!catalogError}
-                  className="flex items-center gap-2 rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {saving && (
                     <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">

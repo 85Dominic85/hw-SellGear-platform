@@ -182,7 +182,7 @@ export default function ProductCatalog({
             onClick={() => setActiveCategory(f.key)}
             className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
               activeCategory === f.key
-                ? 'bg-gray-900 text-white'
+                ? 'bg-brand text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -288,7 +288,7 @@ function ProductTile({ product, qty, onAdd, onInc, onDec }: ProductTileProps) {
   return (
     <div
       className={`group relative flex flex-col rounded-xl border bg-white shadow-sm transition-all hover:shadow-md ${
-        inCart ? 'border-gray-900 ring-1 ring-gray-900' : 'border-gray-200'
+        inCart ? 'border-brand ring-1 ring-brand' : 'border-gray-200'
       }`}
     >
       {/* Imagen */}
@@ -308,7 +308,7 @@ function ProductTile({ product, qty, onAdd, onInc, onDec }: ProductTileProps) {
           </div>
         )}
         {inCart && (
-          <span className="absolute right-2 top-2 inline-flex items-center justify-center rounded-full bg-gray-900 px-2.5 py-1 text-xs font-semibold text-white">
+          <span className="absolute right-2 top-2 inline-flex items-center justify-center rounded-full bg-brand px-2.5 py-1 text-xs font-semibold text-white">
             × {qty}
           </span>
         )}
@@ -334,7 +334,7 @@ function ProductTile({ product, qty, onAdd, onInc, onDec }: ProductTileProps) {
             <button
               type="button"
               onClick={onAdd}
-              className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-gray-700"
+              className="rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-brand-hover"
             >
               + Añadir
             </button>

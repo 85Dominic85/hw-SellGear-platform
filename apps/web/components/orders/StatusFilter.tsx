@@ -32,7 +32,7 @@ export default function StatusFilter() {
         className={cn(
           'rounded-full px-3 py-1 text-sm font-medium transition-colors',
           currentStatus === ''
-            ? 'bg-gray-900 text-white'
+            ? 'bg-brand text-white'
             : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50'
         )}
       >
@@ -45,7 +45,7 @@ export default function StatusFilter() {
           className={cn(
             'rounded-full px-3 py-1 text-sm font-medium transition-colors',
             currentStatus === status
-              ? 'bg-gray-900 text-white'
+              ? 'bg-brand text-white'
               : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50'
           )}
         >

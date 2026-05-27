@@ -82,7 +82,7 @@ export default function PurchaseTypeTile({
       aria-pressed={selected}
       className={`group flex flex-col gap-3 rounded-xl border bg-white p-5 text-left shadow-sm transition-all hover:shadow-md ${
         selected
-          ? 'border-gray-900 ring-2 ring-gray-900'
+          ? 'border-brand ring-2 ring-brand'
           : 'border-gray-200 hover:border-gray-300'
       }`}
     >
@@ -90,7 +90,7 @@ export default function PurchaseTypeTile({
         <span
           className={`flex h-10 w-10 items-center justify-center rounded-lg ${
             selected
-              ? 'bg-gray-900 text-white'
+              ? 'bg-brand text-white'
               : 'bg-gray-100 text-gray-700 group-hover:bg-gray-200'
           }`}
         >

@@ -52,7 +52,7 @@ export default async function DashboardLayout({
       <aside className="flex w-60 flex-shrink-0 flex-col bg-gray-900 text-white">
         {/* Logo */}
         <div className="flex h-16 items-center gap-3 px-5 border-b border-gray-700">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand">
             <svg
               className="h-5 w-5 text-white"
               fill="none"

@@ -90,7 +90,7 @@ export default function CommentsList({ orderId, comments, readOnly }: CommentsLi
             onChange={(e) => setBody(e.target.value)}
             rows={3}
             placeholder="Escribe un comentario..."
-            className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
+            className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           />
           {error && (
             <p className="text-xs text-red-600">{error}</p>
@@ -98,7 +98,7 @@ export default function CommentsList({ orderId, comments, readOnly }: CommentsLi
           <button
             type="submit"
             disabled={loading || !body.trim()}
-            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? 'Enviando...' : 'Añadir comentario'}
           </button>

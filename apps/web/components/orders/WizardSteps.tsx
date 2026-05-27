@@ -42,7 +42,7 @@ export default function WizardSteps({
               onClick={() => canClick && onJump(s.num)}
               className={`group flex flex-1 items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors ${
                 isActive
-                  ? 'bg-gray-900 text-white'
+                  ? 'bg-brand text-white'
                   : isReached
                     ? 'bg-white text-gray-900 hover:bg-gray-50 ring-1 ring-gray-200'
                     : 'bg-gray-50 text-gray-400 ring-1 ring-gray-100'
@@ -53,7 +53,7 @@ export default function WizardSteps({
                   isActive
                     ? 'bg-white text-gray-900'
                     : isReached
-                      ? 'bg-gray-900 text-white'
+                      ? 'bg-brand text-white'
                       : 'bg-gray-200 text-gray-500'
                 }`}
               >

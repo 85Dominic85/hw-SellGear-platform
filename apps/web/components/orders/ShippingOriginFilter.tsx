@@ -40,7 +40,7 @@ export default function ShippingOriginFilter() {
           className={cn(
             'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors',
             currentOrigin === value
-              ? 'bg-gray-900 text-white'
+              ? 'bg-brand text-white'
               : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50'
           )}
         >

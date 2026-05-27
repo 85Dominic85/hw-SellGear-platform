@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { AddressBookEntry, AddressBookInput } from '@/types/database'
 
 const inputClass =
-  'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500'
+  'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand'
 
 const labelClass = 'mb-1 block text-xs font-medium text-gray-700'
 
@@ -264,7 +264,7 @@ export default function AddressBookForm({ mode, initial }: AddressBookFormProps)
           <button
             type="submit"
             disabled={saving}
-            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 transition-colors disabled:opacity-50"
+            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-hover transition-colors disabled:opacity-50"
           >
             {saving ? 'Guardando...' : mode === 'create' ? 'Crear' : 'Guardar cambios'}
           </button>

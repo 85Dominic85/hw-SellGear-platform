@@ -120,7 +120,7 @@ export default function FinancingPaymentsPanel({
                 type="button"
                 onClick={generatePlan}
                 disabled={generating}
-                className="rounded-lg bg-gray-900 px-4 py-2 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+                className="rounded-lg bg-brand px-4 py-2 text-xs font-medium text-white hover:bg-brand-hover disabled:opacity-50"
               >
                 {generating ? 'Generando…' : 'Generar plan de pagos'}
               </button>
@@ -233,7 +233,7 @@ function PaymentRow({ payment, canEdit, busy, onToggle, onDate, onUpload }: Paym
               onDate(e.target.value ? new Date(e.target.value).toISOString() : '')
             }
             disabled={busy}
-            className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 focus:border-gray-500 focus:outline-none disabled:opacity-50"
+            className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 focus:border-brand focus:outline-none disabled:opacity-50"
           />
         ) : (
           <span className="text-xs text-gray-500">

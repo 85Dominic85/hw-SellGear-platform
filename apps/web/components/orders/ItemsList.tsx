@@ -352,7 +352,7 @@ export default function ItemsList({ orderId, items, readOnly }: ItemsListProps) 
                       <button
                         onClick={handleAdd}
                         disabled={saving || !newItem.product_name.trim()}
-                        className="rounded bg-gray-900 px-2 py-1 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+                        className="rounded bg-brand px-2 py-1 text-xs font-medium text-white hover:bg-brand-hover disabled:opacity-50"
                       >
                         {saving ? '...' : 'Guardar'}
                       </button>
