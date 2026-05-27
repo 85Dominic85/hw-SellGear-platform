@@ -9,6 +9,11 @@ import { upsertAddressFromOrder } from '@/lib/address-book/upsert'
 import { isCanaryIslands } from '@/lib/utils'
 import { isValidPurchaseType } from '@/lib/purchase-type'
 import { fieldRequirementsFor } from '@/lib/order-requirements'
+import {
+  isFinanceableCode,
+  financingBaseTotalCents,
+  financingInstallments,
+} from '@/lib/financing'
 
 export async function POST(request: NextRequest) {
   // 1. Authenticate via user session
@@ -229,6 +234,31 @@ export async function POST(request: NextRequest) {
     })
   }
 
+  // Financiación: composición fija — 1 único producto financiable, qty 1, sin
+  // descuento. La validación del code financiable ocurre abajo (necesita el
+  // producto resuelto del catálogo).
+  const isFinancing = purchaseType === 'hardware_financiacion'
+  if (isFinancing) {
+    if (cartInputs.length !== 1) {
+      return NextResponse.json(
+        { error: 'Un pedido de financiación debe tener exactamente un producto.' },
+        { status: 400 },
+      )
+    }
+    if (cartInputs[0].qty !== 1) {
+      return NextResponse.json(
+        { error: 'En financiación la cantidad debe ser 1.' },
+        { status: 400 },
+      )
+    }
+    if (cartInputs[0].discount_pct !== 0) {
+      return NextResponse.json(
+        { error: 'Los pedidos de financiación no admiten descuento.' },
+        { status: 400 },
+      )
+    }
+  }
+
   const productIds = Array.from(new Set(cartInputs.map((it) => it.product_id)))
   const { data: catalogProducts, error: productsError } = await admin
     .from('products')
@@ -287,7 +317,21 @@ export async function POST(request: NextRequest) {
     // Exigimos descripcion y precio > 0; mensajes diferenciados.
     const isFreePriceProduct =
       product.code === 'otro' || product.category === 'saas_hardware'
-    if (isFreePriceProduct) {
+    if (isFinancing) {
+      // Financiación: solo 3 productos. El precio = base total del plan
+      // (suma de los 3 plazos), que REEMPLAZA al precio de catálogo
+      // (financiar es más caro). El IVA se aplica igual (Canarias 0 %).
+      if (!isFinanceableCode(product.code)) {
+        return NextResponse.json(
+          {
+            error:
+              'Producto no financiable. Solo Pack Pro, Pack Premium y KDS Estándar admiten financiación.',
+          },
+          { status: 400 },
+        )
+      }
+      unitPriceCents = financingBaseTotalCents(product.code)!
+    } else if (isFreePriceProduct) {
       const isSaasHw = product.category === 'saas_hardware'
       if (!it.product_name_override) {
         return NextResponse.json(
@@ -389,6 +433,32 @@ export async function POST(request: NextRequest) {
 
   if (itemsError) {
     console.error('Error inserting order items:', itemsError.message)
+  }
+
+  // 6.5 Financiación: generar los 3 plazos de pago (entrada + 2 plazos).
+  // amount_cents (gross) suma exactamente orders.amount. Status inicial
+  // 'pendiente'; el equipo Hardware los marca pagados desde la ficha.
+  if (isFinancing) {
+    const fLine = resolved[0]
+    const fProduct = productMap.get(fLine.product_id)
+    const installments = fProduct
+      ? financingInstallments(fProduct.code, fLine.vat_rate)
+      : null
+    if (installments) {
+      const { error: paymentsError } = await admin.from('order_payments').insert(
+        installments.map((inst) => ({
+          order_id: newOrder.id,
+          installment_no: inst.stage,
+          amount_base_cents: inst.baseCents,
+          vat_rate: fLine.vat_rate,
+          amount_cents: inst.grossCents,
+          status: 'pendiente',
+        })),
+      )
+      if (paymentsError) {
+        console.error('Error inserting order_payments:', paymentsError.message)
+      }
+    }
   }
 
   // 7. Insert initial status_history entry

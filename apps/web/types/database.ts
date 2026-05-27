@@ -116,6 +116,26 @@ export interface Order {
   creator?: UserProfile
   assignee?: UserProfile
   shipping_events?: ShippingEvent[]
+  order_payments?: OrderPayment[]
+}
+
+export type PaymentStatus = 'pendiente' | 'pagado'
+
+export interface OrderPayment {
+  id: string
+  order_id: string
+  /** 1 = entrada, 2 y 3 = plazos restantes. */
+  installment_no: 1 | 2 | 3
+  /** Importe base s/IVA del plazo (céntimos). */
+  amount_base_cents: number
+  vat_rate: number
+  /** Importe gross (base + IVA) que transfiere el cliente. */
+  amount_cents: number
+  status: PaymentStatus
+  paid_at: string | null
+  receipt_url: string | null
+  created_at: string
+  updated_at: string
 }
 
 export interface ShippingEvent {
