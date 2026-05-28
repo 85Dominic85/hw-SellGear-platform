@@ -21,6 +21,16 @@
 --     habría que añadir RLS en hw_staging y un check en la función.
 -- =============================================================
 
+-- Schema real (verificado 2026-05-28):
+--   hw_articles:   article_id (uuid, PK), article_type, article_brand,
+--                  article_model, created_at
+--   hw_inventory:  numero_serie, article_id (uuid, FK), condicion,
+--                  estado, notas, transaccion_entrada, transaccion_salida,
+--                  created_at, updated_at, cost_eur, invoice_line_item_id,
+--                  invoice_id
+--
+-- IMPORTANTE: la PK de hw_articles es `article_id`, no `id`. El JOIN
+-- debe ser i.article_id = a.article_id.
 CREATE OR REPLACE FUNCTION public.get_inventory_by_type()
 RETURNS TABLE (
   tipo_articulo TEXT,
@@ -35,7 +45,7 @@ AS $$
     a.article_type::TEXT AS tipo_articulo,
     COUNT(*)::BIGINT AS total_unidades_nuevas
   FROM hw_staging.hw_inventory i
-  JOIN hw_staging.hw_articles a ON i.article_id = a.id
+  JOIN hw_staging.hw_articles a ON i.article_id = a.article_id
   WHERE i.estado = 'disponible'
     AND i.condicion = 'nuevo'
   GROUP BY a.article_type
