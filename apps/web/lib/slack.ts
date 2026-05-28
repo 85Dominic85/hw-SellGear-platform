@@ -208,18 +208,18 @@ export function resolveCategoryMentions(
   )
 }
 
-/** Menciones por evento (creador/solicitante + categoría + @aquí según el caso). */
+/** Menciones por evento (solicitante / creador / categoría — sin @aquí para
+ *  evitar ruido en el canal: solo se mencionan personas concretas). */
 function resolveMentionsForEvent(ctx: NotifyCtx): string {
   const categoryIds = resolveCategoryMentions(ctx.purchase_type)
   switch (ctx.event) {
     case 'new_order':
-      // @aquí + solicitante (si tiene slack_user_id) + categoría. Dedupe auto.
-      return formatMentions(
-        [ctx.requester_slack_user_id, ...categoryIds],
-        { here: true },
-      )
+      // Solicitante (si tiene slack_user_id) + categoría. Dedupe auto.
+      return formatMentions([ctx.requester_slack_user_id, ...categoryIds])
     case 'message_to_hardware':
-      return formatMentions(categoryIds, { here: true })
+      // Solo personas fijas por categoría (si SLACK_CATEGORY_MENTIONS está
+      // configurado). Sin esa env, el mensaje aparece en canal sin ping.
+      return formatMentions(categoryIds)
     case 'status_change':
       if (ctx.to_status === 'falta_informacion') {
         // Ping al creador para que complete; categoría también si configurada.

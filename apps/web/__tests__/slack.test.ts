@@ -452,7 +452,7 @@ describe('new_order — mención al solicitante', () => {
     vi.restoreAllMocks()
   })
 
-  it('incluye <@requester_slack_user_id> junto a <!here>', async () => {
+  it('incluye <@requester_slack_user_id> (sin @aquí: ruido fuera)', async () => {
     const out = await notifyOrderEvent({
       event: 'new_order',
       order_id: 'oid',
@@ -464,11 +464,11 @@ describe('new_order — mención al solicitante', () => {
     expect(fetchSpy).toHaveBeenCalledOnce()
     const body = JSON.parse(fetchSpy.mock.calls[0][1].body)
     const text = (body.blocks[0] as { text: { text: string } }).text.text
-    expect(text).toContain('<!here>')
     expect(text).toContain('<@UREQUESTER>')
+    expect(text).not.toContain('<!here>')
   })
 
-  it('si requester_slack_user_id es null, solo @aquí (sin extra mención)', async () => {
+  it('si requester_slack_user_id es null y sin categoría, no hay mención', async () => {
     await notifyOrderEvent({
       event: 'new_order',
       order_id: 'oid',
@@ -478,8 +478,11 @@ describe('new_order — mención al solicitante', () => {
     })
     const body = JSON.parse(fetchSpy.mock.calls[0][1].body)
     const text = (body.blocks[0] as { text: { text: string } }).text.text
-    expect(text).toContain('<!here>')
+    // Sin solicitante y sin SLACK_CATEGORY_MENTIONS, el header empieza
+    // directamente por el título *:inbox_tray:* (sin prefijo de menciones).
+    expect(text).not.toContain('<!here>')
     expect(text).not.toMatch(/<@U[A-Z0-9]+>/)
+    expect(text.startsWith('*')).toBe(true)
   })
 
   it('dedupe: solicitante coincide con mención por categoría', async () => {
