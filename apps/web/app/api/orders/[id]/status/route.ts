@@ -121,7 +121,13 @@ export async function POST(
 
   // 9. Aviso a Slack (lib/slack.ts → webhook directo; nunca lanza; filtra
   //    estados no clave en SLACK_NOTIFY_STATUSES).
-  const creator = order.creator as { slack_user_id: string | null } | null
+  // El embed de Supabase (creator:user_profiles!fk(...)) puede tiparse como
+  // array o como objeto según el inference; tratamos ambos casos a runtime.
+  const creatorRaw = order.creator as
+    | { slack_user_id: string | null }
+    | Array<{ slack_user_id: string | null }>
+    | null
+  const creator = Array.isArray(creatorRaw) ? creatorRaw[0] ?? null : creatorRaw
   const slackResult = await notifyOrderEvent({
     event: 'status_change',
     order_id: id,
