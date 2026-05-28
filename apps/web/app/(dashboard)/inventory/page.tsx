@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createInventoryClient } from '@/lib/supabase/inventory'
 import type { UserRole } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
@@ -18,16 +19,15 @@ interface RawRow {
 }
 
 export default async function InventoryPage() {
+  // 1. Auth contra el proyecto PRINCIPAL (sesión usuario, cookies).
   const supabase = await createClient()
-
-  // 1. Auth
   const {
     data: { user },
     error: authError,
   } = await supabase.auth.getUser()
   if (authError || !user) redirect('/login')
 
-  // 2. Role check
+  // 2. Role check (también en el proyecto principal).
   const { data: profile } = await supabase
     .from('user_profiles')
     .select('role')
@@ -37,16 +37,36 @@ export default async function InventoryPage() {
     redirect('/')
   }
 
-  // 3. RPC: trae unidades disponibles + nuevas agrupadas por article_type.
-  //    La función vive en public.get_inventory_by_type() y encapsula el
-  //    acceso a hw_staging con SECURITY DEFINER + role check.
-  const { data: rawRows, error } = await supabase.rpc('get_inventory_by_type')
+  // 3. Datos: cliente secundario apuntando al proyecto de inventario
+  //    (olcxbtvjkjmofrbvzpat) con service_role key. Si las envs no están
+  //    configuradas en Vercel, mostramos un mensaje útil al admin en vez
+  //    de crashear.
+  const inventoryClient = createInventoryClient()
 
-  const rows: InventoryRow[] = (rawRows as RawRow[] | null ?? []).map((r) => ({
-    tipo_articulo: r.tipo_articulo,
-    total_unidades_nuevas: Number(r.total_unidades_nuevas),
-  }))
-  const total = rows.reduce((acc, r) => acc + r.total_unidades_nuevas, 0)
+  let rows: InventoryRow[] = []
+  let total = 0
+  let errorMessage: string | null = null
+  let configError = false
+
+  if (!inventoryClient) {
+    configError = true
+    errorMessage =
+      'Inventario no configurado: faltan las variables de entorno ' +
+      'INVENTORY_SUPABASE_URL y/o INVENTORY_SUPABASE_SERVICE_KEY en Vercel.'
+  } else {
+    const { data: rawRows, error } = await inventoryClient.rpc(
+      'get_inventory_by_type',
+    )
+    if (error) {
+      errorMessage = `Error al cargar el inventario: ${error.message}`
+    } else {
+      rows = ((rawRows as RawRow[] | null) ?? []).map((r) => ({
+        tipo_articulo: r.tipo_articulo,
+        total_unidades_nuevas: Number(r.total_unidades_nuevas),
+      }))
+      total = rows.reduce((acc, r) => acc + r.total_unidades_nuevas, 0)
+    }
+  }
   const tiposCount = rows.length
 
   return (
@@ -59,7 +79,7 @@ export default async function InventoryPage() {
         </p>
       </div>
 
-      {/* KPI hero */}
+      {/* KPI hero — siempre visible, muestra 0 si no hay datos */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <p className="text-sm font-medium text-gray-500">
@@ -70,14 +90,19 @@ export default async function InventoryPage() {
             {tiposCount} tipo{tiposCount === 1 ? '' : 's'} de artículo
           </p>
         </div>
-        {/* Huecos intencionados en el grid para futuras métricas
-            (usadas, en mantenimiento, etc.) sin tocar layout. */}
+        {/* Huecos intencionados en el grid para futuras métricas. */}
       </div>
 
       {/* Tabla / estados */}
-      {error ? (
-        <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">
-          Error al cargar el inventario: {error.message}
+      {errorMessage ? (
+        <div
+          className={
+            configError
+              ? 'rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-200'
+              : 'rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200'
+          }
+        >
+          {errorMessage}
         </div>
       ) : rows.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white py-16 text-center">
