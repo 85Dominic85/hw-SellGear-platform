@@ -26,6 +26,7 @@ type EditingUser = {
   full_name: string
   role: UserRole
   department: string
+  slack_user_id: string
 }
 
 type NewUser = {
@@ -83,6 +84,7 @@ export default function AdminUsersPage() {
       full_name: user.full_name ?? '',
       role: user.role,
       department: user.department ?? '',
+      slack_user_id: user.slack_user_id ?? '',
     })
   }
 
@@ -98,6 +100,7 @@ export default function AdminUsersPage() {
           full_name: editing.full_name,
           role: editing.role,
           department: editing.department,
+          slack_user_id: editing.slack_user_id,
         }),
       })
       const data = await res.json()
@@ -442,6 +445,23 @@ export default function AdminUsersPage() {
                   placeholder="Ej: Ventas, Hardware, IT..."
                   className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
                 />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Slack member ID
+                </label>
+                <input
+                  type="text"
+                  value={editing.slack_user_id}
+                  onChange={(e) => setEditing({ ...editing, slack_user_id: e.target.value })}
+                  placeholder="U01ABCDEFGH (empieza por U)"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+                />
+                <p className="mt-1.5 text-xs text-gray-500">
+                  En Slack: perfil del usuario → menú <span className="font-mono">⋮</span> → &ldquo;Copiar member ID&rdquo;. Necesario
+                  para mencionarle automáticamente en los avisos del canal de Hardware.
+                </p>
               </div>
             </div>
 

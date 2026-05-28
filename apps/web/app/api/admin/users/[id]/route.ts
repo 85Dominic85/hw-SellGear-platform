@@ -50,6 +50,23 @@ export async function PUT(
     }
     updates.role = body.role
   }
+  // Slack member ID (manual, para menciones en avisos). Aceptamos string o
+  // null/'' para limpiar. Validación laxa (Slack member IDs empiezan por U
+  // mayúscula + alfanum, pero no enforce para no romper si Slack cambia).
+  if (body.slack_user_id !== undefined) {
+    const raw = body.slack_user_id
+    if (raw === null || raw === '') {
+      updates.slack_user_id = null
+    } else if (typeof raw === 'string') {
+      const trimmed = raw.trim()
+      updates.slack_user_id = trimmed === '' ? null : trimmed
+    } else {
+      return NextResponse.json(
+        { error: 'slack_user_id debe ser string o null' },
+        { status: 400 },
+      )
+    }
+  }
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: 'No hay campos para actualizar' }, { status: 400 })
