@@ -53,6 +53,9 @@ interface OrderContext {
 
 export interface NewOrderCtx extends OrderContext {
   event: 'new_order'
+  /** Slack ID del solicitante (mención adicional al canal). El call-site lo
+   *  resuelve buscando user_profiles.email = orders.requester_email. */
+  requester_slack_user_id?: string | null
 }
 
 export interface StatusChangeCtx extends OrderContext {
@@ -148,6 +151,12 @@ function resolveMentionsForEvent(ctx: NotifyCtx): string {
   const categoryIds = resolveCategoryMentions(ctx.purchase_type)
   switch (ctx.event) {
     case 'new_order':
+      // @aquí + Slack ID del solicitante (si lo tiene rellenado en
+      // user_profiles) + menciones por categoría. formatMentions dedupe.
+      return formatMentions(
+        [ctx.requester_slack_user_id, ...categoryIds],
+        { here: true },
+      )
     case 'message_to_hardware':
       return formatMentions(categoryIds, { here: true })
     case 'status_change':

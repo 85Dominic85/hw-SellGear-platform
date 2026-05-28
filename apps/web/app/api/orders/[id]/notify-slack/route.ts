@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { canComment } from '@/lib/auth'
 import { notifyOrderEvent } from '@/lib/slack'
 import type { PurchaseType, UserRole } from '@/types/database'
@@ -33,17 +34,32 @@ export async function POST(
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
 
-  // Load order (con purchase_type para mención por categoría).
+  // Load order (con purchase_type para mención por categoría y
+  // requester_email para resolver el Slack ID del solicitante).
   const { data: order, error: orderError } = await supabase
     .from('orders')
     .select(
-      'id, operation_id, customer_name, venue_name, requester_name, status, purchase_type',
+      'id, operation_id, customer_name, venue_name, requester_name, requester_email, status, purchase_type',
     )
     .eq('id', id)
     .single()
 
   if (orderError || !order) {
     return NextResponse.json({ error: 'Pedido no encontrado' }, { status: 404 })
+  }
+
+  // Resolver el Slack ID del solicitante por email (si tiene perfil con
+  // slack_user_id relleno en /admin/users). Usamos admin para no depender
+  // de la RLS de user_profiles. Si no hay match, solo @aquí.
+  let requesterSlackUserId: string | null = null
+  if (order.requester_email) {
+    const admin = createAdminClient()
+    const { data: requesterProfile } = await admin
+      .from('user_profiles')
+      .select('slack_user_id')
+      .eq('email', order.requester_email)
+      .maybeSingle()
+    requesterSlackUserId = requesterProfile?.slack_user_id ?? null
   }
 
   // Reenvío manual: lanza un new_order al canal (lib/slack.ts).
@@ -57,6 +73,7 @@ export async function POST(
     venue_name: order.venue_name,
     requester_name: order.requester_name,
     purchase_type: order.purchase_type as PurchaseType | null,
+    requester_slack_user_id: requesterSlackUserId,
   })
   if (!slackResult.ok) {
     return NextResponse.json(

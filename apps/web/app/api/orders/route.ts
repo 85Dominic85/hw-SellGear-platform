@@ -493,6 +493,18 @@ export async function POST(request: NextRequest) {
   }
 
   // 8. Aviso a Slack (lib/slack.ts → webhook directo; nunca lanza).
+  // Resolver el Slack ID del solicitante por requester_email (si tiene
+  // perfil en user_profiles con slack_user_id relleno). Si no, sólo @aquí.
+  let requesterSlackUserId: string | null = null
+  if (requesterEmail) {
+    const { data: requesterProfile } = await admin
+      .from('user_profiles')
+      .select('slack_user_id')
+      .eq('email', requesterEmail)
+      .maybeSingle()
+    requesterSlackUserId = requesterProfile?.slack_user_id ?? null
+  }
+
   const slackResult = await notifyOrderEvent({
     event: 'new_order',
     order_id: newOrder.id,
@@ -502,6 +514,7 @@ export async function POST(request: NextRequest) {
       typeof body.venue_name === 'string' ? body.venue_name.trim() || null : null,
     requester_name: requesterName || null,
     purchase_type: purchaseType,
+    requester_slack_user_id: requesterSlackUserId,
   })
   if (!slackResult.ok) {
     console.error('[slack] new_order falló:', slackResult.error)

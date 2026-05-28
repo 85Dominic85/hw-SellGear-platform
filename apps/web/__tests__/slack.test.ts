@@ -242,6 +242,78 @@ describe('SLACK_NOTIFY_STATUSES + notifyOrderEvent skip', () => {
   })
 })
 
+describe('new_order — mención al solicitante', () => {
+  let fetchSpy: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.stubEnv('SLACK_WEBHOOK_URL', 'https://hooks.slack.test/x')
+    fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => 'ok',
+    })
+    vi.stubGlobal('fetch', fetchSpy)
+  })
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('incluye <@requester_slack_user_id> junto a <!here>', async () => {
+    const out = await notifyOrderEvent({
+      event: 'new_order',
+      order_id: 'oid',
+      operation_id: 'HW-1',
+      customer_name: 'ACME',
+      requester_slack_user_id: 'UREQUESTER',
+    })
+    expect(out).toEqual({ ok: true })
+    expect(fetchSpy).toHaveBeenCalledOnce()
+    const body = JSON.parse(fetchSpy.mock.calls[0][1].body)
+    const text = (body.blocks[0] as { text: { text: string } }).text.text
+    expect(text).toContain('<!here>')
+    expect(text).toContain('<@UREQUESTER>')
+  })
+
+  it('si requester_slack_user_id es null, solo @aquí (sin extra mención)', async () => {
+    await notifyOrderEvent({
+      event: 'new_order',
+      order_id: 'oid',
+      operation_id: 'HW-1',
+      customer_name: 'ACME',
+      requester_slack_user_id: null,
+    })
+    const body = JSON.parse(fetchSpy.mock.calls[0][1].body)
+    const text = (body.blocks[0] as { text: { text: string } }).text.text
+    expect(text).toContain('<!here>')
+    expect(text).not.toMatch(/<@U[A-Z0-9]+>/)
+  })
+
+  it('dedupe: solicitante coincide con mención por categoría', async () => {
+    vi.stubEnv(
+      'SLACK_CATEGORY_MENTIONS',
+      JSON.stringify({ default: ['UDUP', 'UOTRO'] }),
+    )
+    await notifyOrderEvent({
+      event: 'new_order',
+      order_id: 'oid',
+      operation_id: 'HW-1',
+      customer_name: 'ACME',
+      purchase_type: 'hardware_one_off',
+      requester_slack_user_id: 'UDUP',
+    })
+    const body = JSON.parse(fetchSpy.mock.calls[0][1].body)
+    const text = (body.blocks[0] as { text: { text: string } }).text.text
+    // UDUP aparece una sola vez, no dos.
+    const matches = text.match(/<@UDUP>/g) ?? []
+    expect(matches.length).toBe(1)
+    expect(text).toContain('<@UOTRO>')
+  })
+})
+
 describe('postToSlack — logging y fallos de red', () => {
   let warnSpy: ReturnType<typeof vi.spyOn>
   let errorSpy: ReturnType<typeof vi.spyOn>
