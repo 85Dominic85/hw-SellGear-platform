@@ -504,7 +504,9 @@ export async function POST(request: NextRequest) {
     purchase_type: purchaseType,
   })
   if (!slackResult.ok) {
-    console.error('Slack notify error (new_order):', slackResult.error)
+    console.error('[slack] new_order falló:', slackResult.error)
+  } else if (slackResult.skipped) {
+    console.warn('[slack] new_order omitido (webhook no configurado).')
   }
 
   return NextResponse.json({ id: newOrder.id, operation_id: newOrder.operation_id })

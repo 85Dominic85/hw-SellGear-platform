@@ -143,7 +143,9 @@ export async function POST(
     creator_slack_user_id: creator?.slack_user_id ?? null,
   })
   if (!slackResult.ok) {
-    console.error('Slack notify error (status_change):', slackResult.error)
+    console.error('[slack] status_change falló:', slackResult.error)
+  } else if (slackResult.skipped) {
+    console.warn('[slack] status_change omitido (webhook no configurado).')
   }
 
   return NextResponse.json({ ok: true, status: newStatus })

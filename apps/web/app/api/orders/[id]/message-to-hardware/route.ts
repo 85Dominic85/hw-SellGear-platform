@@ -85,7 +85,9 @@ export async function POST(
     message,
   })
   if (!slackResult.ok) {
-    console.error('Slack notify error (message_to_hardware):', slackResult.error)
+    console.error('[slack] message_to_hardware falló:', slackResult.error)
+  } else if (slackResult.skipped) {
+    console.warn('[slack] message_to_hardware omitido (webhook no configurado).')
   }
 
   return NextResponse.json({ ok: true })

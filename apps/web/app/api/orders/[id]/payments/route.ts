@@ -147,7 +147,9 @@ export async function PATCH(
         amount_cents: data.amount_cents,
       })
       if (!slackResult.ok) {
-        console.error('Slack notify error (financing_payment):', slackResult.error)
+        console.error('[slack] financing_payment falló:', slackResult.error)
+      } else if (slackResult.skipped) {
+        console.warn('[slack] financing_payment omitido (webhook no configurado).')
       }
     }
   }

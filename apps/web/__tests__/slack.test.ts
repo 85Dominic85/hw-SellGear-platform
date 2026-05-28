@@ -9,6 +9,7 @@ import {
   resolveCategoryMentions,
   buildSlackMessage,
   notifyOrderEvent,
+  postToSlack,
   SLACK_NOTIFY_STATUSES,
   type NotifyCtx,
 } from '@/lib/slack'
@@ -191,9 +192,13 @@ describe('SLACK_NOTIFY_STATUSES + notifyOrderEvent skip', () => {
     vi.unstubAllEnvs()
     // Webhook sin configurar → postToSlack también haría skip.
     vi.stubEnv('SLACK_WEBHOOK_URL', '')
+    // postToSlack ahora loguea con console.warn cuando no hay URL;
+    // silenciamos para que el output de los tests no se ensucie.
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
   })
   afterEach(() => {
     vi.unstubAllEnvs()
+    vi.restoreAllMocks()
   })
 
   it('contiene los estados clave esperados', () => {
@@ -234,5 +239,47 @@ describe('SLACK_NOTIFY_STATUSES + notifyOrderEvent skip', () => {
     })
     // No filtra por estado; salta por SLACK_WEBHOOK_URL vacío.
     expect(out).toEqual({ ok: true, skipped: true })
+  })
+})
+
+describe('postToSlack — logging y fallos de red', () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>
+  let errorSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('avisa por console.warn cuando SLACK_WEBHOOK_URL no está', async () => {
+    vi.stubEnv('SLACK_WEBHOOK_URL', '')
+    const out = await postToSlack({ text: 'hi', blocks: [] })
+    expect(out).toEqual({ ok: true, skipped: true })
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[slack] SLACK_WEBHOOK_URL no configurado; mensaje omitido.',
+    )
+  })
+
+  it('loguea error cuando el webhook responde !ok y devuelve { ok:false }', async () => {
+    vi.stubEnv('SLACK_WEBHOOK_URL', 'https://hooks.slack.test/xyz')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: async () => 'invalid_payload',
+      }),
+    )
+    const out = await postToSlack({ text: 'hi', blocks: [] })
+    expect(out.ok).toBe(false)
+    expect(out.error).toBe('invalid_payload')
+    expect(errorSpy).toHaveBeenCalledWith('[slack] post falló:', 'invalid_payload')
   })
 })

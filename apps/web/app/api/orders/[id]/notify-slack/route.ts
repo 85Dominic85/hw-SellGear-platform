@@ -64,6 +64,18 @@ export async function POST(
       { status: 502 },
     )
   }
+  // El botón manual es una acción explícita: si el webhook no está
+  // configurado, no podemos fingir éxito al usuario. (Los call-sites
+  // automáticos sí toleran 'skipped' para no romper la operación.)
+  if (slackResult.skipped) {
+    return NextResponse.json(
+      {
+        error:
+          'Slack no está configurado en este entorno (falta SLACK_WEBHOOK_URL).',
+      },
+      { status: 503 },
+    )
+  }
 
-  return NextResponse.json({ ok: true, skipped: slackResult.skipped })
+  return NextResponse.json({ ok: true })
 }

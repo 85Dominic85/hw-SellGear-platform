@@ -326,7 +326,10 @@ export interface SlackResult {
  */
 export async function postToSlack(message: SlackMessage): Promise<SlackResult> {
   const url = process.env.SLACK_WEBHOOK_URL
-  if (!url) return { ok: true, skipped: true }
+  if (!url) {
+    console.warn('[slack] SLACK_WEBHOOK_URL no configurado; mensaje omitido.')
+    return { ok: true, skipped: true }
+  }
   try {
     const res = await fetch(url, {
       method: 'POST',
@@ -335,11 +338,15 @@ export async function postToSlack(message: SlackMessage): Promise<SlackResult> {
     })
     if (!res.ok) {
       const detail = await res.text().catch(() => '')
-      return { ok: false, error: detail || `HTTP ${res.status}` }
+      const error = detail || `HTTP ${res.status}`
+      console.error('[slack] post falló:', error)
+      return { ok: false, error }
     }
     return { ok: true }
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+    const error = err instanceof Error ? err.message : String(err)
+    console.error('[slack] post falló:', error)
+    return { ok: false, error }
   }
 }
 
