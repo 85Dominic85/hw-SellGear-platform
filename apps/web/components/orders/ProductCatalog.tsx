@@ -95,40 +95,23 @@ export default function ProductCatalog({
   // - 'standard': producto del cat publico (tile). lockProduct=true para que
   //   el AE no pueda cambiar el SKU desde aqui (debe usar las tiles).
   // - 'free': SKU especial ('otro' o categoria 'saas_hardware'), o linea
-  //   recien anadida sin producto (product_id null). lockProduct=false:
-  //   permite al AE elegir entre los dos SKUs libres.
-  // Lineas EMPTY iniciales (sin producto ni overrides) se ocultan.
-  type LineKind = 'standard' | 'free' | 'empty'
+  //   recien anadida sin producto (product_id null) — incluye las que crea
+  //   "Anadir linea libre" (EMPTY_LINE en blanco que el AE debe rellenar).
+  //   lockProduct=false: permite elegir entre los dos SKUs libres.
+  // Nota: este componente asume que el estado inicial es []; no hay placeholder
+  // "empty inicial" que filtrar (eso lo gestiona la página /orders/new).
+  type LineKind = 'standard' | 'free'
   function classifyLine(line: CartLineState): LineKind {
-    if (!line.product_id) {
-      const isPristine =
-        line.product_name_override === '' &&
-        line.unit_price_override_cents === null
-      return isPristine ? 'empty' : 'free'
-    }
+    if (!line.product_id) return 'free'
     const p = products.find((x) => x.id === line.product_id)
     if (p?.code === 'otro' || p?.category === 'saas_hardware') return 'free'
     return 'standard'
   }
-  const visibleLines: { idx: number; kind: 'standard' | 'free' }[] = items
-    .map((line, idx) => ({ idx, kind: classifyLine(line) }))
-    .filter((x): x is { idx: number; kind: 'standard' | 'free' } =>
-      x.kind !== 'empty',
-    )
+  const visibleLines: { idx: number; kind: LineKind }[] = items.map(
+    (line, idx) => ({ idx, kind: classifyLine(line) }),
+  )
 
   function addProduct(product: Product) {
-    // Si la unica linea es la EMPTY inicial, sustituyela en vez de anadir.
-    if (
-      items.length === 1 &&
-      items[0].product_id === null &&
-      items[0].product_name_override === '' &&
-      items[0].unit_price_override_cents === null
-    ) {
-      onItemsChange([
-        { ...EMPTY_LINE, product_id: product.id, qty: 1 },
-      ])
-      return
-    }
     // Si ya hay una linea con este producto, +1 qty.
     const idx = items.findIndex((it) => it.product_id === product.id)
     if (idx >= 0) {
@@ -151,7 +134,7 @@ export default function ProductCatalog({
     const newQty = next[idx].qty + delta
     if (newQty <= 0) {
       next.splice(idx, 1)
-      onItemsChange(next.length === 0 ? [{ ...EMPTY_LINE }] : next)
+      onItemsChange(next)
       return
     }
     next[idx] = { ...next[idx], qty: newQty }
@@ -159,6 +142,8 @@ export default function ProductCatalog({
   }
 
   function addFreeLine() {
+    // Linea en blanco; classifyLine la trata como 'free' y se renderiza con
+    // CartLine para que el AE elija SKU ('otro' o 'saas_hardware') + datos.
     onItemsChange([...items, { ...EMPTY_LINE }])
   }
 
@@ -167,8 +152,7 @@ export default function ProductCatalog({
   }
 
   function removeLine(index: number) {
-    const next = items.filter((_, i) => i !== index)
-    onItemsChange(next.length === 0 ? [{ ...EMPTY_LINE }] : next)
+    onItemsChange(items.filter((_, i) => i !== index))
   }
 
   return (

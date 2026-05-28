@@ -6,7 +6,7 @@ import Link from 'next/link'
 import type { PurchaseType, Product } from '@/types/database'
 import { isCanaryIslands } from '@/lib/utils'
 import { fieldRequirementsFor } from '@/lib/order-requirements'
-import { EMPTY_LINE, type CartLineState } from '@/components/orders/CartLine'
+import type { CartLineState } from '@/components/orders/CartLine'
 import CartSummary from '@/components/orders/CartSummary'
 import ProductCatalog from '@/components/orders/ProductCatalog'
 import FinancingCatalog from '@/components/orders/FinancingCatalog'
@@ -70,7 +70,9 @@ export default function NewOrderPage() {
   const [step, setStep] = useState<StepNum>(1)
   const [furthestReached, setFurthestReached] = useState<StepNum>(1)
   const [form, setForm] = useState<FormData>(EMPTY_FORM)
-  const [items, setItems] = useState<CartLineState[]>([{ ...EMPTY_LINE }])
+  // Carrito vacío: las líneas se añaden vía tile del catálogo (estándar) o
+  // botón "Añadir línea libre" (otro / saas_hardware). Sin placeholder inicial.
+  const [items, setItems] = useState<CartLineState[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [loadingCatalog, setLoadingCatalog] = useState(true)
   const [catalogError, setCatalogError] = useState<string | null>(null)
@@ -113,7 +115,7 @@ export default function NewOrderPage() {
     const wasFinancing = form.purchase_type === 'hardware_financiacion'
     const willBeFinancing = type === 'hardware_financiacion'
     if (wasFinancing !== willBeFinancing) {
-      setItems([{ ...EMPTY_LINE }])
+      setItems([])
     }
     setField('purchase_type', type)
   }
