@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('orders')
-    .select('operation_id, created_at, customer_name, venue_name, purchase_type, amount, status, supplier, invoiced, ae_ref, order_items(product_name, qty)')
+    .select('operation_id, created_at, customer_name, venue_name, purchase_type, amount, status, supplier, invoiced, requester_name, order_items(product_name, qty)')
     .order('created_at', { ascending: false })
 
   if (status) {
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     status: o.status,
     supplier: o.supplier,
     invoiced: o.invoiced,
-    ae_ref: o.ae_ref,
+    requester_name: o.requester_name,
     products: (o.order_items || [])
       .map((i: { product_name: string; qty: number }) => `${i.product_name} x${i.qty}`)
       .join('; '),

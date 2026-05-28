@@ -107,7 +107,7 @@ export interface CsvOrderRow {
   supplier: string | null
   products: string
   invoiced?: boolean | null
-  ae_ref?: string | null
+  requester_name?: string | null
   shipped_at?: string | null
   delivered_at?: string | null
 }
@@ -155,7 +155,7 @@ export function generateCSV(
   }
 
   let header = 'ID Operacion,Fecha,Cliente,Venue,Tipo Compra,Importe,Estado'
-  if (extended) header += ',Facturado,Ref AE'
+  if (extended) header += ',Facturado,Solicitante'
   header += ',Proveedor,Productos,Shipped At,Delivered At,Plazo Manipulacion (d),Plazo Total (d)'
   lines.push(header)
 
@@ -179,7 +179,7 @@ export function generateCSV(
     ]
     if (extended) {
       fields.push(o.invoiced ? 'Si' : 'No')
-      fields.push(o.ae_ref || '')
+      fields.push(`"${(o.requester_name || '').replace(/"/g, '""')}"`)
     }
     fields.push(o.supplier || '')
     fields.push(`"${(o.products || '').replace(/"/g, '""')}"`)

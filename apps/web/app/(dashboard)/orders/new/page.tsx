@@ -35,7 +35,6 @@ interface FormData {
   contact_email: string
   phone: string
   purchase_type: PurchaseType | ''
-  ae_ref: string
   hubspot_ref: string
   bank_receipt_url: string
   shipping_street: string
@@ -53,7 +52,6 @@ const EMPTY_FORM: FormData = {
   contact_email: '',
   phone: '',
   purchase_type: '',
-  ae_ref: '',
   hubspot_ref: '',
   bank_receipt_url: '',
   shipping_street: '',
@@ -253,7 +251,6 @@ export default function NewOrderPage() {
           contact_email: form.contact_email.trim() || null,
           phone: form.phone.trim() || null,
           purchase_type: form.purchase_type || null,
-          ae_ref: form.ae_ref.trim() || null,
           hubspot_ref: form.hubspot_ref.trim() || null,
           bank_receipt_url: form.bank_receipt_url.trim() || null,
           shipping_street: form.shipping_street.trim(),
@@ -433,16 +430,6 @@ export default function NewOrderPage() {
               <div className={sectionClass}>
                 <h2 className="mb-4 text-sm font-semibold text-gray-900">Referencias y justificante</h2>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className={labelClass}>Ref. AE</label>
-                    <input
-                      type="text"
-                      value={form.ae_ref}
-                      onChange={(e) => setField('ae_ref', e.target.value)}
-                      placeholder="AE-XXXXX"
-                      className={inputClass}
-                    />
-                  </div>
                   <div>
                     <label className={labelClass}>
                       Ref. HubSpot <span className="text-red-500">*</span>

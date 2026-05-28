@@ -425,7 +425,7 @@ export default function OrdersTable({
                 Fecha
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                Ref AE
+                Solicitante
               </th>
             </tr>
           </thead>
@@ -557,7 +557,7 @@ export default function OrdersTable({
                 <td className="px-4 py-3">
                   <Link href={`/orders/${order.id}`} className="block">
                     <span className="text-sm text-gray-500">
-                      {order.ae_ref ?? '—'}
+                      {order.requester_name ?? '—'}
                     </span>
                   </Link>
                 </td>
