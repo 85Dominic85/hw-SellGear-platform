@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminUser } from '@/lib/auth'
-import type { UserRole } from '@/types/database'
+import type { PurchaseType, UserRole } from '@/types/database'
 import { isCanaryIslands } from '@/lib/utils'
 import { financingInstallments, isFinanceableCode } from '@/lib/financing'
+import { notifyOrderEvent } from '@/lib/slack'
 
 // Gestión de los plazos de pago de un pedido de financiación.
 // PATCH: marcar/actualizar un plazo (estado, fecha, justificante).
@@ -125,6 +126,32 @@ export async function PATCH(
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+
+  // Aviso a Slack solo cuando se marca un plazo como pagado. Carga datos
+  // del pedido para la mención por categoría. Nunca lanza.
+  if (data && data.status === 'pagado' && update.status === 'pagado') {
+    const { data: order } = await admin
+      .from('orders')
+      .select('operation_id, customer_name, venue_name, purchase_type')
+      .eq('id', orderId)
+      .single()
+    if (order) {
+      const slackResult = await notifyOrderEvent({
+        event: 'financing_payment',
+        order_id: orderId,
+        operation_id: order.operation_id,
+        customer_name: order.customer_name,
+        venue_name: order.venue_name,
+        purchase_type: order.purchase_type as PurchaseType | null,
+        installment_no: data.installment_no as 1 | 2 | 3,
+        amount_cents: data.amount_cents,
+      })
+      if (!slackResult.ok) {
+        console.error('Slack notify error (financing_payment):', slackResult.error)
+      }
+    }
+  }
+
   return NextResponse.json({ payment: data })
 }
 

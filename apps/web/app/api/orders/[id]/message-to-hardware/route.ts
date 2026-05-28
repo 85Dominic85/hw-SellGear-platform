@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { notifyOrderEvent } from '@/lib/slack'
+import type { PurchaseType } from '@/types/database'
 
 export const runtime = 'nodejs'
 
@@ -50,7 +52,7 @@ export async function POST(
 
   const { data: order, error: orderError } = await admin
     .from('orders')
-    .select('id, operation_id, customer_name, venue_name, status')
+    .select('id, operation_id, customer_name, venue_name, status, purchase_type')
     .eq('id', id)
     .single()
   if (orderError || !order) {
@@ -68,28 +70,22 @@ export async function POST(
     return NextResponse.json({ error: insertError.message }, { status: 500 })
   }
 
-  // Notificación Slack fire-and-forget
-  try {
-    const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/notify-slack`
-    void fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-      },
-      body: JSON.stringify({
-        event: 'message_to_hardware',
-        order_id: order.id,
-        operation_id: order.operation_id,
-        customer_name: order.customer_name,
-        venue_name: order.venue_name,
-        author_name: profile.full_name ?? profile.email ?? 'Usuario',
-        author_role: profile.role,
-        message,
-      }),
-    }).catch((e) => console.error('[message-to-hardware] slack error:', e))
-  } catch (e) {
-    console.error('[message-to-hardware] slack build error:', e)
+  // Aviso a Slack (lib/slack.ts → webhook directo; nunca lanza). Antes el
+  // evento message_to_hardware se enviaba a la edge function que lo
+  // descartaba; ahora sí llega al canal con @here + categoría.
+  const slackResult = await notifyOrderEvent({
+    event: 'message_to_hardware',
+    order_id: order.id,
+    operation_id: order.operation_id,
+    customer_name: order.customer_name,
+    venue_name: order.venue_name,
+    purchase_type: order.purchase_type as PurchaseType | null,
+    author_name: profile.full_name ?? profile.email ?? 'Usuario',
+    author_role: profile.role,
+    message,
+  })
+  if (!slackResult.ok) {
+    console.error('Slack notify error (message_to_hardware):', slackResult.error)
   }
 
   return NextResponse.json({ ok: true })

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { STATUS_TRANSITIONS } from '@/lib/utils'
-import type { OrderStatus } from '@/types/database'
+import { notifyOrderEvent } from '@/lib/slack'
+import type { OrderStatus, PurchaseType } from '@/types/database'
 
 export async function POST(
   request: NextRequest,
@@ -35,10 +36,13 @@ export async function POST(
     return NextResponse.json({ error: 'El campo status es requerido' }, { status: 400 })
   }
 
-  // 3. Load the current order
+  // 3. Load the current order (incluye creator.slack_user_id para mencionar
+  //    en falta_informacion, y purchase_type para menciones por categoría).
   const { data: order, error: orderError } = await supabase
     .from('orders')
-    .select('id, status, created_by, operation_id, customer_name, venue_name, requester_name')
+    .select(
+      'id, status, created_by, operation_id, customer_name, venue_name, requester_name, purchase_type, creator:user_profiles!orders_created_by_fkey(slack_user_id)',
+    )
     .eq('id', id)
     .single()
 
@@ -115,31 +119,25 @@ export async function POST(
     console.error('Error inserting status_history:', historyError.message)
   }
 
-  // 9. Call Edge Function notify-slack (fire and forget)
-  try {
-    const edgeFunctionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/notify-slack`
-    fetch(edgeFunctionUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-      },
-      body: JSON.stringify({
-        event: 'status_change',
-        order_id: id,
-        operation_id: order.operation_id,
-        customer_name: order.customer_name,
-        venue_name: order.venue_name,
-        requester_name: order.requester_name,
-        status: newStatus,
-        from_status: currentStatus,
-        changed_by: profile?.full_name ?? null,
-        comment,
-      }),
-    }).catch((e) => console.error('notify-slack fetch error:', e))
-  } catch (slackError) {
-    // Non-fatal — Slack notification failure should not block the response
-    console.error('Error calling notify-slack edge function:', slackError)
+  // 9. Aviso a Slack (lib/slack.ts → webhook directo; nunca lanza; filtra
+  //    estados no clave en SLACK_NOTIFY_STATUSES).
+  const creator = order.creator as { slack_user_id: string | null } | null
+  const slackResult = await notifyOrderEvent({
+    event: 'status_change',
+    order_id: id,
+    operation_id: order.operation_id,
+    customer_name: order.customer_name,
+    venue_name: order.venue_name,
+    requester_name: order.requester_name,
+    purchase_type: order.purchase_type as PurchaseType | null,
+    from_status: currentStatus,
+    to_status: newStatus,
+    changed_by: profile?.full_name ?? null,
+    comment,
+    creator_slack_user_id: creator?.slack_user_id ?? null,
+  })
+  if (!slackResult.ok) {
+    console.error('Slack notify error (status_change):', slackResult.error)
   }
 
   return NextResponse.json({ ok: true, status: newStatus })

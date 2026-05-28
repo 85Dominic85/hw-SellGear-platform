@@ -14,6 +14,7 @@ import {
   financingBaseTotalCents,
   financingInstallments,
 } from '@/lib/financing'
+import { notifyOrderEvent } from '@/lib/slack'
 
 export async function POST(request: NextRequest) {
   // 1. Authenticate via user session
@@ -491,27 +492,19 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  // 8. Call Edge Function notify-slack (fire and forget)
-  try {
-    const edgeFunctionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/notify-slack`
-    fetch(edgeFunctionUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-      },
-      body: JSON.stringify({
-        event: 'new_order',
-        order_id: newOrder.id,
-        operation_id: newOrder.operation_id,
-        customer_name: customerName,
-        venue_name: typeof body.venue_name === 'string' ? body.venue_name.trim() || null : null,
-        requester_name: typeof body.requester_name === 'string' ? body.requester_name.trim() || null : null,
-        status: 'nuevo',
-      }),
-    }).catch((e) => console.error('notify-slack fetch error:', e))
-  } catch (slackError) {
-    console.error('Error calling notify-slack edge function:', slackError)
+  // 8. Aviso a Slack (lib/slack.ts → webhook directo; nunca lanza).
+  const slackResult = await notifyOrderEvent({
+    event: 'new_order',
+    order_id: newOrder.id,
+    operation_id: newOrder.operation_id,
+    customer_name: customerName,
+    venue_name:
+      typeof body.venue_name === 'string' ? body.venue_name.trim() || null : null,
+    requester_name: requesterName || null,
+    purchase_type: purchaseType,
+  })
+  if (!slackResult.ok) {
+    console.error('Slack notify error (new_order):', slackResult.error)
   }
 
   return NextResponse.json({ id: newOrder.id, operation_id: newOrder.operation_id })
