@@ -71,7 +71,7 @@ export default async function InventoryPage() {
 
   return (
     <div className="px-6 py-8">
-      {/* Header */}
+      {/* Header — left-aligned (patrón de /orders y /metrics) */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Inventario</h1>
         <p className="mt-1 text-sm text-gray-500">
@@ -79,32 +79,36 @@ export default async function InventoryPage() {
         </p>
       </div>
 
-      {/* KPI hero — siempre visible, muestra 0 si no hay datos */}
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">
-            Stock total nuevo disponible
-          </p>
-          <p className="mt-2 font-mono text-3xl font-bold text-gray-900">{total}</p>
-          <p className="mt-1 text-xs text-gray-400">
-            {tiposCount} tipo{tiposCount === 1 ? '' : 's'} de artículo
-          </p>
+      {/* Zona de contenido centrada y acotada para no estirar la tabla
+          a lo ancho. max-w-3xl (~768px) deja espacio suficiente para
+          el KPI hero (3 cols) y mantiene la tabla compacta. */}
+      <div className="mx-auto max-w-3xl">
+        {/* KPI hero — siempre visible, muestra 0 si no hay datos */}
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-medium text-gray-500">
+              Stock total nuevo disponible
+            </p>
+            <p className="mt-2 font-mono text-3xl font-bold text-gray-900">{total}</p>
+            <p className="mt-1 text-xs text-gray-400">
+              {tiposCount} tipo{tiposCount === 1 ? '' : 's'} de artículo
+            </p>
+          </div>
+          {/* Huecos intencionados en el grid para futuras métricas. */}
         </div>
-        {/* Huecos intencionados en el grid para futuras métricas. */}
-      </div>
 
-      {/* Tabla / estados */}
-      {errorMessage ? (
-        <div
-          className={
-            configError
-              ? 'rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-200'
-              : 'rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200'
-          }
-        >
-          {errorMessage}
-        </div>
-      ) : rows.length === 0 ? (
+        {/* Tabla / estados */}
+        {errorMessage ? (
+          <div
+            className={
+              configError
+                ? 'rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-200'
+                : 'rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200'
+            }
+          >
+            {errorMessage}
+          </div>
+        ) : rows.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white py-16 text-center">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -169,6 +173,7 @@ export default async function InventoryPage() {
           </table>
         </div>
       )}
+      </div>
     </div>
   )
 }
