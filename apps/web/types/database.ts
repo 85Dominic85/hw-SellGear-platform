@@ -54,6 +54,8 @@ export interface UserProfile {
   email: string | null
   role: UserRole
   department: string | null
+  /** Slack member ID (formato U…) para menciones en avisos. Manual. */
+  slack_user_id: string | null
   created_at: string
   updated_at: string
 }
