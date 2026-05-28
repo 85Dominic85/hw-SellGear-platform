@@ -507,6 +507,94 @@ describe('new_order — mención al solicitante', () => {
   })
 })
 
+describe('Mención al user group de Hardware (subteam)', () => {
+  let fetchSpy: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.stubEnv('SLACK_WEBHOOK_URL', 'https://hooks.slack.test/x')
+    fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => 'ok',
+    })
+    vi.stubGlobal('fetch', fetchSpy)
+  })
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('new_order incluye <!subteam^ID> cuando SLACK_HARDWARE_USERGROUP_ID está', async () => {
+    vi.stubEnv('SLACK_HARDWARE_USERGROUP_ID', 'STESTGROUP')
+    await notifyOrderEvent({
+      event: 'new_order',
+      order_id: 'oid',
+      operation_id: 'HW-1',
+      customer_name: 'ACME',
+      requester_slack_user_id: 'UREQ',
+    })
+    const body = JSON.parse(fetchSpy.mock.calls[0][1].body)
+    const text = (body.blocks[0] as { text: { text: string } }).text.text
+    expect(text).toContain('<!subteam^STESTGROUP>')
+    // Solicitante también
+    expect(text).toContain('<@UREQ>')
+    // No @here
+    expect(text).not.toContain('<!here>')
+  })
+
+  it('message_to_hardware incluye <!subteam^ID> cuando la env está', async () => {
+    vi.stubEnv('SLACK_HARDWARE_USERGROUP_ID', 'STESTGROUP')
+    await notifyOrderEvent({
+      event: 'message_to_hardware',
+      order_id: 'oid',
+      operation_id: 'HW-1',
+      customer_name: 'ACME',
+      author_name: 'Juan',
+      message: 'Hola',
+    })
+    const body = JSON.parse(fetchSpy.mock.calls[0][1].body)
+    const text = (body.blocks[0] as { text: { text: string } }).text.text
+    expect(text).toContain('<!subteam^STESTGROUP>')
+    expect(text).not.toContain('<!here>')
+  })
+
+  it('sin env: no incluye <!subteam^...> en el header', async () => {
+    // vi.unstubAllEnvs en beforeEach ya garantiza que no está set.
+    await notifyOrderEvent({
+      event: 'new_order',
+      order_id: 'oid',
+      operation_id: 'HW-1',
+      customer_name: 'ACME',
+      requester_slack_user_id: 'UREQ',
+    })
+    const body = JSON.parse(fetchSpy.mock.calls[0][1].body)
+    const text = (body.blocks[0] as { text: { text: string } }).text.text
+    expect(text).not.toContain('<!subteam')
+    // Solicitante sí sigue ahí
+    expect(text).toContain('<@UREQ>')
+  })
+
+  it('status_change a falta_informacion NO añade subteam (sigue ping al creador)', async () => {
+    vi.stubEnv('SLACK_HARDWARE_USERGROUP_ID', 'STESTGROUP')
+    await notifyOrderEvent({
+      event: 'status_change',
+      order_id: 'oid',
+      operation_id: 'HW-1',
+      customer_name: 'ACME',
+      from_status: 'pendiente',
+      to_status: 'falta_informacion',
+      creator_slack_user_id: 'UCREATOR',
+    })
+    const body = JSON.parse(fetchSpy.mock.calls[0][1].body)
+    const text = (body.blocks[0] as { text: { text: string } }).text.text
+    expect(text).not.toContain('<!subteam')
+    expect(text).toContain('<@UCREATOR>')
+  })
+})
+
 describe('postToSlack — logging y fallos de red', () => {
   let warnSpy: ReturnType<typeof vi.spyOn>
   let errorSpy: ReturnType<typeof vi.spyOn>

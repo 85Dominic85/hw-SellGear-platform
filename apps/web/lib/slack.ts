@@ -208,18 +208,34 @@ export function resolveCategoryMentions(
   )
 }
 
-/** Menciones por evento (solicitante / creador / categoría — sin @aquí para
- *  evitar ruido en el canal: solo se mencionan personas concretas). */
+/**
+ * Mención al user group de Hardware (formato `<!subteam^ID>`) leído desde
+ * SLACK_HARDWARE_USERGROUP_ID. Devuelve cadena vacía si la env no está.
+ * Slack renderiza el handle automáticamente (ej. `@hardware_cx`) y pinguea
+ * solo a los miembros del grupo, no a todo el canal.
+ */
+function resolveTeamMention(): string {
+  const id = process.env.SLACK_HARDWARE_USERGROUP_ID?.trim()
+  return id ? `<!subteam^${id}>` : ''
+}
+
+/** Menciones por evento (subteam Hardware + solicitante / creador / categoría
+ *  — sin @aquí para evitar ruido en el canal). */
 function resolveMentionsForEvent(ctx: NotifyCtx): string {
   const categoryIds = resolveCategoryMentions(ctx.purchase_type)
   switch (ctx.event) {
-    case 'new_order':
-      // Solicitante (si tiene slack_user_id) + categoría. Dedupe auto.
-      return formatMentions([ctx.requester_slack_user_id, ...categoryIds])
-    case 'message_to_hardware':
-      // Solo personas fijas por categoría (si SLACK_CATEGORY_MENTIONS está
-      // configurado). Sin esa env, el mensaje aparece en canal sin ping.
-      return formatMentions(categoryIds)
+    case 'new_order': {
+      // Subteam Hardware + solicitante (si tiene slack_user_id) + categoría.
+      const team = resolveTeamMention()
+      const personal = formatMentions([ctx.requester_slack_user_id, ...categoryIds])
+      return [team, personal].filter(Boolean).join(' ')
+    }
+    case 'message_to_hardware': {
+      // Subteam Hardware + personas fijas por categoría.
+      const team = resolveTeamMention()
+      const personal = formatMentions(categoryIds)
+      return [team, personal].filter(Boolean).join(' ')
+    }
     case 'status_change':
       if (ctx.to_status === 'falta_informacion') {
         // Ping al creador para que complete; categoría también si configurada.
