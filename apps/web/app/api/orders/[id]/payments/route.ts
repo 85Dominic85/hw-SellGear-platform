@@ -132,7 +132,7 @@ export async function PATCH(
   if (data && data.status === 'pagado' && update.status === 'pagado') {
     const { data: order } = await admin
       .from('orders')
-      .select('operation_id, customer_name, venue_name, purchase_type')
+      .select('operation_id, customer_name, venue_name, purchase_type, amount')
       .eq('id', orderId)
       .single()
     if (order) {
@@ -143,8 +143,14 @@ export async function PATCH(
         customer_name: order.customer_name,
         venue_name: order.venue_name,
         purchase_type: order.purchase_type as PurchaseType | null,
+        // amount_cents = total del pedido (suma de los 3 plazos).
+        // installment_amount_cents = importe del plazo concreto.
+        amount_cents:
+          typeof order.amount === 'number'
+            ? Math.round(order.amount * 100)
+            : null,
         installment_no: data.installment_no as 1 | 2 | 3,
-        amount_cents: data.amount_cents,
+        installment_amount_cents: data.amount_cents,
       })
       if (!slackResult.ok) {
         console.error('[slack] financing_payment falló:', slackResult.error)

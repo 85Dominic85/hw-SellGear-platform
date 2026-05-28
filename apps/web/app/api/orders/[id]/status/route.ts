@@ -41,7 +41,7 @@ export async function POST(
   const { data: order, error: orderError } = await supabase
     .from('orders')
     .select(
-      'id, status, created_by, operation_id, customer_name, venue_name, requester_name, purchase_type, creator:user_profiles!orders_created_by_fkey(slack_user_id)',
+      'id, status, created_by, operation_id, customer_name, venue_name, requester_name, purchase_type, amount, creator:user_profiles!orders_created_by_fkey(slack_user_id)',
     )
     .eq('id', id)
     .single()
@@ -136,6 +136,8 @@ export async function POST(
     venue_name: order.venue_name,
     requester_name: order.requester_name,
     purchase_type: order.purchase_type as PurchaseType | null,
+    amount_cents:
+      typeof order.amount === 'number' ? Math.round(order.amount * 100) : null,
     from_status: currentStatus,
     to_status: newStatus,
     changed_by: profile?.full_name ?? null,

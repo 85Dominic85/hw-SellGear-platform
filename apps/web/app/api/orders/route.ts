@@ -14,7 +14,7 @@ import {
   financingBaseTotalCents,
   financingInstallments,
 } from '@/lib/financing'
-import { notifyOrderEvent } from '@/lib/slack'
+import { notifyOrderEvent, formatItemsSummary } from '@/lib/slack'
 
 export async function POST(request: NextRequest) {
   // 1. Authenticate via user session
@@ -29,9 +29,10 @@ export async function POST(request: NextRequest) {
   }
 
   // 1.b. Authorize: solo commercial/hardware/admin pueden crear pedidos.
+  // full_name lo usamos en el footer del aviso de Slack (lib/slack.ts).
   const { data: profile } = await supabase
     .from('user_profiles')
-    .select('role')
+    .select('role, full_name')
     .eq('id', user.id)
     .single()
   const role = profile?.role as UserRole | undefined
@@ -514,7 +515,15 @@ export async function POST(request: NextRequest) {
       typeof body.venue_name === 'string' ? body.venue_name.trim() || null : null,
     requester_name: requesterName || null,
     purchase_type: purchaseType,
+    amount_cents: Math.round(computedAmount * 100),
     requester_slack_user_id: requesterSlackUserId,
+    items_summary: formatItemsSummary(
+      resolved.map((r) => ({ product_name: r.product_name, qty: r.qty })),
+    ),
+    shipping_city: req.shipping ? shippingCity || null : null,
+    shipping_cp: req.shipping ? shippingCp || null : null,
+    hubspot_ref: hubspotRef || null,
+    creator_name: profile?.full_name ?? null,
   })
   if (!slackResult.ok) {
     console.error('[slack] new_order falló:', slackResult.error)

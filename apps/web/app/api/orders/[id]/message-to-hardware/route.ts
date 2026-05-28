@@ -52,7 +52,7 @@ export async function POST(
 
   const { data: order, error: orderError } = await admin
     .from('orders')
-    .select('id, operation_id, customer_name, venue_name, status, purchase_type')
+    .select('id, operation_id, customer_name, venue_name, status, purchase_type, amount')
     .eq('id', id)
     .single()
   if (orderError || !order) {
@@ -80,6 +80,8 @@ export async function POST(
     customer_name: order.customer_name,
     venue_name: order.venue_name,
     purchase_type: order.purchase_type as PurchaseType | null,
+    amount_cents:
+      typeof order.amount === 'number' ? Math.round(order.amount * 100) : null,
     author_name: profile.full_name ?? profile.email ?? 'Usuario',
     author_role: profile.role,
     message,

@@ -6,8 +6,11 @@ interface SlackNotifyButtonProps {
   orderId: string
 }
 
+const MAX_COMMENT_LENGTH = 500
+
 export default function SlackNotifyButton({ orderId }: SlackNotifyButtonProps) {
   const [loading, setLoading] = useState(false)
+  const [comment, setComment] = useState('')
   const [result, setResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   async function handleNotify() {
@@ -15,8 +18,11 @@ export default function SlackNotifyButton({ orderId }: SlackNotifyButtonProps) {
     setResult(null)
 
     try {
+      const trimmed = comment.trim()
       const res = await fetch(`/api/orders/${orderId}/notify-slack`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment: trimmed || undefined }),
       })
       const data = await res.json()
 
@@ -24,6 +30,7 @@ export default function SlackNotifyButton({ orderId }: SlackNotifyButtonProps) {
         setResult({ type: 'error', text: data.error ?? 'Error al enviar a Slack' })
       } else {
         setResult({ type: 'success', text: 'Notificacion enviada a Slack' })
+        setComment('') // limpiar para la siguiente
       }
     } catch {
       setResult({ type: 'error', text: 'Error de conexion. Intentalo de nuevo.' })
@@ -50,6 +57,26 @@ export default function SlackNotifyButton({ orderId }: SlackNotifyButtonProps) {
           {result.text}
         </div>
       )}
+
+      <label
+        htmlFor={`slack-comment-${orderId}`}
+        className="mb-1 block text-xs font-medium text-gray-700"
+      >
+        Comentario para Slack (opcional)
+      </label>
+      <textarea
+        id={`slack-comment-${orderId}`}
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        placeholder="Contexto adicional para el equipo: urgencia, instrucciones, motivo…"
+        maxLength={MAX_COMMENT_LENGTH}
+        rows={3}
+        disabled={loading}
+        className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#4A154B] focus:outline-none focus:ring-1 focus:ring-[#4A154B] disabled:cursor-not-allowed disabled:bg-gray-50"
+      />
+      <div className="mb-3 mt-1 text-right text-[10px] text-gray-400">
+        {comment.length}/{MAX_COMMENT_LENGTH}
+      </div>
 
       <button
         onClick={handleNotify}
