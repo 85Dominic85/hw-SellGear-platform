@@ -101,6 +101,71 @@ flowchart TB
 
 ---
 
+## 4. Flujo de financiación
+
+Cómo trabaja un pedido de financiación de principio a fin: 3 plazos auto-generados (cálculo de IVA según CP de envío), gestión de cobros desde la ficha del pedido, notificación a Slack en cada plazo marcado como pagado.
+
+```mermaid
+flowchart TB
+    A([Comercial crea pedido]) -->|"purchase_type =<br/>hardware_financiacion"| B{Wizard step 3}
+    B -->|"Selecciona pack:<br/>Pack Pro · Pack Premium · KDS Estándar"| C[App genera plan<br/>3 plazos calculados<br/>con IVA según CP envío<br/>Canarias 0% / Resto 21%]
+    C --> D[(3 filas creadas en<br/>order_payments:<br/>Entrada · 2º plazo · 3º plazo<br/>status=pendiente)]
+
+    D --> E{Hardware recibe<br/>justificante bancario}
+    E -->|1ª transferencia| F[Marca plazo 1 = pagado<br/>+ URL justificante]
+    F -. Slack notify .-> S(((Canal<br/>#hardware)))
+    F --> G[Hardware genera<br/>envío TIPSA]
+    G --> H([ENVIADO])
+
+    H --> I{Hardware recibe<br/>2ª transferencia}
+    I -->|justificante 2| J[Marca plazo 2 = pagado]
+    J -. Slack notify .-> S
+
+    J --> K{Hardware recibe<br/>3ª transferencia}
+    K -->|justificante 3| L[Marca plazo 3 = pagado]
+    L -. Slack notify .-> S
+    L --> M([COMPLETADO])
+
+    style C fill:#e0e7ff,stroke:#6366f1
+    style D fill:#dbeafe,stroke:#3b82f6
+    style F fill:#dcfce7,stroke:#10b981
+    style J fill:#dcfce7,stroke:#10b981
+    style L fill:#dcfce7,stroke:#10b981
+    style H fill:#e0f2fe,stroke:#0ea5e9
+    style M fill:#bbf7d0,stroke:#16a34a
+    style S fill:#f3e8ff,stroke:#8b5cf6
+```
+
+---
+
+## 5. El pain con Google Sheets
+
+Concentra los problemas operativos que teníamos cuando toda la gestión (especialmente financiaciones) vivía en una hoja de Sheets compartida. Es el diagrama que mejor justifica el "porqué" del proyecto frente a un stakeholder no técnico.
+
+```mermaid
+flowchart TB
+    HOJA["📊 Hoja 'Pedidos Financiación'<br/>una única Google Sheet<br/>compartida"]
+
+    HOJA --> P1["💸 IVA Canarias calculado a mano<br/>0% vs 21% por CP<br/>→ errores fiscales recurrentes"]
+    HOJA --> P2["⏰ Plazos sin alertas de vencimiento<br/>→ cobros olvidados<br/>→ impacto en cash flow"]
+    HOJA --> P3["👀 Estado del cobro invisible<br/>para Comercial<br/>→ '¿cómo va mi pedido?'<br/>preguntas constantes"]
+    HOJA --> P4["📂 Justificantes en carpeta Drive aparte<br/>links pegados a mano en celdas<br/>→ enlaces rotos, problemas auditoría"]
+    HOJA --> P5["⚠️ 2 personas editando a la vez<br/>→ sobreescrituras<br/>→ datos perdidos"]
+    HOJA --> P6["📜 Sin historial de cambios<br/>¿quién marcó este pago?<br/>¿cuándo? ¿por qué?"]
+    HOJA --> P7["📈 Sin métricas agregadas<br/>(cobrado vs pendiente,<br/>plazos vencidos)<br/>→ decisiones a ciegas"]
+
+    style HOJA fill:#fef3c7,stroke:#d97706,stroke-width:3px,color:#78350f
+    style P1 fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    style P2 fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    style P3 fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    style P4 fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    style P5 fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    style P6 fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    style P7 fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+```
+
+---
+
 ## Versionado
 
 Cualquier cambio relevante en flujos, estados o piezas de la arquitectura debería reflejarse en este archivo en el mismo PR. Si el cambio es solo cosmético (colores en Excalidraw), no hace falta — basta con actualizar el `.excalidraw` exportado si lo guardáis aparte.
