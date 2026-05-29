@@ -26,7 +26,8 @@ export const TIPSA_URLS = {
 export const DEFAULT_SERVICES_CATALOG: Array<{ code: string; label: string }> = [
   // Mas habituales primero (el primero es el default del selector)
   { code: '48', label: 'Economy (24h)' },
-  { code: '49', label: 'Standard' },
+  // Codigo 49 ("Standard") retirado: TIPSA confirmo que no lo reconoce
+  // su plataforma. El estandar 24h se gestiona con el codigo 48.
   { code: '24', label: 'Premium' },
   { code: '14', label: '14 Horas' },
   { code: '10', label: '10 Horas' },
