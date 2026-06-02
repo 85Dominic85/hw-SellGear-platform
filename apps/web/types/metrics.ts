@@ -53,6 +53,20 @@ export interface SlaMetrics {
   }[]
 }
 
+/**
+ * Fila del ranking de solicitantes (RPC get_requesters_ranking).
+ * Una fila por solicitante (agrupado por email normalizado).
+ * `requester_name` puede ser null si todos los pedidos del email no
+ * tenían nombre rellenado (caso raro pero posible).
+ */
+export interface RequesterRankingRow {
+  requester_email: string
+  requester_name: string | null
+  total_equipment_qty: number
+  total_orders: number
+  total_revenue: number
+}
+
 export type PeriodPreset = 'this_week' | 'this_month' | 'this_quarter' | 'last_month' | 'last_quarter' | 'custom'
 
 export interface MetricsFilters {

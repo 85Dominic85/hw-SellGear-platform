@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getDateRange } from '@/lib/metrics'
 import type { UserRole } from '@/types/database'
-import type { DashboardMetrics, DashboardComparison, SlaMetrics } from '@/types/metrics'
+import type { DashboardMetrics, DashboardComparison, SlaMetrics, RequesterRankingRow } from '@/types/metrics'
 import MetricsDashboard from '@/components/metrics/MetricsDashboard'
 
 const ALLOWED_ROLES: UserRole[] = ['admin', 'manager', 'hardware']
@@ -27,10 +27,11 @@ export default async function MetricsPage() {
   // Fetch initial data: this month
   const { from, to } = getDateRange('this_month')
 
-  const [metricsRes, comparisonRes, slaRes] = await Promise.all([
+  const [metricsRes, comparisonRes, slaRes, rankingRes] = await Promise.all([
     supabase.rpc('get_dashboard_metrics', { p_from: from, p_to: to }),
     supabase.rpc('get_dashboard_comparison', { p_from: from, p_to: to }),
     supabase.rpc('get_sla_metrics', { p_from: from, p_to: to }),
+    supabase.rpc('get_requesters_ranking', { p_from: from, p_to: to }),
   ])
 
   const metrics: DashboardMetrics = metricsRes.data ?? {
@@ -56,9 +57,19 @@ export default async function MetricsPage() {
     sla_by_week: [],
   }
 
+  // ranking: si la RPC nueva todavía no existe en Supabase (no se ha
+  // aplicado la migración) devolvemos [] y el componente muestra empty
+  // state — la app no rompe.
+  const ranking: RequesterRankingRow[] = (rankingRes.data as RequesterRankingRow[] | null) ?? []
+
   return (
     <div className="px-6 py-8">
-      <MetricsDashboard initialMetrics={metrics} initialComparison={comparison} initialSla={sla} />
+      <MetricsDashboard
+        initialMetrics={metrics}
+        initialComparison={comparison}
+        initialSla={sla}
+        initialRanking={ranking}
+      />
     </div>
   )
 }

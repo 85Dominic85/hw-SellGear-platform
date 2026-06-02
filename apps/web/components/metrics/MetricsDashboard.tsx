@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { getDateRange } from '@/lib/metrics'
-import type { DashboardMetrics, DashboardComparison, SlaMetrics, PeriodPreset } from '@/types/metrics'
+import type { DashboardMetrics, DashboardComparison, SlaMetrics, PeriodPreset, RequesterRankingRow } from '@/types/metrics'
 import type { PurchaseType } from '@/types/database'
 import KpiRow from './KpiRow'
 import SlaKpiRow from './SlaKpiRow'
@@ -19,6 +19,7 @@ import ProcessTimingRow from './ProcessTimingRow'
 import RiskRow from './RiskRow'
 import ThroughputChart from './ThroughputChart'
 import ImprovementBanner from './ImprovementBanner'
+import RequesterPodium from './RequesterPodium'
 
 const METRICS_V2 = process.env.NEXT_PUBLIC_METRICS_V2 === '1'
 
@@ -35,12 +36,19 @@ interface MetricsDashboardProps {
   initialMetrics: DashboardMetrics
   initialComparison: DashboardComparison | null
   initialSla?: SlaMetrics
+  initialRanking?: RequesterRankingRow[]
 }
 
-export default function MetricsDashboard({ initialMetrics, initialComparison, initialSla }: MetricsDashboardProps) {
+export default function MetricsDashboard({
+  initialMetrics,
+  initialComparison,
+  initialSla,
+  initialRanking,
+}: MetricsDashboardProps) {
   const [metrics, setMetrics] = useState<DashboardMetrics>(initialMetrics)
   const [comparison, setComparison] = useState<DashboardComparison | null>(initialComparison)
   const [sla, setSla] = useState<SlaMetrics>(initialSla ?? DEFAULT_SLA)
+  const [ranking, setRanking] = useState<RequesterRankingRow[]>(initialRanking ?? [])
   const [loading, setLoading] = useState(false)
   const [preset, setPreset] = useState<PeriodPreset>('this_month')
   const [purchaseType, setPurchaseType] = useState<PurchaseType | 'all'>('all')
@@ -61,6 +69,7 @@ export default function MetricsDashboard({ initialMetrics, initialComparison, in
       setMetrics(data.metrics)
       setComparison(data.comparison ?? null)
       if (data.sla) setSla(data.sla)
+      setRanking(data.ranking ?? [])
     } catch (err) {
       console.error('Metrics fetch error:', err)
     } finally {
@@ -164,6 +173,13 @@ export default function MetricsDashboard({ initialMetrics, initialComparison, in
             </div>
             <StatusDistChart data={metrics.by_status} />
           </div>
+
+          {/* Seccion 6: Quien vende mas (podium de solicitantes) */}
+          <SectionHeader
+            title="Quién vende más"
+            subtitle="Equipos físicos vendidos por solicitante en el periodo (excluye SaaS+Hardware)"
+          />
+          <RequesterPodium ranking={ranking} />
         </>
       ) : (
         <>
@@ -191,6 +207,15 @@ export default function MetricsDashboard({ initialMetrics, initialComparison, in
             </div>
             <StatusDistChart data={metrics.by_status} />
           </div>
+
+          {/* Podium de solicitantes (también en layout V1) */}
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold text-gray-900">Quién vende más</h2>
+            <p className="text-xs text-gray-500">
+              Equipos físicos vendidos por solicitante en el periodo (excluye SaaS+Hardware).
+            </p>
+            <RequesterPodium ranking={ranking} />
+          </section>
         </>
       )}
     </div>
