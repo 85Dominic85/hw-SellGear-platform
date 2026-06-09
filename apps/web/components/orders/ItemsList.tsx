@@ -15,21 +15,13 @@ import {
   lineVatCents,
   taxLabel,
 } from '@/lib/pricing'
+import AddOrderItemModal from './AddOrderItemModal'
 
 interface ItemsListProps {
   orderId: string
   items: OrderItem[]
   readOnly?: boolean
 }
-
-interface NewItem {
-  product_name: string
-  qty: number
-  unit_price: string
-  notes: string
-}
-
-const EMPTY_ITEM: NewItem = { product_name: '', qty: 1, unit_price: '', notes: '' }
 
 interface LineBreakdown {
   hasModernPricing: boolean
@@ -76,9 +68,7 @@ function computeBreakdown(item: OrderItem): LineBreakdown {
 
 export default function ItemsList({ orderId, items, readOnly }: ItemsListProps) {
   const router = useRouter()
-  const [adding, setAdding] = useState(false)
-  const [newItem, setNewItem] = useState<NewItem>(EMPTY_ITEM)
-  const [saving, setSaving] = useState(false)
+  const [showAddModal, setShowAddModal] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -101,33 +91,6 @@ export default function ItemsList({ orderId, items, readOnly }: ItemsListProps) 
       rates: modern.map((x) => x.b.vatRate),
     }
   }, [breakdowns])
-
-  async function handleAdd(e: React.FormEvent) {
-    e.preventDefault()
-    if (!newItem.product_name.trim()) return
-
-    setSaving(true)
-    setError(null)
-
-    const supabase = createClient()
-    const { error: insertError } = await supabase.from('order_items').insert({
-      order_id: orderId,
-      product_name: newItem.product_name.trim(),
-      qty: newItem.qty,
-      unit_price: newItem.unit_price ? parseFloat(newItem.unit_price) : null,
-      notes: newItem.notes.trim() || null,
-    })
-
-    if (insertError) {
-      setError(insertError.message)
-    } else {
-      setNewItem(EMPTY_ITEM)
-      setAdding(false)
-      router.refresh()
-    }
-
-    setSaving(false)
-  }
 
   async function handleDelete(itemId: string) {
     if (!confirm('¿Eliminar este artículo?')) return
@@ -156,9 +119,9 @@ export default function ItemsList({ orderId, items, readOnly }: ItemsListProps) 
         <h3 className="text-sm font-semibold text-gray-900">
           Artículos ({items.length})
         </h3>
-        {!adding && !readOnly && (
+        {!readOnly && (
           <button
-            onClick={() => setAdding(true)}
+            onClick={() => setShowAddModal(true)}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200 transition-colors hover:bg-gray-50"
           >
             <svg
@@ -185,7 +148,7 @@ export default function ItemsList({ orderId, items, readOnly }: ItemsListProps) 
         </div>
       )}
 
-      {items.length === 0 && !adding ? (
+      {items.length === 0 ? (
         <p className="px-5 py-6 text-sm text-gray-400 italic">Sin artículos.</p>
       ) : (
         <div className="overflow-x-auto">
@@ -289,86 +252,6 @@ export default function ItemsList({ orderId, items, readOnly }: ItemsListProps) 
                   )}
                 </tr>
               ))}
-
-              {/* Add new item row */}
-              {adding && (
-                <tr className="bg-blue-50/50">
-                  <td className="px-5 py-2">
-                    <input
-                      type="text"
-                      value={newItem.product_name}
-                      onChange={(e) =>
-                        setNewItem((p) => ({ ...p, product_name: e.target.value }))
-                      }
-                      placeholder="Nombre del producto"
-                      autoFocus
-                      className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
-                    />
-                  </td>
-                  <td className="px-3 py-2">
-                    <input
-                      type="number"
-                      min={1}
-                      value={newItem.qty}
-                      onChange={(e) =>
-                        setNewItem((p) => ({
-                          ...p,
-                          qty: Math.max(1, parseInt(e.target.value) || 1),
-                        }))
-                      }
-                      className="w-14 rounded border border-gray-300 px-2 py-1 text-center text-sm focus:border-blue-500 focus:outline-none"
-                    />
-                  </td>
-                  <td className="px-3 py-2">
-                    <input
-                      type="number"
-                      step="0.01"
-                      min={0}
-                      value={newItem.unit_price}
-                      onChange={(e) =>
-                        setNewItem((p) => ({ ...p, unit_price: e.target.value }))
-                      }
-                      placeholder="0.00"
-                      className="w-20 rounded border border-gray-300 px-2 py-1 text-right text-sm focus:border-blue-500 focus:outline-none"
-                    />
-                  </td>
-                  <td className="px-3 py-2 text-center text-xs text-gray-400">—</td>
-                  <td className="px-3 py-2 text-center text-xs text-gray-400">—</td>
-                  <td className="px-3 py-2 text-center text-xs text-gray-400">—</td>
-                  <td className="px-3 py-2 text-center text-xs text-gray-400">—</td>
-                  <td className="px-4 py-2">
-                    <input
-                      type="text"
-                      value={newItem.notes}
-                      onChange={(e) =>
-                        setNewItem((p) => ({ ...p, notes: e.target.value }))
-                      }
-                      placeholder="Notas opcionales"
-                      className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
-                    />
-                  </td>
-                  <td className="px-4 py-2">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={handleAdd}
-                        disabled={saving || !newItem.product_name.trim()}
-                        className="rounded bg-brand px-2 py-1 text-xs font-medium text-white hover:bg-brand-hover disabled:opacity-50"
-                      >
-                        {saving ? '...' : 'Guardar'}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setAdding(false)
-                          setNewItem(EMPTY_ITEM)
-                        }}
-                        className="rounded px-2 py-1 text-xs text-gray-500 hover:bg-gray-100"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              )}
             </tbody>
             {totals.hasAny && (
               <tfoot className="bg-gray-50/60 border-t border-gray-200">
@@ -425,6 +308,14 @@ export default function ItemsList({ orderId, items, readOnly }: ItemsListProps) 
             )}
           </table>
         </div>
+      )}
+
+      {/* Modal "Añadir artículo" con tabs Catálogo / Línea libre */}
+      {showAddModal && (
+        <AddOrderItemModal
+          orderId={orderId}
+          onClose={() => setShowAddModal(false)}
+        />
       )}
     </div>
   )

@@ -1,0 +1,613 @@
+'use client'
+
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { X, Loader2, Search } from 'lucide-react'
+import type { Product } from '@/types/database'
+import { formatEurosCents } from '@/lib/pricing'
+
+interface AddOrderItemModalProps {
+  orderId: string
+  onClose: () => void
+}
+
+type Tab = 'catalog' | 'free'
+
+/**
+ * Modal para añadir una línea (order_item) a un pedido existente.
+ * Dos pestañas:
+ *   - Catálogo: combobox con typeahead para elegir un producto del
+ *     catálogo. Snapshot de precio + IVA lo resuelve el server.
+ *   - Línea libre: descripción + precio override (mapea al SKU 'otro').
+ *
+ * Patrón visual: CreateShipmentModal (overlay, Escape close, loading,
+ * error inline). Estilo Qamarero (rounded-xl, bg-brand en botón
+ * primario, Space Mono en datos numéricos).
+ */
+export default function AddOrderItemModal({
+  orderId,
+  onClose,
+}: AddOrderItemModalProps) {
+  const router = useRouter()
+  const [tab, setTab] = useState<Tab>('catalog')
+  const [products, setProducts] = useState<Product[]>([])
+  const [productsLoading, setProductsLoading] = useState(true)
+  const [productsError, setProductsError] = useState<string | null>(null)
+
+  // Catálogo
+  const [productQuery, setProductQuery] = useState('')
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
+  const [catalogQty, setCatalogQty] = useState(1)
+  const [discountPct, setDiscountPct] = useState<0 | 10 | 100>(0)
+  // Override de nombre/precio para productos especiales ('otro', saas_hardware)
+  const [catalogNameOverride, setCatalogNameOverride] = useState('')
+  const [catalogPriceOverride, setCatalogPriceOverride] = useState('')
+
+  // Línea libre
+  const [freeName, setFreeName] = useState('')
+  const [freeQty, setFreeQty] = useState(1)
+  const [freePrice, setFreePrice] = useState('')
+
+  // Común
+  const [notes, setNotes] = useState('')
+
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Carga el catálogo al montar.
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch('/api/products', { cache: 'no-store' })
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`)
+        }
+        const data = (await res.json()) as { products?: Product[] }
+        if (!cancelled) {
+          setProducts(data.products ?? [])
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setProductsError(
+            err instanceof Error ? err.message : 'Error cargando productos',
+          )
+        }
+      } finally {
+        if (!cancelled) setProductsLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Escape cierra el modal si no está cargando.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape' && !loading) onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [loading, onClose])
+
+  // Producto seleccionado (lookup en el array).
+  const selectedProduct = useMemo(
+    () => products.find((p) => p.id === selectedProductId) ?? null,
+    [products, selectedProductId],
+  )
+
+  // ¿El producto seleccionado requiere overrides? (code='otro' o saas_hardware)
+  const requiresOverride = useMemo(() => {
+    if (!selectedProduct) return false
+    return (
+      selectedProduct.code === 'otro' ||
+      selectedProduct.category === 'saas_hardware'
+    )
+  }, [selectedProduct])
+
+  // Productos filtrados por la búsqueda (case insensitive sobre name).
+  // Excluimos 'otro' del listado del combobox: para línea libre se usa el
+  // tab "Línea libre"; aquí queremos productos reales del catálogo.
+  const filteredProducts = useMemo(() => {
+    const q = productQuery.trim().toLowerCase()
+    const base = products.filter((p) => p.code !== 'otro')
+    if (!q) return base
+    return base.filter((p) => p.name.toLowerCase().includes(q))
+  }, [products, productQuery])
+
+  // Reset del state al cambiar de tab (limpia errores).
+  const switchTab = (next: Tab) => {
+    setTab(next)
+    setError(null)
+  }
+
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault()
+      setError(null)
+      setLoading(true)
+      try {
+        let body: Record<string, unknown>
+        if (tab === 'catalog') {
+          if (!selectedProductId) {
+            setError('Selecciona un producto del catálogo.')
+            setLoading(false)
+            return
+          }
+          if (catalogQty < 1) {
+            setError('La cantidad debe ser ≥ 1.')
+            setLoading(false)
+            return
+          }
+          body = {
+            source: 'catalog',
+            product_id: selectedProductId,
+            qty: catalogQty,
+            discount_pct: discountPct,
+            notes: notes.trim() || undefined,
+          }
+          if (requiresOverride) {
+            const overridePrice = Math.round(parseFloat(catalogPriceOverride) * 100)
+            if (!catalogNameOverride.trim()) {
+              setError('La descripción es obligatoria para este producto.')
+              setLoading(false)
+              return
+            }
+            if (!Number.isFinite(overridePrice) || overridePrice <= 0) {
+              setError('El precio debe ser mayor que 0.')
+              setLoading(false)
+              return
+            }
+            body.product_name = catalogNameOverride.trim()
+            body.unit_price_override_cents = overridePrice
+          }
+        } else {
+          // tab === 'free'
+          if (!freeName.trim()) {
+            setError('La descripción del producto es obligatoria.')
+            setLoading(false)
+            return
+          }
+          if (freeQty < 1) {
+            setError('La cantidad debe ser ≥ 1.')
+            setLoading(false)
+            return
+          }
+          const priceCents = Math.round(parseFloat(freePrice) * 100)
+          if (!Number.isFinite(priceCents) || priceCents <= 0) {
+            setError('El precio s/IVA debe ser mayor que 0.')
+            setLoading(false)
+            return
+          }
+          body = {
+            source: 'free',
+            product_name: freeName.trim(),
+            qty: freeQty,
+            unit_price_override_cents: priceCents,
+            notes: notes.trim() || undefined,
+          }
+        }
+
+        const res = await fetch(`/api/orders/${orderId}/items`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          setError(data.error ?? 'Error al añadir el artículo.')
+          return
+        }
+        router.refresh()
+        onClose()
+      } catch {
+        setError('Error de conexión. Inténtalo de nuevo.')
+      } finally {
+        setLoading(false)
+      }
+    },
+    [
+      tab,
+      selectedProductId,
+      catalogQty,
+      discountPct,
+      requiresOverride,
+      catalogNameOverride,
+      catalogPriceOverride,
+      freeName,
+      freeQty,
+      freePrice,
+      notes,
+      orderId,
+      onClose,
+      router,
+    ],
+  )
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={() => !loading && onClose()}
+    >
+      <div
+        className="w-full max-w-lg overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-gray-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+          <h2 className="text-base font-semibold text-gray-900">
+            Añadir artículo
+          </h2>
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"
+            aria-label="Cerrar"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-gray-100">
+          <button
+            type="button"
+            onClick={() => switchTab('catalog')}
+            disabled={loading}
+            className={`flex-1 px-5 py-3 text-sm font-medium transition-colors ${
+              tab === 'catalog'
+                ? 'border-b-2 border-brand text-brand'
+                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+            }`}
+          >
+            Catálogo
+          </button>
+          <button
+            type="button"
+            onClick={() => switchTab('free')}
+            disabled={loading}
+            className={`flex-1 px-5 py-3 text-sm font-medium transition-colors ${
+              tab === 'free'
+                ? 'border-b-2 border-brand text-brand'
+                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+            }`}
+          >
+            Línea libre
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-4 px-5 py-5">
+          {tab === 'catalog' ? (
+            <CatalogTab
+              productsLoading={productsLoading}
+              productsError={productsError}
+              filteredProducts={filteredProducts}
+              productQuery={productQuery}
+              onProductQueryChange={setProductQuery}
+              selectedProduct={selectedProduct}
+              onSelect={setSelectedProductId}
+              qty={catalogQty}
+              onQtyChange={setCatalogQty}
+              discountPct={discountPct}
+              onDiscountChange={setDiscountPct}
+              requiresOverride={requiresOverride}
+              nameOverride={catalogNameOverride}
+              onNameOverrideChange={setCatalogNameOverride}
+              priceOverride={catalogPriceOverride}
+              onPriceOverrideChange={setCatalogPriceOverride}
+            />
+          ) : (
+            <FreeTab
+              name={freeName}
+              onNameChange={setFreeName}
+              qty={freeQty}
+              onQtyChange={setFreeQty}
+              price={freePrice}
+              onPriceChange={setFreePrice}
+            />
+          )}
+
+          {/* Notas (común a las 2 tabs) */}
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-700">
+              Notas (opcional)
+            </label>
+            <input
+              type="text"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Notas adicionales para esta línea"
+              disabled={loading}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand disabled:bg-gray-50"
+            />
+          </div>
+
+          {error && (
+            <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200">
+              {error}
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="flex items-center justify-end gap-2 border-t border-gray-100 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={loading || productsLoading}
+              className="flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              {loading ? 'Añadiendo…' : 'Añadir'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ===================================================================
+// Tab Catálogo
+// ===================================================================
+
+interface CatalogTabProps {
+  productsLoading: boolean
+  productsError: string | null
+  filteredProducts: Product[]
+  productQuery: string
+  onProductQueryChange: (q: string) => void
+  selectedProduct: Product | null
+  onSelect: (id: string | null) => void
+  qty: number
+  onQtyChange: (n: number) => void
+  discountPct: 0 | 10 | 100
+  onDiscountChange: (n: 0 | 10 | 100) => void
+  requiresOverride: boolean
+  nameOverride: string
+  onNameOverrideChange: (s: string) => void
+  priceOverride: string
+  onPriceOverrideChange: (s: string) => void
+}
+
+function CatalogTab({
+  productsLoading,
+  productsError,
+  filteredProducts,
+  productQuery,
+  onProductQueryChange,
+  selectedProduct,
+  onSelect,
+  qty,
+  onQtyChange,
+  discountPct,
+  onDiscountChange,
+  requiresOverride,
+  nameOverride,
+  onNameOverrideChange,
+  priceOverride,
+  onPriceOverrideChange,
+}: CatalogTabProps) {
+  // El descuento 100% solo aplica a printer.
+  const isPrinter = selectedProduct?.category === 'printer'
+
+  return (
+    <>
+      {/* Combobox de producto */}
+      <div>
+        <label className="mb-1 block text-xs font-medium text-gray-700">
+          Producto
+        </label>
+        {productsLoading ? (
+          <div className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-400">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Cargando catálogo…
+          </div>
+        ) : productsError ? (
+          <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            Error: {productsError}
+          </div>
+        ) : (
+          <>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={productQuery}
+                onChange={(e) => onProductQueryChange(e.target.value)}
+                placeholder="Buscar por nombre…"
+                className="w-full rounded-lg border border-gray-200 py-2 pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+              />
+            </div>
+            <div className="mt-2 max-h-44 overflow-y-auto rounded-lg border border-gray-200">
+              {filteredProducts.length === 0 ? (
+                <p className="px-3 py-4 text-center text-xs text-gray-400">
+                  Sin resultados.
+                </p>
+              ) : (
+                <ul className="divide-y divide-gray-100">
+                  {filteredProducts.map((p) => {
+                    const active = selectedProduct?.id === p.id
+                    return (
+                      <li key={p.id}>
+                        <button
+                          type="button"
+                          onClick={() => onSelect(p.id)}
+                          className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors ${
+                            active
+                              ? 'bg-brand/5 text-gray-900'
+                              : 'text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          <span className="truncate">{p.name}</span>
+                          <span
+                            className={`font-mono text-xs tabular-nums ${
+                              active ? 'text-brand' : 'text-gray-500'
+                            }`}
+                          >
+                            {formatEurosCents(p.price_cents)}
+                          </span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Overrides para productos especiales (otro / saas_hardware) */}
+      {requiresOverride && (
+        <>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-700">
+              Descripción del producto
+              <span className="ml-1 text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={nameOverride}
+              onChange={(e) => onNameOverrideChange(e.target.value)}
+              placeholder="Ej. Cable HDMI 2m"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-700">
+              Precio negociado s/IVA (€)
+              <span className="ml-1 text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min={0.01}
+              value={priceOverride}
+              onChange={(e) => onPriceOverrideChange(e.target.value)}
+              placeholder="0.00"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-right font-mono text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+            />
+          </div>
+        </>
+      )}
+
+      {/* Cantidad + descuento */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-700">
+            Cantidad
+          </label>
+          <input
+            type="number"
+            min={1}
+            value={qty}
+            onChange={(e) =>
+              onQtyChange(Math.max(1, parseInt(e.target.value) || 1))
+            }
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-right font-mono text-sm text-gray-900 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-700">
+            Descuento
+          </label>
+          <select
+            value={discountPct}
+            onChange={(e) =>
+              onDiscountChange(parseInt(e.target.value) as 0 | 10 | 100)
+            }
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+          >
+            <option value={0}>0% (sin descuento)</option>
+            <option value={10}>10%</option>
+            {isPrinter && <option value={100}>100% (Promo Printer)</option>}
+          </select>
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ===================================================================
+// Tab Línea libre
+// ===================================================================
+
+interface FreeTabProps {
+  name: string
+  onNameChange: (s: string) => void
+  qty: number
+  onQtyChange: (n: number) => void
+  price: string
+  onPriceChange: (s: string) => void
+}
+
+function FreeTab({
+  name,
+  onNameChange,
+  qty,
+  onQtyChange,
+  price,
+  onPriceChange,
+}: FreeTabProps) {
+  return (
+    <>
+      <div>
+        <label className="mb-1 block text-xs font-medium text-gray-700">
+          Descripción del producto
+          <span className="ml-1 text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => onNameChange(e.target.value)}
+          placeholder="Ej. Cable HDMI 2m"
+          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-700">
+            Cantidad
+          </label>
+          <input
+            type="number"
+            min={1}
+            value={qty}
+            onChange={(e) =>
+              onQtyChange(Math.max(1, parseInt(e.target.value) || 1))
+            }
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-right font-mono text-sm text-gray-900 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-700">
+            Precio s/IVA (€)
+            <span className="ml-1 text-red-500">*</span>
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            min={0.01}
+            value={price}
+            onChange={(e) => onPriceChange(e.target.value)}
+            placeholder="0.00"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-right font-mono text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+          />
+        </div>
+      </div>
+      <p className="text-[10px] text-gray-400">
+        Las líneas libres se guardan internamente como artículos &quot;otro&quot;
+        sin enlace al catálogo. El IVA se aplica según el CP de envío.
+      </p>
+    </>
+  )
+}
