@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { Suspense } from 'react'
 import Link from 'next/link'
-import type { OrderStatus, PurchaseType, UserRole } from '@/types/database'
+import type { Order, OrderStatus, PurchaseType, UserRole } from '@/types/database'
 import OrdersTable from '@/components/orders/OrdersTable'
 import StatusFilter from '@/components/orders/StatusFilter'
 import ShippingOriginFilter from '@/components/orders/ShippingOriginFilter'
@@ -45,9 +45,28 @@ export default async function OrdersPage({
   const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1)
   const offset = (page - 1) * PER_PAGE
 
+  // SELECT acotado para evitar statement timeout:
+  //   - sin SELECT * (40+ columnas innecesarias),
+  //   - sin order_items embebido (lazy-load en el popup vía
+  //     GET /api/orders/[id]/items),
+  //   - count 'planned' (estimación instantánea con pg_class.reltuples)
+  //     en vez de 'exact' (full table scan secundario).
+  // order_payments(installment_no, status) se mantiene: max 3 filas por
+  // pedido, lo usa el FinancingProgressBadge inline en la tabla.
   let query = supabase
     .from('orders')
-    .select('*, order_items(*), order_payments(installment_no, status)', { count: 'exact' })
+    .select(
+      `
+        id, operation_id, created_at, customer_name, venue_name, purchase_type,
+        amount, status, supplier, invoiced, requester_name,
+        shipping_address, shipping_cp, shipping_label_url,
+        contact_email, phone, notes,
+        prepared, shipped, delivered_at,
+        tracking_number, tracking_public_url,
+        order_payments(installment_no, status)
+      `,
+      { count: 'planned' },
+    )
     .order('created_at', { ascending: false })
 
   if (params.status) {
@@ -79,8 +98,17 @@ export default async function OrdersPage({
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Pedidos</h1>
           <p className="mt-1 text-sm text-gray-500">
-            {total} pedido{total !== 1 ? 's' : ''}
-            {params.status || params.search ? ' encontrados' : ' en total'}
+            {(() => {
+              const visible = orders?.length ?? 0
+              // Si la página cabe entera (página 1 con menos de PER_PAGE
+              // resultados), el total real es lo que vemos. Si no, usamos
+              // el count 'planned' (estimación) y avisamos con "(aprox.)".
+              const isExactByVisible = page === 1 && visible < PER_PAGE
+              if (isExactByVisible) {
+                return `${visible} pedido${visible !== 1 ? 's' : ''}${params.status || params.search ? ' encontrados' : ''}`
+              }
+              return `${total} pedidos${params.status || params.search ? ' encontrados' : ''} (aprox.)`
+            })()}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -144,7 +172,12 @@ export default async function OrdersPage({
 
       {/* Table */}
       <OrdersTable
-        orders={orders ?? []}
+        // El SELECT acotado devuelve un subset de Order (sin updated_at,
+        // created_by, etc. — campos que la lista no usa). OrdersTable solo
+        // accede a las columnas pedidas en el SELECT, así que el cast es
+        // seguro a runtime; lo hacemos explícito vía unknown para que TS
+        // no se queje.
+        orders={(orders ?? []) as unknown as Order[]}
         userRole={userRole}
         page={page}
         perPage={PER_PAGE}

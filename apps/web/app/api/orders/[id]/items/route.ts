@@ -1,18 +1,26 @@
 // =============================================================
-// POST /api/orders/[id]/items
-// Añade una línea (order_item) a un pedido existente. Sustituye al
-// insert directo desde el cliente que tenía ItemsList.tsx, ahora
-// con validaciones server-side idénticas a las del POST /api/orders.
+// /api/orders/[id]/items
 //
-// Acepta dos sources:
-//   - 'catalog': product_id de la tabla products. Snapshot de precio
-//     y vat_rate (override Canarias si CP 35xxx/38xxx). Soporta
-//     productos especiales 'otro' y saas_hardware con overrides.
-//   - 'free': atajo para línea libre. Mapea internamente al SKU
-//     especial 'otro' con product_name_override + precio override.
+// GET:  lista order_items de un pedido (lazy-load del popup
+//       "Detalle de envío" en OrdersTable; la lista principal ya no
+//       trae order_items para evitar statement timeout).
 //
-// Permisos: canEditOrder (admin/manager/hardware). Viewer/commercial
-// no pueden editar items.
+// POST: añade una línea (order_item) a un pedido existente. Sustituye
+//       al insert directo desde el cliente que tenía ItemsList.tsx,
+//       ahora con validaciones server-side idénticas a las del POST
+//       /api/orders. Acepta dos sources:
+//         - 'catalog': product_id de la tabla products. Snapshot de
+//           precio y vat_rate (override Canarias si CP 35xxx/38xxx).
+//           Soporta productos especiales 'otro' y saas_hardware con
+//           overrides.
+//         - 'free': atajo para línea libre. Mapea internamente al SKU
+//           especial 'otro' con product_name_override + precio
+//           override.
+//
+// Permisos:
+//   GET:  cualquier usuario autenticado (RLS filtra).
+//   POST: canEditOrder (admin/manager/hardware). Viewer/commercial
+//         no pueden editar items.
 // =============================================================
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -257,4 +265,41 @@ export async function POST(
   }
 
   return NextResponse.json({ item: inserted })
+}
+
+// =============================================================
+// GET /api/orders/[id]/items
+// Lista los order_items de un pedido. Se llama on-demand desde el
+// popup "Detalle de envío" en OrdersTable, para no traer items en
+// el SELECT principal de /orders (causa del statement timeout).
+// =============================================================
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  }
+
+  // RLS filtra automáticamente según el rol; no necesitamos check extra.
+  const { data, error } = await supabase
+    .from('order_items')
+    .select(
+      'id, order_id, product_id, product_name, qty, unit_price, unit_price_cents, discount_pct, vat_rate, notes, created_at',
+    )
+    .eq('order_id', id)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ items: data ?? [] })
 }

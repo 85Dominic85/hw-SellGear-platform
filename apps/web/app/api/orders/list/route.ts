@@ -36,9 +36,23 @@ export async function GET(request: NextRequest) {
   const offset = Math.max(0, parseInt(sp.get('offset') ?? '0', 10) || 0)
   const limit = clampInt(sp.get('limit'), 1, MAX_LIMIT, DEFAULT_LIMIT)
 
+  // SELECT acotado (mismo patrón que /orders/page.tsx): sin SELECT *, sin
+  // order_items embebido (lazy-load via GET /api/orders/[id]/items),
+  // manteniendo order_payments(installment_no, status) para el
+  // FinancingProgressBadge inline.
   let q = supabase
     .from('orders')
-    .select('*, order_items(*), order_payments(installment_no, status)')
+    .select(
+      `
+        id, operation_id, created_at, customer_name, venue_name, purchase_type,
+        amount, status, supplier, invoiced, requester_name,
+        shipping_address, shipping_cp, shipping_label_url,
+        contact_email, phone, notes,
+        prepared, shipped, delivered_at,
+        tracking_number, tracking_public_url,
+        order_payments(installment_no, status)
+      `,
+    )
     .order('created_at', { ascending: false })
 
   const status = sp.get('status')

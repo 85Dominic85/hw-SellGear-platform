@@ -77,6 +77,13 @@ function InvoiceCell({ orderId, value, canEdit }: { orderId: string; value: bool
 function OrderDetailPopup({ order, onClose }: { order: Order; onClose: () => void }) {
   const popupRef = useRef<HTMLDivElement>(null)
 
+  // Lazy-load de order_items: la lista principal /orders ya no los trae
+  // embebidos para evitar el statement timeout de Supabase. Aquí los
+  // pedimos al endpoint GET /api/orders/[id]/items al abrir el popup.
+  const [items, setItems] = useState<OrderItem[]>([])
+  const [itemsLoading, setItemsLoading] = useState(true)
+  const [itemsError, setItemsError] = useState<string | null>(null)
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
@@ -94,7 +101,31 @@ function OrderDetailPopup({ order, onClose }: { order: Order; onClose: () => voi
     }
   }, [onClose])
 
-  const items = order.order_items ?? []
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch(`/api/orders/${order.id}/items`, {
+          cache: 'no-store',
+        })
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`)
+        }
+        const data = (await res.json()) as { items?: OrderItem[] }
+        if (!cancelled) setItems(data.items ?? [])
+      } catch (err) {
+        if (!cancelled) {
+          setItemsError(err instanceof Error ? err.message : 'Error')
+        }
+      } finally {
+        if (!cancelled) setItemsLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [order.id])
+
   const hasContact = order.shipping_address || order.contact_email || order.phone
   const hasItems = items.length > 0
   const hasNotes = !!order.notes
@@ -155,13 +186,23 @@ function OrderDetailPopup({ order, onClose }: { order: Order; onClose: () => voi
             )}
           </section>
 
-          {/* Artículos */}
+          {/* Artículos (lazy-load via GET /api/orders/[id]/items) */}
           <section>
             <div className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
               <Package className="h-4 w-4 text-purple-500" />
-              Articulos ({items.length})
+              Articulos {!itemsLoading && `(${items.length})`}
             </div>
-            {hasItems ? (
+            {itemsLoading ? (
+              <div className="space-y-2">
+                <div className="h-8 animate-pulse rounded bg-gray-100" />
+                <div className="h-8 animate-pulse rounded bg-gray-100" />
+                <div className="h-8 animate-pulse rounded bg-gray-100" />
+              </div>
+            ) : itemsError ? (
+              <p className="text-sm italic text-red-500">
+                Error cargando articulos: {itemsError}
+              </p>
+            ) : hasItems ? (
               <div className="overflow-hidden rounded-lg border border-gray-200">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50">
