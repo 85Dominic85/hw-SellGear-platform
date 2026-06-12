@@ -150,7 +150,15 @@ export async function POST(request: NextRequest) {
       returnShipment,
       saturdayDelivery,
       recipient: {
-        name: order.customer_name || order.venue_name || 'Destinatario',
+        // En la etiqueta TIPSA:
+        //   - strNomDes (campo "name")           -> linea "DES:" del bloque destinatario
+        //   - strPersContacto (campo "contactPerson") -> linea "P.C." (Persona de Contacto)
+        // Para que TIPSA identifique el LOCAL al repartir (ej. "Churreria
+        // Veracruz") priorizamos venue_name en el name; si no hay venue
+        // (no es un local con marca), fallback al customer_name. El
+        // customer_name siempre va como "P.C." porque es la persona a
+        // quien preguntar dentro del local cuando el repartidor entra.
+        name: order.venue_name || order.customer_name || 'Destinatario',
         address: recipientStreet,
         city: recipientCity,
         cp: recipientCp,
