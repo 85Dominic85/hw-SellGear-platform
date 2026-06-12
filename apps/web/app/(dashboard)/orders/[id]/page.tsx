@@ -237,6 +237,15 @@ export default async function OrderDetailPage({
                 events={shippingEvents}
                 services={tipsaServices}
                 defaultContent=""
+                recipientPreview={{
+                  venueName: order.venue_name ?? null,
+                  customerName: order.customer_name ?? null,
+                  shippingStreet: order.shipping_street ?? null,
+                  shippingCp: order.shipping_cp ?? null,
+                  shippingCity: order.shipping_city ?? null,
+                  shippingAddress: order.shipping_address ?? null,
+                  phone: order.phone ?? null,
+                }}
                 canCreate={false}
                 canRefresh={false}
                 canDelete={false}
@@ -267,6 +276,15 @@ export default async function OrderDetailPage({
                   : 'Productos hardware'
               }
               defaultPackages={defaultPackages > 0 ? defaultPackages : undefined}
+              recipientPreview={{
+                venueName: order.venue_name ?? null,
+                customerName: order.customer_name ?? null,
+                shippingStreet: order.shipping_street ?? null,
+                shippingCp: order.shipping_cp ?? null,
+                shippingCity: order.shipping_city ?? null,
+                shippingAddress: order.shipping_address ?? null,
+                phone: order.phone ?? null,
+              }}
               canCreate={canShipment}
               canRefresh={canEdit}
               canDelete={isAdmin}

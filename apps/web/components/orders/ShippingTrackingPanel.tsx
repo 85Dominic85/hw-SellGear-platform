@@ -21,6 +21,17 @@ interface ShippingTrackingPanelProps {
   services: Array<{ code: string; label: string }>
   defaultContent: string
   defaultPackages?: number
+  /** Datos del destinatario para el preview de la etiqueta en
+   *  CreateShipmentModal antes de crear el envio real. */
+  recipientPreview: {
+    venueName: string | null
+    customerName: string | null
+    shippingStreet: string | null
+    shippingCp: string | null
+    shippingCity: string | null
+    shippingAddress: string | null
+    phone: string | null
+  }
   canCreate: boolean
   canRefresh: boolean
   canDelete: boolean
@@ -39,6 +50,7 @@ export default function ShippingTrackingPanel({
   services,
   defaultContent,
   defaultPackages,
+  recipientPreview,
   canCreate,
   canRefresh,
   canDelete,
@@ -130,6 +142,7 @@ export default function ShippingTrackingPanel({
             services={services}
             defaultContent={defaultContent}
             defaultPackages={defaultPackages}
+            recipient={recipientPreview}
             onClose={() => setModalOpen(false)}
           />
         )}
