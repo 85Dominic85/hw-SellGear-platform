@@ -17,6 +17,9 @@ interface OrdersTableProps {
   page?: number
   perPage?: number
   total?: number
+  /** Si hay pagina siguiente (viene del truco N+1 del server, no del count).
+   *  Fiable incluso cuando pg_class.reltuples esta desactualizado. */
+  initialHasNext?: boolean
 }
 
 function InvoiceCell({ orderId, value, canEdit }: { orderId: string; value: boolean; canEdit: boolean }) {
@@ -336,6 +339,7 @@ export default function OrdersTable({
   page = 1,
   perPage = 50,
   total = 0,
+  initialHasNext = false,
 }: OrdersTableProps) {
   const canEditInvoice = userRole === 'admin' || userRole === 'manager'
   const [detailOrder, setDetailOrder] = useState<Order | null>(null)
@@ -347,6 +351,10 @@ export default function OrdersTable({
   const [extraOrders, setExtraOrders] = useState<Order[]>([])
   const [loadingMore, setLoadingMore] = useState(false)
   const [errorMore, setErrorMore] = useState<string | null>(null)
+  // hasNext se actualiza dinamicamente: arranca con lo que dice el server
+  // (N+1 sobre la pagina server-side) y luego lo refresca cada 'Cargar mas'
+  // con el hasNext de /api/orders/list.
+  const [hasNext, setHasNext] = useState(initialHasNext)
 
   const router = useRouter()
   const pathname = usePathname()
@@ -359,13 +367,17 @@ export default function OrdersTable({
   useEffect(() => {
     setExtraOrders([])
     setErrorMore(null)
-  }, [orders])
+    setHasNext(initialHasNext)
+  }, [orders, initialHasNext])
 
   const allOrders = useMemo(() => [...orders, ...extraOrders], [orders, extraOrders])
-  const effectiveTotal = total > 0 ? total : allOrders.length
   const totalLoaded = allOrders.length
-  const hasMore = totalLoaded < effectiveTotal
-  const totalPages = Math.max(1, Math.ceil(effectiveTotal / perPage))
+  // hasMore: se pueden cargar mas filas en la MISMA pagina (Cargar mas).
+  // Fiable via N+1 del endpoint, no depende del count estimado.
+  const hasMore = hasNext
+  // showPagination: se muestran Prev/Next si hay siguiente pagina o si
+  // estamos en una posterior a la primera.
+  const showPagination = page > 1 || hasNext
 
   async function handleLoadMore() {
     if (loadingMore) return
@@ -383,8 +395,11 @@ export default function OrdersTable({
         const body = await r.json().catch(() => ({}))
         throw new Error(body.error ?? `HTTP ${r.status}`)
       }
-      const json = (await r.json()) as { orders: Order[] }
+      const json = (await r.json()) as { orders: Order[]; hasNext?: boolean }
       setExtraOrders((prev) => [...prev, ...(json.orders ?? [])])
+      // Actualizamos hasNext con lo que dice el server: si trajo menos
+      // filas que perPage o hasNext=false, ocultamos "Cargar mas".
+      setHasNext(Boolean(json.hasNext))
     } catch (e) {
       setErrorMore(e instanceof Error ? e.message : 'Error al cargar')
     } finally {
@@ -609,11 +624,20 @@ export default function OrdersTable({
         </table>
       </div>
 
-      {/* Footer con paginacion + Cargar mas */}
+      {/* Footer con paginacion + Cargar mas.
+          Usamos hasNext (truco N+1 del server) para decidir si hay siguiente
+          pagina, no el count estimado — antes fallaba cuando pg_class.reltuples
+          estaba desactualizado y hacia desaparecer los botones Prev/Next. */}
       <div className="flex flex-col gap-2 border-t border-gray-100 bg-gray-50 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
         <span className="text-gray-500">
-          Mostrando {totalLoaded} de {effectiveTotal} pedido{effectiveTotal !== 1 ? 's' : ''}
-          {totalPages > 1 && <> · pagina {page} de {totalPages}</>}
+          Mostrando {totalLoaded} pedido{totalLoaded !== 1 ? 's' : ''}
+          {showPagination && <> · pagina {page}</>}
+          {total > 0 && page === 1 && !hasNext && total !== totalLoaded && (
+            // Solo mostramos el total aprox si difiere del real y estamos en
+            // pagina 1 sin siguiente; en el resto de casos evitamos totales
+            // paradojicos como "Mostrando 50 de 47".
+            <> · aprox. {total} en total</>
+          )}
         </span>
         <div className="flex items-center gap-2">
           {hasMore && (
@@ -623,10 +647,10 @@ export default function OrdersTable({
               disabled={loadingMore}
               className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
             >
-              {loadingMore ? 'Cargando...' : 'Cargar 50 mas'}
+              {loadingMore ? 'Cargando...' : `Cargar ${perPage} mas`}
             </button>
           )}
-          {totalPages > 1 && (
+          {showPagination && (
             <>
               <button
                 type="button"
@@ -639,7 +663,7 @@ export default function OrdersTable({
               <button
                 type="button"
                 onClick={() => navigateToPage(page + 1)}
-                disabled={page >= totalPages}
+                disabled={!hasNext}
                 className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
               >
                 Siguiente

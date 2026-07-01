@@ -72,10 +72,15 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  const { data, error } = await q.range(offset, offset + limit - 1)
+  // Truco N+1: pedimos limit+1 filas para saber si hay siguiente pagina
+  // sin depender del count 'planned' (que puede quedar desactualizado).
+  const { data, error } = await q.range(offset, offset + limit)
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+  const rows = (data ?? []) as Order[]
+  const hasNext = rows.length > limit
+  const orders = hasNext ? rows.slice(0, limit) : rows
 
-  return NextResponse.json({ orders: (data ?? []) as Order[] })
+  return NextResponse.json({ orders, hasNext })
 }

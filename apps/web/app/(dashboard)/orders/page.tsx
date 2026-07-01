@@ -88,7 +88,16 @@ export default async function OrdersPage({
     )
   }
 
-  const { data: orders, error, count } = await query.range(offset, offset + PER_PAGE - 1)
+  // Truco N+1: pedimos PER_PAGE+1 filas. Si vuelven PER_PAGE+1, hay siguiente
+  // pagina (hasNext=true) y descartamos la fila extra antes de renderizar.
+  // Asi no dependemos del count 'planned' (que puede quedar desactualizado
+  // tras muchos INSERTs sin autovacuum y provocar el "Mostrando 50 de 47").
+  const { data: rawRows, error, count } = await query.range(
+    offset,
+    offset + PER_PAGE, // inclusive → pide PER_PAGE+1 filas
+  )
+  const hasNext = (rawRows?.length ?? 0) > PER_PAGE
+  const orders = hasNext ? (rawRows ?? []).slice(0, PER_PAGE) : (rawRows ?? [])
   const total = count ?? 0
 
   return (
@@ -100,14 +109,15 @@ export default async function OrdersPage({
           <p className="mt-1 text-sm text-gray-500">
             {(() => {
               const visible = orders?.length ?? 0
-              // Si la página cabe entera (página 1 con menos de PER_PAGE
-              // resultados), el total real es lo que vemos. Si no, usamos
-              // el count 'planned' (estimación) y avisamos con "(aprox.)".
-              const isExactByVisible = page === 1 && visible < PER_PAGE
-              if (isExactByVisible) {
-                return `${visible} pedido${visible !== 1 ? 's' : ''}${params.status || params.search ? ' encontrados' : ''}`
+              const filtered = !!(params.status || params.search || params.type)
+              // Si estamos en pagina 1 y no hay siguiente, es el conteo real:
+              // "N pedidos" (o "encontrados" cuando hay filtros).
+              if (page === 1 && !hasNext) {
+                return `${visible} pedido${visible !== 1 ? 's' : ''}${filtered ? ' encontrados' : ''}`
               }
-              return `${total} pedidos${params.status || params.search ? ' encontrados' : ''} (aprox.)`
+              // Con paginacion: no mostramos totales inconsistentes; el user
+              // navega con Prev/Next. La cabecera indica en que pagina esta.
+              return `Pagina ${page} · Mostrando ${visible} pedidos${hasNext ? ' (hay mas)' : ''}${filtered ? ' encontrados' : ''}`
             })()}
           </p>
         </div>
@@ -177,11 +187,12 @@ export default async function OrdersPage({
         // accede a las columnas pedidas en el SELECT, así que el cast es
         // seguro a runtime; lo hacemos explícito vía unknown para que TS
         // no se queje.
-        orders={(orders ?? []) as unknown as Order[]}
+        orders={orders as unknown as Order[]}
         userRole={userRole}
         page={page}
         perPage={PER_PAGE}
         total={total}
+        initialHasNext={hasNext}
       />
     </div>
   )
