@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     .from('orders')
     .select(
       `
-        id, operation_id, created_at, customer_name, venue_name, purchase_type,
+        id, operation_id, created_at, updated_at, customer_name, venue_name, purchase_type,
         amount, status, supplier, invoiced, requester_name,
         shipping_address, shipping_cp, shipping_label_url,
         contact_email, phone, notes,

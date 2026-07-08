@@ -3,19 +3,38 @@
 // SLA target: 7 dias desde created_at hasta delivered_at
 // =============================================================
 
-export type SlaStatus = 'on_track' | 'warning' | 'breached'
+/** Estados posibles del SLA:
+ *  - on_track / warning / breached: reloj activo, franja de dias.
+ *  - paused: el pedido esta en un estado que PARA el reloj (hoy solo
+ *    'bloqueado'). El badge muestra los dias congelados en el momento
+ *    en que entro en pausa.
+ */
+export type SlaStatus = 'on_track' | 'warning' | 'breached' | 'paused'
 
 /**
- * Calcula los dias transcurridos entre creacion y entrega (o ahora si no entregado).
+ * Calcula los dias transcurridos entre creacion y "fin del reloj".
+ *
+ * Fin del reloj (por orden de prioridad):
+ *   1. deliveredAt (si el pedido esta entregado / completado).
+ *   2. pausedAt (si el pedido esta en un estado que pausa el reloj,
+ *      ej. 'bloqueado' → usamos updated_at como aproximacion del
+ *      momento en que entro en pausa).
+ *   3. Date.now() (reloj activo).
+ *
  * Devuelve dias con 1 decimal.
  */
 export function getDaysElapsed(
   createdAt: string,
-  deliveredAt?: string | null
+  deliveredAt?: string | null,
+  pausedAt?: string | null,
 ): number {
   const start = new Date(createdAt).getTime()
-  const end = deliveredAt ? new Date(deliveredAt).getTime() : Date.now()
-  const days = (end - start) / (1000 * 60 * 60 * 24)
+  const endTs = deliveredAt
+    ? new Date(deliveredAt).getTime()
+    : pausedAt
+      ? new Date(pausedAt).getTime()
+      : Date.now()
+  const days = (endTs - start) / (1000 * 60 * 60 * 24)
   return Math.round(days * 10) / 10
 }
 
@@ -40,6 +59,8 @@ export function getSlaColor(status: SlaStatus): string {
       return 'bg-amber-100 text-amber-800'
     case 'breached':
       return 'bg-red-100 text-red-800'
+    case 'paused':
+      return 'bg-gray-100 text-gray-700'
   }
 }
 
@@ -54,6 +75,8 @@ export function getSlaIconColor(status: SlaStatus): string {
       return 'text-amber-500'
     case 'breached':
       return 'text-red-500'
+    case 'paused':
+      return 'text-gray-500'
   }
 }
 
@@ -77,6 +100,8 @@ export function getSlaLabel(status: SlaStatus): string {
       return 'En riesgo'
     case 'breached':
       return 'Fuera de plazo'
+    case 'paused':
+      return 'Pausado'
   }
 }
 

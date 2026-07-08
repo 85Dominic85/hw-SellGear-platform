@@ -3,13 +3,13 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import type { Order, OrderItem, UserRole } from '@/types/database'
+import type { Order, OrderItem, OrderStatus, UserRole } from '@/types/database'
 import { formatCurrency, formatDate, PURCHASE_TYPE_LABELS, isCanaryIslands } from '@/lib/utils'
 import { getDaysElapsed, getSlaStatus, getSlaColor, formatDaysElapsed, getSlaLabel, SLA_TARGET_DAYS } from '@/lib/sla'
 import StatusBadge from './StatusBadge'
 import FinancingProgressBadge from './FinancingProgressBadge'
 import { createClient } from '@/lib/supabase/client'
-import { Eye, X, MapPin, Package, FileText, Phone, Mail, Truck, Clock, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Eye, X, MapPin, Package, FileText, Phone, Mail, Truck, Clock, CheckCircle2, AlertTriangle, PauseCircle } from 'lucide-react'
 
 interface OrdersTableProps {
   orders: Order[]
@@ -263,19 +263,28 @@ function OrderDetailPopup({ order, onClose }: { order: Order; onClose: () => voi
   )
 }
 
-function SlaProgressBar({ days, isTerminal }: { days: number; isTerminal: boolean }) {
+function SlaProgressBar({
+  days,
+  animated,
+  frozen,
+}: {
+  days: number
+  animated: boolean
+  frozen: boolean
+}) {
   // Barra va de 0% a 100% en 7 dias, puede superar 100%
   const pct = Math.min((days / SLA_TARGET_DAYS) * 100, 100)
 
-  // Color de la barra segun progreso
+  // Color de la barra segun progreso; gris cuando esta pausado.
   let barColor = 'bg-green-500'
-  if (days > 6) barColor = 'bg-red-500'
+  if (frozen) barColor = 'bg-gray-400'
+  else if (days > 6) barColor = 'bg-red-500'
   else if (days > 4) barColor = 'bg-amber-500'
 
   return (
     <div className="mt-1 h-1 w-full rounded-full bg-gray-200 overflow-hidden">
       <div
-        className={`h-full rounded-full transition-all ${barColor} ${!isTerminal && days > 0 ? 'animate-pulse' : ''}`}
+        className={`h-full rounded-full transition-all ${barColor} ${animated ? 'animate-pulse' : ''}`}
         style={{ width: `${pct}%` }}
       />
     </div>
@@ -286,16 +295,44 @@ function SlaBadge({
   createdAt,
   deliveredAt,
   isTerminal,
+  status: orderStatus,
+  updatedAt,
 }: {
   createdAt: string
   deliveredAt?: string | null
   isTerminal: boolean
+  /** Estado del pedido; si es 'bloqueado' pausamos el reloj. */
+  status?: OrderStatus | null
+  /** updated_at aprox. del momento en que entro en bloqueado. */
+  updatedAt?: string | null
 }) {
-  const days = getDaysElapsed(createdAt, isTerminal ? deliveredAt : undefined)
-  const status = getSlaStatus(days)
-  const colorClass = getSlaColor(status)
+  const isPaused = orderStatus === 'bloqueado'
+  const pausedAt = isPaused ? updatedAt ?? null : null
+  const days = getDaysElapsed(
+    createdAt,
+    isTerminal ? deliveredAt : undefined,
+    pausedAt,
+  )
+  const slaStatus = isPaused ? 'paused' : getSlaStatus(days)
+  const colorClass = getSlaColor(slaStatus)
   const label = formatDaysElapsed(days)
-  const tooltip = getSlaLabel(status)
+  const tooltip = getSlaLabel(slaStatus)
+
+  // Pedidos bloqueados — icono pausa, barra congelada en gris
+  if (isPaused) {
+    return (
+      <div
+        className={`inline-flex flex-col items-center rounded-lg px-2.5 py-1 text-xs font-medium ${colorClass}`}
+        title={`${tooltip} — ${label} (reloj pausado)`}
+      >
+        <div className="flex items-center gap-1">
+          <PauseCircle className="h-3 w-3" />
+          <span>{label}</span>
+        </div>
+        <SlaProgressBar days={days} animated={false} frozen />
+      </div>
+    )
+  }
 
   // Pedidos completados — icono stop, barra congelada
   if (isTerminal && deliveredAt) {
@@ -313,7 +350,7 @@ function SlaBadge({
           )}
           <span>{label}</span>
         </div>
-        <SlaProgressBar days={days} isTerminal />
+        <SlaProgressBar days={days} animated={false} frozen={false} />
       </div>
     )
   }
@@ -328,7 +365,7 @@ function SlaBadge({
         <Clock className="h-3 w-3 animate-pulse" />
         <span>{label}</span>
       </div>
-      <SlaProgressBar days={days} isTerminal={false} />
+      <SlaProgressBar days={days} animated={days > 0} frozen={false} />
     </div>
   )
 }
@@ -600,6 +637,8 @@ export default function OrdersTable({
                       createdAt={order.created_at}
                       deliveredAt={order.delivered_at}
                       isTerminal={order.status === 'completado' || order.status === 'bloqueado'}
+                      status={order.status}
+                      updatedAt={order.updated_at}
                     />
                   </Link>
                 </td>

@@ -141,6 +141,8 @@ export default async function OrderDetailPage({
               createdAt={order.created_at}
               deliveredAt={order.delivered_at}
               isTerminal={order.status === 'completado' || order.status === 'bloqueado'}
+              status={order.status as OrderStatus}
+              updatedAt={order.updated_at}
             />
           </div>
         </div>
