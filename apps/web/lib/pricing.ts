@@ -13,7 +13,13 @@ export interface CartLineInput {
 
 export interface CartTotals {
   subtotalCents: number
+  /** Suma de descuentos por línea + descuento global (para vista agregada). */
   discountCents: number
+  /** Descuento por línea (sin global). */
+  lineDiscountCents: number
+  /** Descuento global aplicado sobre la base imponible pre-global. */
+  globalDiscountCents: number
+  /** Base imponible después de TODOS los descuentos (por línea + global). */
   taxableCents: number
   vatCents: number
   totalCents: number
@@ -64,18 +70,82 @@ export function lineTotalCents(
   )
 }
 
-export function cartTotals(lines: CartLineInput[]): CartTotals {
-  let subtotalCents = 0
-  let discountCents = 0
+/**
+ * Calcula los totales de un carrito, opcionalmente aplicando un descuento
+ * global (%) sobre la base imponible AGREGADA (después del descuento por
+ * línea, ANTES del IVA).
+ *
+ * El descuento global se distribuye entre las líneas proporcionalmente
+ * a su base imponible pre-global. Esto es fiscalmente correcto cuando
+ * el carrito mezcla líneas con IVA distinto (21% Península + 0% Canarias,
+ * o 7% IGIC legacy):
+ *
+ *   Fase 1  base_linea_pre = subtotal_linea - descuento_linea
+ *   Fase 2  base_pre_agregada = Σ base_linea_pre
+ *           dto_global = round(base_pre_agregada * globalPct/100)
+ *   Fase 3  dto_asignado_i = round(dto_global * base_linea_pre_i / base_pre_agregada)
+ *           (la última línea absorbe el remanente de redondeo)
+ *   Fase 4  base_linea_final_i = base_linea_pre_i - dto_asignado_i
+ *   Fase 5  iva_linea_i = round(base_linea_final_i * vat_rate_i/100)
+ *   Fase 6  total = Σ (base_linea_final_i + iva_linea_i)
+ *
+ * Si globalPct = 0 (default), el comportamiento es idéntico al anterior.
+ */
+export function cartTotals(
+  lines: CartLineInput[],
+  globalPct = 0,
+): CartTotals {
+  // Fase 1: por línea, subtotal + descuento línea + base pre-global.
+  const perLinePre = lines.map((l) => {
+    const subtotal = lineSubtotalCents(l.priceCents, l.qty)
+    const lineDiscount = lineDiscountCents(l.priceCents, l.qty, l.discountPct)
+    const taxablePre = subtotal - lineDiscount
+    return { subtotal, lineDiscount, taxablePre, vatRate: l.vatRate }
+  })
+
+  const subtotalCents = perLinePre.reduce((s, x) => s + x.subtotal, 0)
+  const lineDiscountTotal = perLinePre.reduce((s, x) => s + x.lineDiscount, 0)
+  const taxablePreGlobal = perLinePre.reduce((s, x) => s + x.taxablePre, 0)
+
+  // Fase 2: descuento global (round sobre la base agregada).
+  const globalDiscountCents =
+    globalPct > 0 && taxablePreGlobal > 0
+      ? round(taxablePreGlobal * (globalPct / 100))
+      : 0
+
+  // Fase 3-5: distribuir global entre líneas + recalcular IVA por línea.
   let vatCents = 0
-  for (const l of lines) {
-    subtotalCents += lineSubtotalCents(l.priceCents, l.qty)
-    discountCents += lineDiscountCents(l.priceCents, l.qty, l.discountPct)
-    vatCents += lineVatCents(l.priceCents, l.qty, l.discountPct, l.vatRate)
-  }
-  const taxableCents = subtotalCents - discountCents
+  let assignedGlobal = 0
+  perLinePre.forEach((line, i) => {
+    // Asignación proporcional del descuento global a esta línea.
+    // Última línea absorbe el remanente para que Σ asignaciones = globalDiscountCents.
+    const isLast = i === perLinePre.length - 1
+    const rawAssign =
+      taxablePreGlobal > 0
+        ? round((globalDiscountCents * line.taxablePre) / taxablePreGlobal)
+        : 0
+    const assignThis = isLast ? globalDiscountCents - assignedGlobal : rawAssign
+    assignedGlobal += assignThis
+
+    // Base final tras descontar la parte proporcional del global.
+    const taxableFinal = Math.max(0, line.taxablePre - assignThis)
+    // IVA sobre la base final (redondeado por línea, como antes).
+    vatCents += round(taxableFinal * (line.vatRate / 100))
+  })
+
+  const taxableCents = taxablePreGlobal - globalDiscountCents
+  const discountCents = lineDiscountTotal + globalDiscountCents
   const totalCents = taxableCents + vatCents
-  return { subtotalCents, discountCents, taxableCents, vatCents, totalCents }
+
+  return {
+    subtotalCents,
+    discountCents,
+    lineDiscountCents: lineDiscountTotal,
+    globalDiscountCents,
+    taxableCents,
+    vatCents,
+    totalCents,
+  }
 }
 
 export function formatEurosCents(cents: number): string {
@@ -140,9 +210,10 @@ import type { Order } from '@/types/database'
  * tiene desglose por linea: el caller debe hacer fallback al order.amount
  * plano (pedidos legacy de Typeform y similares).
  *
- * Items mixtos (alguno moderno + alguno legacy) -> usa solo los modernos.
- * Items con vat_rate=null -> fallback a 21 % (peninsular).
- * Items con discount_pct=null -> fallback a 0.
+ * Aplica orders.discount_global_pct si está presente. Fallbacks:
+ *   - Items mixtos (alguno moderno + alguno legacy) -> usa solo los modernos.
+ *   - Items con vat_rate=null -> fallback a 21 % (peninsular).
+ *   - Items con discount_pct=null -> fallback a 0.
  */
 export function computeOrderTotals(order: Order): CartTotals | null {
   const items = order.order_items ?? []
@@ -150,6 +221,7 @@ export function computeOrderTotals(order: Order): CartTotals | null {
     (i) => i.unit_price_cents !== null && i.unit_price_cents !== undefined,
   )
   if (modern.length === 0) return null
+  const globalPct = order.discount_global_pct ?? 0
   return cartTotals(
     modern.map((i) => ({
       priceCents: i.unit_price_cents!,
@@ -157,5 +229,6 @@ export function computeOrderTotals(order: Order): CartTotals | null {
       discountPct: i.discount_pct ?? 0,
       vatRate: i.vat_rate ?? 21,
     })),
+    globalPct,
   )
 }

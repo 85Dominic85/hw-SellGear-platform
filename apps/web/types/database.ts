@@ -74,6 +74,11 @@ export interface Order {
   phone: string | null
   purchase_type: PurchaseType | null
   amount: number | null
+  /** Descuento global (%) aplicado a la base imponible del pedido, adicional
+   *  a los descuentos por línea de order_items.discount_pct. Rango 0-100.
+   *  Se prorratea proporcionalmente entre las bases de cada línea antes de
+   *  calcular el IVA (fiscalmente correcto con IVA mixto Península/Canarias). */
+  discount_global_pct: number | null
   bank_receipt_url: string | null
   requester_name: string | null
   requester_email: string | null

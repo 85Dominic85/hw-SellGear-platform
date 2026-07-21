@@ -38,7 +38,7 @@ export default function AddOrderItemModal({
   const [productQuery, setProductQuery] = useState('')
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [catalogQty, setCatalogQty] = useState(1)
-  const [discountPct, setDiscountPct] = useState<0 | 10 | 100>(0)
+  const [discountPct, setDiscountPct] = useState<number>(0)
   // Override de nombre/precio para productos especiales ('otro', saas_hardware)
   const [catalogNameOverride, setCatalogNameOverride] = useState('')
   const [catalogPriceOverride, setCatalogPriceOverride] = useState('')
@@ -369,8 +369,8 @@ interface CatalogTabProps {
   onSelect: (id: string | null) => void
   qty: number
   onQtyChange: (n: number) => void
-  discountPct: 0 | 10 | 100
-  onDiscountChange: (n: 0 | 10 | 100) => void
+  discountPct: number
+  onDiscountChange: (n: number) => void
   requiresOverride: boolean
   nameOverride: string
   onNameOverrideChange: (s: string) => void
@@ -396,8 +396,9 @@ function CatalogTab({
   priceOverride,
   onPriceOverrideChange,
 }: CatalogTabProps) {
-  // El descuento 100% solo aplica a printer.
-  const isPrinter = selectedProduct?.category === 'printer'
+  // saas_hardware fuerza descuento 0 (precio negociado = precio final).
+  // El resto de categorías admite el rango libre 0-100 del input custom.
+  const isSaasHw = selectedProduct?.category === 'saas_hardware'
 
   return (
     <>
@@ -518,19 +519,45 @@ function CatalogTab({
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-700">
-            Descuento
+            Descuento (%)
           </label>
-          <select
+          <input
+            type="number"
+            min={0}
+            max={100}
+            step={1}
             value={discountPct}
-            onChange={(e) =>
-              onDiscountChange(parseInt(e.target.value) as 0 | 10 | 100)
+            onChange={(e) => {
+              if (isSaasHw) return
+              const raw = parseInt(e.target.value, 10)
+              const clamped = Number.isFinite(raw)
+                ? Math.max(0, Math.min(100, raw))
+                : 0
+              onDiscountChange(clamped)
+            }}
+            disabled={isSaasHw}
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-center font-mono text-sm text-gray-900 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
+            title={
+              isSaasHw
+                ? 'SaaS + Hardware no admite descuento (precio negociado es el final).'
+                : 'Descuento por línea: entero entre 0 y 100'
             }
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-          >
-            <option value={0}>0% (sin descuento)</option>
-            <option value={10}>10%</option>
-            {isPrinter && <option value={100}>100% (Promo Printer)</option>}
-          </select>
+          />
+          {/* Presets rápidos para agilizar */}
+          {!isSaasHw && (
+            <div className="mt-1 flex gap-1">
+              {[10, 20, 50, 100].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => onDiscountChange(preset)}
+                  className="rounded border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-medium text-gray-600 hover:bg-gray-50"
+                >
+                  {preset}%
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </>

@@ -97,6 +97,8 @@ describe('cartTotals', () => {
     expect(cartTotals([])).toEqual({
       subtotalCents: 0,
       discountCents: 0,
+      lineDiscountCents: 0,
+      globalDiscountCents: 0,
       taxableCents: 0,
       vatCents: 0,
       totalCents: 0,
@@ -162,6 +164,89 @@ describe('cartTotals', () => {
     expect(t.taxableCents).toBe(125400)
     expect(t.vatCents).toBe(13167 + 4389)
     expect(t.totalCents).toBe(125400 + 13167 + 4389)
+  })
+
+  // ============================================================
+  // Descuento global sobre la base imponible agregada.
+  // ============================================================
+
+  it('descuento global 10% sobre una linea IVA 21%', () => {
+    // subtotal 100.000c, sin descuento por linea. Global 10% sobre base
+    // → dto global = 10.000c. Base final 90.000c. IVA = 90.000*0.21 = 18.900c.
+    const t = cartTotals(
+      [{ priceCents: 100000, qty: 1, discountPct: 0, vatRate: 21 }],
+      10,
+    )
+    expect(t.subtotalCents).toBe(100000)
+    expect(t.lineDiscountCents).toBe(0)
+    expect(t.globalDiscountCents).toBe(10000)
+    expect(t.discountCents).toBe(10000)
+    expect(t.taxableCents).toBe(90000)
+    expect(t.vatCents).toBe(18900)
+    expect(t.totalCents).toBe(108900)
+  })
+
+  it('global 0 se comporta como si no hubiera descuento global', () => {
+    const t = cartTotals(
+      [{ priceCents: 62700, qty: 1, discountPct: 0, vatRate: 21 }],
+      0,
+    )
+    expect(t.globalDiscountCents).toBe(0)
+    expect(t.taxableCents).toBe(62700)
+    expect(t.totalCents).toBe(75867)
+  })
+
+  it('descuento por linea + global combinados', () => {
+    // subtotal 100.000c, dto linea 10% = 10.000c → base pre-global 90.000c.
+    // Global 20% sobre 90.000 = 18.000c → base final 72.000c.
+    // IVA 21% * 72.000 = 15.120c. Total 87.120c.
+    const t = cartTotals(
+      [{ priceCents: 100000, qty: 1, discountPct: 10, vatRate: 21 }],
+      20,
+    )
+    expect(t.subtotalCents).toBe(100000)
+    expect(t.lineDiscountCents).toBe(10000)
+    expect(t.globalDiscountCents).toBe(18000)
+    expect(t.discountCents).toBe(28000)
+    expect(t.taxableCents).toBe(72000)
+    expect(t.vatCents).toBe(15120)
+    expect(t.totalCents).toBe(87120)
+  })
+
+  it('descuento global prorrateado entre lineas con IVA mixto (Peninsula 21% + Canarias 0%)', () => {
+    // Linea A: 60.000c 21% → base 60.000c
+    // Linea B: 40.000c  0% → base 40.000c
+    // Base agregada 100.000c. Global 10% = 10.000c descuento.
+    // Prorrateo: A recibe 10.000 * 60.000/100.000 = 6.000c;
+    //            B recibe 10.000 - 6.000 = 4.000c (última absorbe resto).
+    // Base final A = 54.000c; IVA A = 54.000 * 0.21 = 11.340c
+    // Base final B = 36.000c; IVA B = 0
+    // Total = 54.000 + 11.340 + 36.000 + 0 = 101.340c
+    const t = cartTotals(
+      [
+        { priceCents: 60000, qty: 1, discountPct: 0, vatRate: 21 },
+        { priceCents: 40000, qty: 1, discountPct: 0, vatRate: 0 },
+      ],
+      10,
+    )
+    expect(t.subtotalCents).toBe(100000)
+    expect(t.lineDiscountCents).toBe(0)
+    expect(t.globalDiscountCents).toBe(10000)
+    expect(t.taxableCents).toBe(90000)
+    expect(t.vatCents).toBe(11340)
+    expect(t.totalCents).toBe(101340)
+  })
+
+  it('descuento global 100% deja la base a 0 y el total a 0', () => {
+    const t = cartTotals(
+      [{ priceCents: 50000, qty: 2, discountPct: 0, vatRate: 21 }],
+      100,
+    )
+    expect(t.subtotalCents).toBe(100000)
+    expect(t.globalDiscountCents).toBe(100000)
+    expect(t.taxableCents).toBe(0)
+    expect(t.vatCents).toBe(0)
+    expect(t.totalCents).toBe(0)
   })
 })
 

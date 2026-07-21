@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminUser } from '@/lib/auth'
-import type { UserRole } from '@/types/database'
+import type { UserRole, PurchaseType } from '@/types/database'
 import { isValidPurchaseType } from '@/lib/purchase-type'
+import { validateGlobalDiscount } from '@/lib/orders-validation'
+import { cartTotals } from '@/lib/pricing'
 
 async function verifyAdmin() {
   const supabase = await createClient()
@@ -59,6 +61,7 @@ const EDITABLE_FIELDS = new Set([
   'venue_name',
   'purchase_type',
   'amount',
+  'discount_global_pct',
   'contact_email',
   'phone',
   'source_department',
@@ -142,6 +145,27 @@ export async function PATCH(
       }
       value = num
     }
+  } else if (field === 'discount_global_pct') {
+    // Rango entero 0-100. Financiación no admite descuento global.
+    const check = validateGlobalDiscount(value)
+    if (!check.ok) {
+      return NextResponse.json({ error: check.error }, { status: 400 })
+    }
+    const { data: cur } = await createAdminClient()
+      .from('orders')
+      .select('purchase_type')
+      .eq('id', id)
+      .single()
+    if (
+      (cur?.purchase_type as PurchaseType | null) === 'hardware_financiacion' &&
+      check.pct !== 0
+    ) {
+      return NextResponse.json(
+        { error: 'Los pedidos de financiación no admiten descuento global.' },
+        { status: 400 },
+      )
+    }
+    value = check.pct
   } else if (field === 'contact_email' || field === 'requester_email') {
     if (value !== null && typeof value === 'string' && value.trim()) {
       // Basic email validation
@@ -220,6 +244,33 @@ export async function PATCH(
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // Si cambia el descuento global, recalcular orders.amount con TODAS
+  // las líneas del pedido para mantener la coherencia.
+  if (field === 'discount_global_pct') {
+    const { data: items } = await adminClient
+      .from('order_items')
+      .select('qty, unit_price_cents, discount_pct, vat_rate')
+      .eq('order_id', id)
+    const modern = (items ?? []).filter(
+      (i) => i.unit_price_cents !== null && i.unit_price_cents !== undefined,
+    )
+    if (modern.length > 0) {
+      const totals = cartTotals(
+        modern.map((i) => ({
+          priceCents: i.unit_price_cents as number,
+          qty: i.qty,
+          discountPct: Number(i.discount_pct ?? 0),
+          vatRate: Number(i.vat_rate ?? 21),
+        })),
+        Number(value ?? 0),
+      )
+      await adminClient
+        .from('orders')
+        .update({ amount: totals.totalCents / 100, updated_at: new Date().toISOString() })
+        .eq('id', id)
+    }
   }
 
   return NextResponse.json({ ok: true, field, value })

@@ -156,7 +156,12 @@ export default async function OrderDetailPage({
           <OrderDetailFields order={order} canEdit={canEdit} isViewer={isViewer} />
 
           {/* Items */}
-          <ItemsList orderId={order.id} items={items} readOnly={isViewer} />
+          <ItemsList
+            orderId={order.id}
+            items={items}
+            discountGlobalPct={order.discount_global_pct}
+            readOnly={isViewer}
+          />
 
           {/* Plan de pagos (solo financiación) */}
           {order.purchase_type === 'hardware_financiacion' && (

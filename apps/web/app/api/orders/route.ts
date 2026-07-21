@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { PurchaseType, Product, UserRole } from '@/types/database'
 import { cartTotals } from '@/lib/pricing'
 import { canCreateOrder } from '@/lib/auth'
-import { validateLineDiscount } from '@/lib/orders-validation'
+import { validateLineDiscount, validateGlobalDiscount } from '@/lib/orders-validation'
 import { upsertAddressFromOrder } from '@/lib/address-book/upsert'
 import { isCanaryIslands } from '@/lib/utils'
 import { isValidPurchaseType } from '@/lib/purchase-type'
@@ -261,6 +261,24 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Descuento global (%) opcional. Se aplica sobre la base imponible
+  // agregada después de los descuentos por línea (ver cartTotals + doc en
+  // pricing.ts). Financiación NO admite descuento global (plan fijo).
+  let discountGlobalPct = 0
+  if (body.discount_global_pct !== undefined && body.discount_global_pct !== null) {
+    const check = validateGlobalDiscount(body.discount_global_pct)
+    if (!check.ok) {
+      return NextResponse.json({ error: check.error }, { status: 400 })
+    }
+    discountGlobalPct = check.pct
+  }
+  if (isFinancing && discountGlobalPct !== 0) {
+    return NextResponse.json(
+      { error: 'Los pedidos de financiación no admiten descuento global.' },
+      { status: 400 },
+    )
+  }
+
   const productIds = Array.from(new Set(cartInputs.map((it) => it.product_id)))
   const { data: catalogProducts, error: productsError } = await admin
     .from('products')
@@ -374,6 +392,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Total con IVA en céntimos → euros (compat orders.amount).
+  // Aplicamos también el descuento global (%) sobre la base agregada.
   const totals = cartTotals(
     resolved.map((l) => ({
       priceCents: l.unit_price_cents,
@@ -381,6 +400,7 @@ export async function POST(request: NextRequest) {
       discountPct: l.discount_pct,
       vatRate: l.vat_rate,
     })),
+    discountGlobalPct,
   )
   const computedAmount = totals.totalCents / 100
 
@@ -393,6 +413,7 @@ export async function POST(request: NextRequest) {
       phone: phone || null,
       purchase_type: purchaseType,
       amount: computedAmount,
+      discount_global_pct: discountGlobalPct,
       bank_receipt_url: bankReceiptUrl || null,
       requester_name: requesterName || null,
       requester_email: requesterEmail || null,

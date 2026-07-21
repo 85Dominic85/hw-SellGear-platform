@@ -8,89 +8,115 @@ import { formatCurrency } from '@/lib/utils'
 import {
   effectiveTaxLabel,
   formatEurosCents,
-  lineDiscountCents,
-  lineSubtotalCents,
-  lineTaxableCents,
-  lineTotalCents,
-  lineVatCents,
   taxLabel,
+  cartTotals,
 } from '@/lib/pricing'
 import AddOrderItemModal from './AddOrderItemModal'
 
 interface ItemsListProps {
   orderId: string
   items: OrderItem[]
+  /** Descuento global (%) del pedido. Se aplica sobre la base imponible
+   *  agregada después de los descuentos por línea. Se prorratea por línea
+   *  antes del IVA (fiscalmente correcto con IVA mixto). */
+  discountGlobalPct?: number | null
   readOnly?: boolean
 }
 
-interface LineBreakdown {
-  hasModernPricing: boolean
-  unitPriceCents: number
-  discountPct: number
-  vatRate: number
-  subtotalCents: number
-  discountCents: number
-  taxableCents: number
-  taxCents: number
-  totalCents: number
-}
-
-function computeBreakdown(item: OrderItem): LineBreakdown {
-  const unitPriceCents = item.unit_price_cents
-  const hasModernPricing = unitPriceCents !== null && unitPriceCents !== undefined
-  if (!hasModernPricing) {
-    return {
-      hasModernPricing: false,
-      unitPriceCents: 0,
-      discountPct: 0,
-      vatRate: 0,
-      subtotalCents: 0,
-      discountCents: 0,
-      taxableCents: 0,
-      taxCents: 0,
-      totalCents: 0,
-    }
-  }
-  const discountPct = Number(item.discount_pct ?? 0)
-  const vatRate = Number(item.vat_rate ?? 21)
-  return {
-    hasModernPricing: true,
-    unitPriceCents: unitPriceCents as number,
-    discountPct,
-    vatRate,
-    subtotalCents: lineSubtotalCents(unitPriceCents as number, item.qty),
-    discountCents: lineDiscountCents(unitPriceCents as number, item.qty, discountPct),
-    taxableCents: lineTaxableCents(unitPriceCents as number, item.qty, discountPct),
-    taxCents: lineVatCents(unitPriceCents as number, item.qty, discountPct, vatRate),
-    totalCents: lineTotalCents(unitPriceCents as number, item.qty, discountPct, vatRate),
-  }
-}
-
-export default function ItemsList({ orderId, items, readOnly }: ItemsListProps) {
+export default function ItemsList({
+  orderId,
+  items,
+  discountGlobalPct,
+  readOnly,
+}: ItemsListProps) {
   const router = useRouter()
   const [showAddModal, setShowAddModal] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Pre-calculo desglose por linea para no recomputar en render y para el tfoot
-  const breakdowns = useMemo(
-    () => items.map((it) => ({ item: it, b: computeBreakdown(it) })),
+  // Estado editable inline para el descuento por línea (uno a la vez).
+  const [editingDiscountItemId, setEditingDiscountItemId] = useState<string | null>(null)
+  const [editingDiscountValue, setEditingDiscountValue] = useState<string>('')
+  const [savingLineDiscount, setSavingLineDiscount] = useState(false)
+
+  // Descuento global: input editable en el tfoot.
+  const initialGlobal = discountGlobalPct ?? 0
+  const [globalInput, setGlobalInput] = useState<string>(String(initialGlobal))
+  const [savingGlobal, setSavingGlobal] = useState(false)
+  const globalPctNum = useMemo(() => {
+    const n = parseInt(globalInput, 10)
+    if (!Number.isFinite(n)) return 0
+    return Math.max(0, Math.min(100, n))
+  }, [globalInput])
+
+  // Filtrar items con desglose moderno para cálculos precisos con cartTotals.
+  const modernItems = useMemo(
+    () =>
+      items.filter(
+        (i) => i.unit_price_cents !== null && i.unit_price_cents !== undefined,
+      ),
     [items],
   )
+  const hasMixedLegacy = modernItems.length > 0 && modernItems.length < items.length
 
+  // cartTotals calcula todo (incluyendo prorrateo del global) correctamente.
   const totals = useMemo(() => {
-    const modern = breakdowns.filter((x) => x.b.hasModernPricing)
-    return {
-      hasAny: modern.length > 0,
-      hasMixedLegacy: modern.length > 0 && modern.length < breakdowns.length,
-      subtotal: modern.reduce((s, x) => s + x.b.subtotalCents, 0),
-      discount: modern.reduce((s, x) => s + x.b.discountCents, 0),
-      taxable: modern.reduce((s, x) => s + x.b.taxableCents, 0),
-      tax: modern.reduce((s, x) => s + x.b.taxCents, 0),
-      total: modern.reduce((s, x) => s + x.b.totalCents, 0),
-      rates: modern.map((x) => x.b.vatRate),
+    if (modernItems.length === 0) {
+      return null
     }
-  }, [breakdowns])
+    return cartTotals(
+      modernItems.map((i) => ({
+        priceCents: i.unit_price_cents as number,
+        qty: i.qty,
+        discountPct: Number(i.discount_pct ?? 0),
+        vatRate: Number(i.vat_rate ?? 21),
+      })),
+      globalPctNum,
+    )
+  }, [modernItems, globalPctNum])
+
+  // Desglose por línea (sin descuento global; se muestra en el tfoot agregado).
+  const perLine = useMemo(() => {
+    return items.map((item) => {
+      const upc = item.unit_price_cents
+      const hasModern = upc !== null && upc !== undefined
+      if (!hasModern) {
+        return {
+          item,
+          hasModern: false,
+          unitPriceCents: 0,
+          discountPct: 0,
+          vatRate: 0,
+          taxableCents: 0,
+          taxCents: 0,
+          totalCents: 0,
+        }
+      }
+      const discountPct = Number(item.discount_pct ?? 0)
+      const vatRate = Number(item.vat_rate ?? 21)
+      const subtotal = Math.round((upc as number) * item.qty)
+      const lineDiscount = Math.round(
+        (upc as number) * item.qty * (discountPct / 100),
+      )
+      const taxable = subtotal - lineDiscount
+      const tax = Math.round(taxable * (vatRate / 100))
+      return {
+        item,
+        hasModern: true,
+        unitPriceCents: upc as number,
+        discountPct,
+        vatRate,
+        taxableCents: taxable,
+        taxCents: tax,
+        totalCents: taxable + tax,
+      }
+    })
+  }, [items])
+
+  const vatRates = useMemo(
+    () => modernItems.map((i) => Number(i.vat_rate ?? 21)),
+    [modernItems],
+  )
 
   async function handleDelete(itemId: string) {
     if (!confirm('¿Eliminar este artículo?')) return
@@ -111,6 +137,62 @@ export default function ItemsList({ orderId, items, readOnly }: ItemsListProps) 
     }
 
     setDeletingId(null)
+  }
+
+  // Guardar el descuento por línea via PATCH /api/orders/[id]/items/[itemId].
+  async function saveLineDiscount(itemId: string, raw: string) {
+    const num = parseInt(raw, 10)
+    if (!Number.isFinite(num)) {
+      setEditingDiscountItemId(null)
+      return
+    }
+    const clamped = Math.max(0, Math.min(100, num))
+    setSavingLineDiscount(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/orders/${orderId}/items/${itemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ discount_pct: clamped }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(data.error ?? 'Error al guardar el descuento.')
+      } else {
+        router.refresh()
+      }
+    } catch {
+      setError('Error de conexión.')
+    } finally {
+      setSavingLineDiscount(false)
+      setEditingDiscountItemId(null)
+    }
+  }
+
+  // Guardar el descuento global via PATCH /api/orders/[id] (EDITABLE_FIELDS).
+  async function saveGlobalDiscount() {
+    if (globalPctNum === initialGlobal) return
+    setSavingGlobal(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ discount_global_pct: globalPctNum }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(data.error ?? 'Error al guardar el descuento global.')
+        setGlobalInput(String(initialGlobal)) // rollback en UI
+      } else {
+        router.refresh()
+      }
+    } catch {
+      setError('Error de conexión.')
+      setGlobalInput(String(initialGlobal))
+    } finally {
+      setSavingGlobal(false)
+    }
   }
 
   return (
@@ -183,7 +265,7 @@ export default function ItemsList({ orderId, items, readOnly }: ItemsListProps) 
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {breakdowns.map(({ item, b }) => (
+              {perLine.map(({ item, hasModern, unitPriceCents, discountPct, vatRate, taxableCents, taxCents, totalCents }) => (
                 <tr key={item.id} className="group">
                   <td className="px-5 py-3 text-sm text-gray-900">
                     {item.product_name ?? '(sin nombre)'}
@@ -192,36 +274,72 @@ export default function ItemsList({ orderId, items, readOnly }: ItemsListProps) 
                     {item.qty}
                   </td>
                   <td className="px-3 py-3 text-right text-sm text-gray-700 font-mono tabular-nums">
-                    {b.hasModernPricing
-                      ? formatEurosCents(b.unitPriceCents)
+                    {hasModern
+                      ? formatEurosCents(unitPriceCents)
                       : formatCurrency(item.unit_price)}
                   </td>
                   <td className="px-3 py-3 text-right text-sm text-gray-700">
-                    {b.hasModernPricing
-                      ? b.discountPct > 0
-                        ? `${b.discountPct}%`
-                        : '—'
-                      : '—'}
+                    {!hasModern ? (
+                      '—'
+                    ) : readOnly ? (
+                      discountPct > 0 ? `${discountPct}%` : '—'
+                    ) : editingDiscountItemId === item.id ? (
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={editingDiscountValue}
+                        autoFocus
+                        disabled={savingLineDiscount}
+                        onChange={(e) => setEditingDiscountValue(e.target.value)}
+                        onBlur={() => {
+                          if (!savingLineDiscount) {
+                            void saveLineDiscount(item.id, editingDiscountValue)
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            ;(e.target as HTMLInputElement).blur()
+                          } else if (e.key === 'Escape') {
+                            setEditingDiscountItemId(null)
+                          }
+                        }}
+                        className="w-16 rounded border border-brand px-1 py-0.5 text-right font-mono text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand disabled:opacity-50"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingDiscountItemId(item.id)
+                          setEditingDiscountValue(String(discountPct))
+                        }}
+                        title="Click para editar el descuento (0-100)"
+                        className="cursor-pointer rounded px-1.5 py-0.5 hover:bg-brand/5 hover:text-brand"
+                      >
+                        {discountPct > 0 ? `${discountPct}%` : '—'}
+                      </button>
+                    )}
                   </td>
                   <td className="px-3 py-3 text-right text-sm text-gray-700 font-mono tabular-nums">
-                    {b.hasModernPricing ? formatEurosCents(b.taxableCents) : '—'}
+                    {hasModern ? formatEurosCents(taxableCents) : '—'}
                   </td>
                   <td className="px-3 py-3 text-right text-sm text-gray-700">
-                    {b.hasModernPricing ? (
+                    {hasModern ? (
                       <span className="font-mono tabular-nums">
-                        {formatEurosCents(b.taxCents)}
+                        {formatEurosCents(taxCents)}
                       </span>
                     ) : (
                       '—'
                     )}
-                    {b.hasModernPricing && (
+                    {hasModern && (
                       <div className="text-[10px] uppercase tracking-wide text-gray-400 mt-0.5">
-                        {taxLabel(b.vatRate)}
+                        {taxLabel(vatRate)}
                       </div>
                     )}
                   </td>
                   <td className="px-3 py-3 text-right text-sm font-semibold text-gray-900 font-mono tabular-nums">
-                    {b.hasModernPricing ? formatEurosCents(b.totalCents) : '—'}
+                    {hasModern ? formatEurosCents(totalCents) : '—'}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">
                     {item.notes ?? '—'}
@@ -253,36 +371,86 @@ export default function ItemsList({ orderId, items, readOnly }: ItemsListProps) 
                 </tr>
               ))}
             </tbody>
-            {totals.hasAny && (
+            {totals && (
               <tfoot className="bg-gray-50/60 border-t border-gray-200">
+                {/* Fila: descuento global editable (solo si !readOnly o hay valor) */}
+                {(!readOnly || (totals.globalDiscountCents ?? 0) > 0) && (
+                  <tr>
+                    <td
+                      className="px-5 py-2 text-right text-xs font-medium text-gray-500"
+                      colSpan={3}
+                    >
+                      Descuento global sobre el pedido
+                    </td>
+                    <td className="px-3 py-2 text-right text-xs">
+                      {readOnly ? (
+                        <span className="text-gray-700">{globalPctNum}%</span>
+                      ) : (
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={globalInput}
+                          disabled={savingGlobal}
+                          onChange={(e) => setGlobalInput(e.target.value)}
+                          onBlur={() => void saveGlobalDiscount()}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              ;(e.target as HTMLInputElement).blur()
+                            } else if (e.key === 'Escape') {
+                              setGlobalInput(String(initialGlobal))
+                            }
+                          }}
+                          className="w-16 rounded border border-gray-300 px-1 py-0.5 text-right font-mono text-sm text-gray-900 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand disabled:opacity-50"
+                          title="Descuento global sobre la base imponible (0-100)"
+                        />
+                      )}
+                    </td>
+                    <td
+                      className="px-3 py-2 text-right text-xs text-red-500 font-mono tabular-nums"
+                      colSpan={2}
+                    >
+                      {totals.globalDiscountCents > 0
+                        ? `−${formatEurosCents(totals.globalDiscountCents)}`
+                        : ''}
+                    </td>
+                    <td colSpan={2} />
+                    {!readOnly && <td />}
+                  </tr>
+                )}
+
+                {/* Totales */}
                 <tr>
                   <td
                     className="px-5 py-2 text-right text-xs font-medium text-gray-500"
                     colSpan={4}
                   >
                     Totales
-                    {totals.hasMixedLegacy && (
+                    {hasMixedLegacy && (
                       <span className="ml-2 text-[10px] text-gray-400 italic normal-case">
                         (solo líneas con desglose)
                       </span>
                     )}
                   </td>
                   <td className="px-3 py-2 text-right text-xs font-medium text-gray-700 font-mono tabular-nums">
-                    {formatEurosCents(totals.taxable)}
+                    {formatEurosCents(totals.taxableCents)}
                   </td>
                   <td className="px-3 py-2 text-right text-xs font-medium text-gray-700 font-mono tabular-nums">
-                    {formatEurosCents(totals.tax)}
+                    {formatEurosCents(totals.vatCents)}
                     <div className="text-[10px] uppercase tracking-wide text-gray-400 mt-0.5">
-                      {effectiveTaxLabel(totals.rates)}
+                      {effectiveTaxLabel(vatRates)}
                     </div>
                   </td>
                   <td className="px-3 py-2 text-right text-sm font-bold text-gray-900 font-mono tabular-nums">
-                    {formatEurosCents(totals.total)}
+                    {formatEurosCents(totals.totalCents)}
                   </td>
                   <td />
                   {!readOnly && <td />}
                 </tr>
-                {totals.discount > 0 && (
+
+                {/* Descuentos aplicados (desglose) */}
+                {totals.discountCents > 0 && (
                   <tr>
                     <td
                       className="px-5 py-1 text-right text-[11px] text-gray-400"
@@ -294,10 +462,15 @@ export default function ItemsList({ orderId, items, readOnly }: ItemsListProps) 
                       className="px-3 py-1 text-right text-[11px] text-gray-500 font-mono tabular-nums"
                       colSpan={2}
                     >
-                      {formatEurosCents(totals.subtotal)} ·{' '}
+                      {formatEurosCents(totals.subtotalCents)} ·{' '}
                       <span className="text-red-500">
-                        −{formatEurosCents(totals.discount)}
+                        −{formatEurosCents(totals.discountCents)}
                       </span>
+                      {totals.globalDiscountCents > 0 && (
+                        <span className="ml-1 text-[10px] text-gray-400">
+                          (línea {formatEurosCents(totals.lineDiscountCents)} + global {formatEurosCents(totals.globalDiscountCents)})
+                        </span>
+                      )}
                     </td>
                     <td />
                     <td />

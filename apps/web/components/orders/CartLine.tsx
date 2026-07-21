@@ -10,10 +10,11 @@ export interface CartLineState {
   unit_price_override_cents: number | null
   qty: number
   /**
-   * Descuento por linea. 100 solo es valido cuando el producto es de
-   * categoria 'printer' (Promocion Printer); para el resto, 0 o 10.
+   * Descuento por linea. Rango libre 0-100 entero. `saas_hardware`
+   * sigue forzando 0 (precio negociado = precio final). Financiación
+   * también sigue rechazando ≠0 (validación en POST /api/orders).
    */
-  discount_pct: 0 | 10 | 100
+  discount_pct: number
 }
 
 export const EMPTY_LINE: CartLineState = {
@@ -89,23 +90,19 @@ export default function CartLine({
           <ProductPicker
             value={line.product_id}
             onChange={(productId) => {
-              // Resets de descuento al cambiar de producto para no dejar
-              // estados invalidos al usuario:
-              //   - 100 (Promocion Printer) si el nuevo NO es printer.
-              //   - Cualquier descuento != 0 si el nuevo es saas_hardware
-              //     (precio libre negociado: el precio ES el final).
+              // Reset del descuento al cambiar de producto solo si el
+              // nuevo es saas_hardware (precio libre negociado = precio
+              // final; no admite descuento). Para el resto de categorías
+              // preservamos el descuento libre 0-100 que ya hubiera.
               const newProduct = products.find((p) => p.id === productId)
-              const resetForPrinterPromo =
-                line.discount_pct === 100 && newProduct?.category !== 'printer'
               const resetForSaasHw =
                 newProduct?.category === 'saas_hardware' &&
                 line.discount_pct !== 0
-              const resetDiscount = resetForPrinterPromo || resetForSaasHw
               onChange(index, {
                 product_id: productId,
                 product_name_override: '',
                 unit_price_override_cents: null,
-                ...(resetDiscount ? { discount_pct: 0 as const } : {}),
+                ...(resetForSaasHw ? { discount_pct: 0 } : {}),
               })
             }}
             products={products}
@@ -131,44 +128,36 @@ export default function CartLine({
           />
         </div>
 
-        {/* Descuento */}
+        {/* Descuento — rango libre 0-100 entero; saas_hardware forzado a 0 */}
         <div className="sm:col-span-2">
           <label className="mb-1 block text-xs font-medium text-gray-700">
-            Descuento
+            Descuento (%)
           </label>
-          <select
+          <input
+            type="number"
+            min={0}
+            max={100}
+            step={1}
             value={line.discount_pct}
             onChange={(e) => {
-              // saas_hardware fuerza 0 (precio negociado = precio final).
               if (product?.category === 'saas_hardware') {
                 onChange(index, { discount_pct: 0 })
                 return
               }
-              const v = parseInt(e.target.value)
-              const next: 0 | 10 | 100 =
-                v === 100 && product?.category === 'printer'
-                  ? 100
-                  : v === 10
-                    ? 10
-                    : 0
-              onChange(index, { discount_pct: next })
+              const raw = parseInt(e.target.value, 10)
+              const clamped = Number.isFinite(raw)
+                ? Math.max(0, Math.min(100, raw))
+                : 0
+              onChange(index, { discount_pct: clamped })
             }}
-            className={inputClass}
+            className={`${inputClass} text-center`}
             disabled={product?.category === 'saas_hardware'}
             title={
               product?.category === 'saas_hardware'
                 ? 'SaaS + Hardware no admite descuento (precio negociado es el final).'
-                : undefined
+                : 'Descuento por línea: entero entre 0 y 100'
             }
-          >
-            <option value={0}>Sin descuento</option>
-            {product?.category !== 'saas_hardware' && (
-              <option value={10}>-10 %</option>
-            )}
-            {product?.category === 'printer' && (
-              <option value={100}>Promoción Printer (-100 %)</option>
-            )}
-          </select>
+          />
         </div>
 
         {/* Total línea (con IVA) */}

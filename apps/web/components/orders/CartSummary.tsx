@@ -13,11 +13,19 @@ interface CartSummaryProps {
    * Es solo preview UI; el servidor recalcula al insertar.
    */
   vatRateOverride?: number | null
+  /**
+   * Descuento global (%) del pedido. Se aplica sobre la base imponible
+   * agregada, prorrateado por línea antes del IVA. Se muestra como fila
+   * "Descuento global" y modifica el TOTAL. Si el callback está presente,
+   * se renderiza un input editable dentro del resumen.
+   */
+  discountGlobalPct?: number
+  onDiscountGlobalChange?: (pct: number) => void
 }
 
 interface RowProps {
-  label: string
-  value: string
+  label: React.ReactNode
+  value: React.ReactNode
   bold?: boolean
   highlight?: boolean
 }
@@ -39,6 +47,8 @@ export default function CartSummary({
   lines,
   products,
   vatRateOverride = null,
+  discountGlobalPct = 0,
+  onDiscountGlobalChange,
 }: CartSummaryProps) {
   const productById = new Map(products.map((p) => [p.id, p]))
 
@@ -58,23 +68,59 @@ export default function CartSummary({
     })
     .filter((x): x is NonNullable<typeof x> => x !== null)
 
-  const totals = cartTotals(computed)
+  const totals = cartTotals(computed, discountGlobalPct)
   const totalPackages = computed.reduce(
     (sum, l) => sum + l.qty * l.packageCount,
     0,
   )
+  const editable = typeof onDiscountGlobalChange === 'function'
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <h3 className="mb-3 text-sm font-semibold text-gray-900">Total del pedido</h3>
       <div className="space-y-1.5">
         <Row label="Subtotal s/IVA" value={formatEurosCents(totals.subtotalCents)} />
-        {totals.discountCents > 0 && (
+        {totals.lineDiscountCents > 0 && (
           <Row
-            label="Descuentos"
-            value={`- ${formatEurosCents(totals.discountCents)}`}
+            label="Descuentos por línea"
+            value={`- ${formatEurosCents(totals.lineDiscountCents)}`}
           />
         )}
+
+        {/* Descuento global editable (o solo lectura si no hay callback) */}
+        {(editable || totals.globalDiscountCents > 0) && (
+          <div className="flex items-center justify-between text-sm text-gray-700">
+            <span>Descuento global (%)</span>
+            <div className="flex items-center gap-2">
+              {editable ? (
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={discountGlobalPct}
+                  onChange={(e) => {
+                    const raw = parseInt(e.target.value, 10)
+                    const clamped = Number.isFinite(raw)
+                      ? Math.max(0, Math.min(100, raw))
+                      : 0
+                    onDiscountGlobalChange!(clamped)
+                  }}
+                  className="w-16 rounded-md border border-gray-300 bg-white px-2 py-1 text-right font-mono text-sm text-gray-900 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+                  title="Descuento global sobre la base imponible del pedido (0-100)"
+                />
+              ) : (
+                <span className="text-sm text-gray-700">{discountGlobalPct}%</span>
+              )}
+              <span className="font-mono tabular-nums text-red-500">
+                {totals.globalDiscountCents > 0
+                  ? `− ${formatEurosCents(totals.globalDiscountCents)}`
+                  : '—'}
+              </span>
+            </div>
+          </div>
+        )}
+
         <Row
           label="Base imponible"
           value={formatEurosCents(totals.taxableCents)}

@@ -71,6 +71,10 @@ export default function NewOrderPage() {
   // Carrito vacío: las líneas se añaden vía tile del catálogo (estándar) o
   // botón "Añadir línea libre" (otro / saas_hardware). Sin placeholder inicial.
   const [items, setItems] = useState<CartLineState[]>([])
+  // Descuento global (%) sobre la base imponible del pedido, adicional a
+  // los descuentos por línea. Se aplica solo cuando purchase_type NO es
+  // 'hardware_financiacion' (el plan de plazos es fijo).
+  const [discountGlobalPct, setDiscountGlobalPct] = useState(0)
   const [products, setProducts] = useState<Product[]>([])
   const [loadingCatalog, setLoadingCatalog] = useState(true)
   const [catalogError, setCatalogError] = useState<string | null>(null)
@@ -258,6 +262,10 @@ export default function NewOrderPage() {
           shipping_city: form.shipping_city.trim(),
           shipping_province: form.shipping_province.trim() || null,
           notes: form.notes.trim() || null,
+          // Descuento global % sobre la base imponible del pedido (adicional
+          // a los descuentos por línea). Se ignora en financiación en el
+          // servidor.
+          discount_global_pct: discountGlobalPct,
           items: filledItems.map((it) => ({
             product_id: it.product_id,
             qty: it.qty,
@@ -606,6 +614,8 @@ export default function NewOrderPage() {
                     lines={items}
                     products={products}
                     vatRateOverride={isCanaryIslands(form.shipping_cp) ? 0 : null}
+                    discountGlobalPct={discountGlobalPct}
+                    onDiscountGlobalChange={setDiscountGlobalPct}
                   />
                 )
               )}
