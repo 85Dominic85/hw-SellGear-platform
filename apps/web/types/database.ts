@@ -79,6 +79,10 @@ export interface Order {
    *  Se prorratea proporcionalmente entre las bases de cada línea antes de
    *  calcular el IVA (fiscalmente correcto con IVA mixto Península/Canarias). */
   discount_global_pct: number | null
+  /** Ajuste manual (céntimos) que se RESTA al total c/IVA. Solo admin.
+   *  No recalcula IVA. Requiere motivo cuando > 0. */
+  manual_adjustment_cents: number | null
+  manual_adjustment_reason: string | null
   bank_receipt_url: string | null
   requester_name: string | null
   requester_email: string | null

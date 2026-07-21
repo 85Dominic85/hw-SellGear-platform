@@ -19,9 +19,14 @@ export interface CartTotals {
   lineDiscountCents: number
   /** Descuento global aplicado sobre la base imponible pre-global. */
   globalDiscountCents: number
+  /** Ajuste manual (céntimos) que se resta al total c/IVA. No modifica base
+   *  ni IVA declarado (decisión de negocio: es un descuento comercial
+   *  post-cálculo). Solo lo pueden aplicar admins. */
+  manualAdjustmentCents: number
   /** Base imponible después de TODOS los descuentos (por línea + global). */
   taxableCents: number
   vatCents: number
+  /** Total c/IVA final = taxable + vat − manualAdjustment (nunca negativo). */
   totalCents: number
 }
 
@@ -94,6 +99,7 @@ export function lineTotalCents(
 export function cartTotals(
   lines: CartLineInput[],
   globalPct = 0,
+  manualAdjustmentCents = 0,
 ): CartTotals {
   // Fase 1: por línea, subtotal + descuento línea + base pre-global.
   const perLinePre = lines.map((l) => {
@@ -135,13 +141,19 @@ export function cartTotals(
 
   const taxableCents = taxablePreGlobal - globalDiscountCents
   const discountCents = lineDiscountTotal + globalDiscountCents
-  const totalCents = taxableCents + vatCents
+  const preAdjustmentTotal = taxableCents + vatCents
+  const clampedAdjustment = Math.max(
+    0,
+    Math.min(preAdjustmentTotal, Math.floor(Number(manualAdjustmentCents) || 0)),
+  )
+  const totalCents = preAdjustmentTotal - clampedAdjustment
 
   return {
     subtotalCents,
     discountCents,
     lineDiscountCents: lineDiscountTotal,
     globalDiscountCents,
+    manualAdjustmentCents: clampedAdjustment,
     taxableCents,
     vatCents,
     totalCents,
@@ -222,6 +234,7 @@ export function computeOrderTotals(order: Order): CartTotals | null {
   )
   if (modern.length === 0) return null
   const globalPct = order.discount_global_pct ?? 0
+  const manualAdjustment = order.manual_adjustment_cents ?? 0
   return cartTotals(
     modern.map((i) => ({
       priceCents: i.unit_price_cents!,
@@ -230,5 +243,6 @@ export function computeOrderTotals(order: Order): CartTotals | null {
       vatRate: i.vat_rate ?? 21,
     })),
     globalPct,
+    manualAdjustment,
   )
 }

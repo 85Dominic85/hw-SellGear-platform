@@ -100,7 +100,7 @@ export async function PATCH(
   //    invariante del POST /api/orders).
   const { data: order, error: orderError } = await admin
     .from('orders')
-    .select('purchase_type, discount_global_pct')
+    .select('purchase_type, discount_global_pct, manual_adjustment_cents')
     .eq('id', orderId)
     .single()
   if (orderError || !order) {
@@ -142,6 +142,7 @@ export async function PATCH(
     return NextResponse.json({ error: itemsError.message }, { status: 500 })
   }
   const globalPct = order.discount_global_pct ?? 0
+  const manualAdjustment = order.manual_adjustment_cents ?? 0
   const modern = (allItems ?? []).filter(
     (i) => i.unit_price_cents !== null && i.unit_price_cents !== undefined,
   )
@@ -154,6 +155,7 @@ export async function PATCH(
         vatRate: Number(i.vat_rate ?? 21),
       })),
       Number(globalPct),
+      Number(manualAdjustment),
     )
     const newAmount = totals.totalCents / 100
     await admin

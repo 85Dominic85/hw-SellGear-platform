@@ -41,6 +41,9 @@ interface OrderData {
   shipping_city: string | null
   shipping_province: string | null
   notes: string | null
+  discount_global_pct: number | null
+  manual_adjustment_cents: number | null
+  manual_adjustment_reason: string | null
   // Items con desglose moderno (unit_price_cents). Opcional: si no hay
   // items o todos son legacy, se muestra el "Importe" plano editable.
   order_items?: OrderItem[] | null
@@ -60,9 +63,9 @@ const PURCHASE_TYPE_OPTIONS = Object.entries(PURCHASE_TYPE_LABELS).map(([value, 
 export default function OrderDetailFields({ order, canEdit, isViewer }: OrderDetailFieldsProps) {
   // Desglose economico desde order_items modernos. Si null -> fallback al
   // amount plano editable (pedidos legacy de Typeform sin desglose por linea).
-  const totals = computeOrderTotals({
-    order_items: order.order_items ?? [],
-  } as Order)
+  // Pasamos el pedido completo para que se apliquen discount_global_pct y
+  // manual_adjustment_cents (admin) al total mostrado.
+  const totals = computeOrderTotals(order as Order)
   const taxRates = (order.order_items ?? [])
     .filter((i) => i.unit_price_cents !== null && i.unit_price_cents !== undefined)
     .map((i) => i.vat_rate ?? 21)

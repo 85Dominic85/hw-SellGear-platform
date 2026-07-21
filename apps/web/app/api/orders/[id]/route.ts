@@ -247,12 +247,20 @@ export async function PATCH(
   }
 
   // Si cambia el descuento global, recalcular orders.amount con TODAS
-  // las líneas del pedido para mantener la coherencia.
+  // las líneas del pedido para mantener la coherencia (preservando el
+  // ajuste manual admin si lo hubiera).
   if (field === 'discount_global_pct') {
-    const { data: items } = await adminClient
-      .from('order_items')
-      .select('qty, unit_price_cents, discount_pct, vat_rate')
-      .eq('order_id', id)
+    const [{ data: items }, { data: current }] = await Promise.all([
+      adminClient
+        .from('order_items')
+        .select('qty, unit_price_cents, discount_pct, vat_rate')
+        .eq('order_id', id),
+      adminClient
+        .from('orders')
+        .select('manual_adjustment_cents')
+        .eq('id', id)
+        .single(),
+    ])
     const modern = (items ?? []).filter(
       (i) => i.unit_price_cents !== null && i.unit_price_cents !== undefined,
     )
@@ -265,6 +273,7 @@ export async function PATCH(
           vatRate: Number(i.vat_rate ?? 21),
         })),
         Number(value ?? 0),
+        Number(current?.manual_adjustment_cents ?? 0),
       )
       await adminClient
         .from('orders')

@@ -12,6 +12,7 @@ import {
   cartTotals,
 } from '@/lib/pricing'
 import AddOrderItemModal from './AddOrderItemModal'
+import ManualAdjustmentModal from './ManualAdjustmentModal'
 
 interface ItemsListProps {
   orderId: string
@@ -20,6 +21,11 @@ interface ItemsListProps {
    *  agregada después de los descuentos por línea. Se prorratea por línea
    *  antes del IVA (fiscalmente correcto con IVA mixto). */
   discountGlobalPct?: number | null
+  /** Ajuste manual (céntimos) que se resta al total c/IVA. Solo admin edita. */
+  manualAdjustmentCents?: number | null
+  manualAdjustmentReason?: string | null
+  /** Si es admin, se muestra la fila del ajuste manual con botón de editar. */
+  isAdmin?: boolean
   readOnly?: boolean
 }
 
@@ -27,10 +33,14 @@ export default function ItemsList({
   orderId,
   items,
   discountGlobalPct,
+  manualAdjustmentCents,
+  manualAdjustmentReason,
+  isAdmin,
   readOnly,
 }: ItemsListProps) {
   const router = useRouter()
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showAdjustmentModal, setShowAdjustmentModal] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -49,6 +59,12 @@ export default function ItemsList({
     return Math.max(0, Math.min(100, n))
   }, [globalInput])
 
+  // Ajuste manual admin (céntimos que se RESTAN al total c/IVA).
+  const manualCents = Math.max(
+    0,
+    Math.floor(Number(manualAdjustmentCents ?? 0)),
+  )
+
   // Filtrar items con desglose moderno para cálculos precisos con cartTotals.
   const modernItems = useMemo(
     () =>
@@ -59,7 +75,8 @@ export default function ItemsList({
   )
   const hasMixedLegacy = modernItems.length > 0 && modernItems.length < items.length
 
-  // cartTotals calcula todo (incluyendo prorrateo del global) correctamente.
+  // cartTotals calcula todo (descuento por línea + global prorrateado +
+  // ajuste manual admin que resta al total c/IVA).
   const totals = useMemo(() => {
     if (modernItems.length === 0) {
       return null
@@ -72,8 +89,9 @@ export default function ItemsList({
         vatRate: Number(i.vat_rate ?? 21),
       })),
       globalPctNum,
+      manualCents,
     )
-  }, [modernItems, globalPctNum])
+  }, [modernItems, globalPctNum, manualCents])
 
   // Desglose por línea (sin descuento global; se muestra en el tfoot agregado).
   const perLine = useMemo(() => {
@@ -449,6 +467,50 @@ export default function ItemsList({
                   {!readOnly && <td />}
                 </tr>
 
+                {/* Ajuste manual (solo se muestra si hay ajuste O si es admin) */}
+                {(manualCents > 0 || isAdmin) && (
+                  <tr>
+                    <td
+                      className="px-5 py-1.5 text-right text-[11px] text-gray-500"
+                      colSpan={4}
+                    >
+                      Ajuste manual
+                      <span className="ml-1 rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-gray-500">
+                        admin
+                      </span>
+                      {manualCents > 0 && manualAdjustmentReason && (
+                        <span
+                          className="ml-2 text-[10px] italic text-gray-400"
+                          title={manualAdjustmentReason}
+                        >
+                          {manualAdjustmentReason.length > 40
+                            ? `${manualAdjustmentReason.slice(0, 40)}…`
+                            : manualAdjustmentReason}
+                        </span>
+                      )}
+                    </td>
+                    <td
+                      className="px-3 py-1.5 text-right text-xs font-mono tabular-nums text-red-500"
+                      colSpan={2}
+                    >
+                      {manualCents > 0 ? `−${formatEurosCents(manualCents)}` : '—'}
+                    </td>
+                    <td className="px-3 py-1.5 text-right">
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAdjustmentModal(true)}
+                          className="rounded px-2 py-0.5 text-[11px] font-medium text-brand ring-1 ring-brand/30 transition-colors hover:bg-brand/5"
+                        >
+                          {manualCents > 0 ? 'Editar' : 'Aplicar ajuste'}
+                        </button>
+                      )}
+                    </td>
+                    <td />
+                    {!readOnly && <td />}
+                  </tr>
+                )}
+
                 {/* Descuentos aplicados (desglose) */}
                 {totals.discountCents > 0 && (
                   <tr>
@@ -488,6 +550,19 @@ export default function ItemsList({
         <AddOrderItemModal
           orderId={orderId}
           onClose={() => setShowAddModal(false)}
+        />
+      )}
+
+      {/* Modal ajuste manual (solo admin) */}
+      {isAdmin && showAdjustmentModal && (
+        <ManualAdjustmentModal
+          orderId={orderId}
+          currentCents={manualCents}
+          currentReason={manualAdjustmentReason ?? null}
+          totalBeforeCents={
+            totals ? totals.taxableCents + totals.vatCents : 0
+          }
+          onClose={() => setShowAdjustmentModal(false)}
         />
       )}
     </div>

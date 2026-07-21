@@ -99,6 +99,7 @@ describe('cartTotals', () => {
       discountCents: 0,
       lineDiscountCents: 0,
       globalDiscountCents: 0,
+      manualAdjustmentCents: 0,
       taxableCents: 0,
       vatCents: 0,
       totalCents: 0,
@@ -248,6 +249,70 @@ describe('cartTotals', () => {
     expect(t.vatCents).toBe(0)
     expect(t.totalCents).toBe(0)
   })
+
+  // ============================================================
+  // Ajuste manual admin: resta al total c/IVA sin recalcular IVA.
+  // ============================================================
+
+  it('ajuste manual 5000c resta al total sin tocar base ni IVA', () => {
+    // TPV 62700c IVA 21%: base 62700c, IVA 13167c, total-pre 75867c.
+    // Ajuste manual 5000c → total final 70867c.
+    const t = cartTotals(
+      [{ priceCents: 62700, qty: 1, discountPct: 0, vatRate: 21 }],
+      0,
+      5000,
+    )
+    expect(t.taxableCents).toBe(62700)
+    expect(t.vatCents).toBe(13167)
+    expect(t.manualAdjustmentCents).toBe(5000)
+    expect(t.totalCents).toBe(70867)
+  })
+
+  it('ajuste manual > total se recorta al total (no queda negativo)', () => {
+    const t = cartTotals(
+      [{ priceCents: 10000, qty: 1, discountPct: 0, vatRate: 21 }],
+      0,
+      999999,
+    )
+    // pre 10000 + 2100 = 12100c → ajuste efectivo 12100c → total 0.
+    expect(t.manualAdjustmentCents).toBe(12100)
+    expect(t.totalCents).toBe(0)
+  })
+
+  it('ajuste manual combinado con descuento global se aplica DESPUÉS del IVA', () => {
+    // subtotal 100.000c, dto global 20% → base 80.000c; IVA 21% = 16.800c;
+    // total-pre 96.800c. Ajuste manual 2.000c → total final 94.800c.
+    // IVA declarado sigue siendo 16.800c (no cambia por el ajuste).
+    const t = cartTotals(
+      [{ priceCents: 100000, qty: 1, discountPct: 0, vatRate: 21 }],
+      20,
+      2000,
+    )
+    expect(t.taxableCents).toBe(80000)
+    expect(t.vatCents).toBe(16800)
+    expect(t.manualAdjustmentCents).toBe(2000)
+    expect(t.totalCents).toBe(94800)
+  })
+
+  it('ajuste manual 0 se comporta como si no hubiera ajuste', () => {
+    const t = cartTotals(
+      [{ priceCents: 62700, qty: 1, discountPct: 0, vatRate: 21 }],
+      0,
+      0,
+    )
+    expect(t.manualAdjustmentCents).toBe(0)
+    expect(t.totalCents).toBe(75867)
+  })
+
+  it('ajuste manual negativo se ignora (clamp a 0)', () => {
+    const t = cartTotals(
+      [{ priceCents: 62700, qty: 1, discountPct: 0, vatRate: 21 }],
+      0,
+      -100,
+    )
+    expect(t.manualAdjustmentCents).toBe(0)
+    expect(t.totalCents).toBe(75867)
+  })
 })
 
 describe('formatEurosCents', () => {
@@ -346,5 +411,39 @@ describe('computeOrderTotals', () => {
     // 10000 * 0.21 = 2100; total 12100
     expect(totals!.vatCents).toBe(2100)
     expect(totals!.totalCents).toBe(12100)
+  })
+
+  it('order.manual_adjustment_cents se aplica al total final', () => {
+    const order = {
+      order_items: [
+        mockItem({ qty: 1, unit_price_cents: 100000, discount_pct: 0, vat_rate: 21 }),
+      ],
+      manual_adjustment_cents: 5000,
+    } as unknown as Order
+    const totals = computeOrderTotals(order)
+    expect(totals).not.toBeNull()
+    // base 100000 + IVA 21000 = 121000; ajuste 5000 → total 116000
+    expect(totals!.taxableCents).toBe(100000)
+    expect(totals!.vatCents).toBe(21000)
+    expect(totals!.manualAdjustmentCents).toBe(5000)
+    expect(totals!.totalCents).toBe(116000)
+  })
+
+  it('order.manual_adjustment_cents + discount_global_pct se combinan correctamente', () => {
+    const order = {
+      order_items: [
+        mockItem({ qty: 1, unit_price_cents: 100000, discount_pct: 0, vat_rate: 21 }),
+      ],
+      discount_global_pct: 10,
+      manual_adjustment_cents: 3000,
+    } as unknown as Order
+    const totals = computeOrderTotals(order)
+    expect(totals).not.toBeNull()
+    // base pre-global 100000 → global 10% = 10000 → base 90000
+    // IVA 21% = 18900 → total-pre 108900 → ajuste 3000 → total 105900
+    expect(totals!.taxableCents).toBe(90000)
+    expect(totals!.vatCents).toBe(18900)
+    expect(totals!.manualAdjustmentCents).toBe(3000)
+    expect(totals!.totalCents).toBe(105900)
   })
 })

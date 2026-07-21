@@ -160,6 +160,9 @@ export default async function OrderDetailPage({
             orderId={order.id}
             items={items}
             discountGlobalPct={order.discount_global_pct}
+            manualAdjustmentCents={order.manual_adjustment_cents}
+            manualAdjustmentReason={order.manual_adjustment_reason}
+            isAdmin={isAdmin}
             readOnly={isViewer}
           />
 
