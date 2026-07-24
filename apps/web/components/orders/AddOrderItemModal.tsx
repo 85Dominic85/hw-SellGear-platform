@@ -97,8 +97,18 @@ export default function AddOrderItemModal({
     [products, selectedProductId],
   )
 
-  // ¿El producto seleccionado requiere overrides? (code='otro' o saas_hardware)
+  // ¿El producto seleccionado requiere overrides? (code='otro',
+  // saas_hardware o implementacion-pro).
   const requiresOverride = useMemo(() => {
+    if (!selectedProduct) return false
+    return (
+      selectedProduct.code === 'otro' ||
+      selectedProduct.category === 'saas_hardware' ||
+      selectedProduct.code === 'implementacion-pro'
+    )
+  }, [selectedProduct])
+  // Implementación pro solo pide precio, no descripción libre.
+  const requiresOverrideName = useMemo(() => {
     if (!selectedProduct) return false
     return (
       selectedProduct.code === 'otro' ||
@@ -149,7 +159,7 @@ export default function AddOrderItemModal({
           }
           if (requiresOverride) {
             const overridePrice = Math.round(parseFloat(catalogPriceOverride) * 100)
-            if (!catalogNameOverride.trim()) {
+            if (requiresOverrideName && !catalogNameOverride.trim()) {
               setError('La descripción es obligatoria para este producto.')
               setLoading(false)
               return
@@ -159,7 +169,9 @@ export default function AddOrderItemModal({
               setLoading(false)
               return
             }
-            body.product_name = catalogNameOverride.trim()
+            if (catalogNameOverride.trim()) {
+              body.product_name = catalogNameOverride.trim()
+            }
             body.unit_price_override_cents = overridePrice
           }
         } else {

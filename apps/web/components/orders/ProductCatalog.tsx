@@ -265,9 +265,15 @@ interface ProductTileProps {
   onDec: () => void
 }
 
+const IMG_EXTENSIONS = ['png', 'svg'] as const
+
 function ProductTile({ product, qty, onAdd, onInc, onDec }: ProductTileProps) {
+  // Intenta .png primero y cae a .svg antes de mostrar el emoji fallback.
+  // Así los productos con arte vectorial (implementacion-pro.svg) se ven.
+  const [extIdx, setExtIdx] = useState(0)
   const [imgError, setImgError] = useState(false)
   const inCart = qty > 0
+  const isFreePrice = product.code === 'implementacion-pro'
 
   return (
     <div
@@ -279,12 +285,15 @@ function ProductTile({ product, qty, onAdd, onInc, onDec }: ProductTileProps) {
       <div className="relative aspect-[4/3] w-full overflow-hidden rounded-t-xl bg-gray-50">
         {!imgError ? (
           <Image
-            src={`/products/${product.code}.png`}
+            src={`/products/${product.code}.${IMG_EXTENSIONS[extIdx]}`}
             alt={product.name}
             fill
             sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
             className="object-contain p-3"
-            onError={() => setImgError(true)}
+            onError={() => {
+              if (extIdx < IMG_EXTENSIONS.length - 1) setExtIdx(extIdx + 1)
+              else setImgError(true)
+            }}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 text-4xl">
@@ -310,8 +319,14 @@ function ProductTile({ product, qty, onAdd, onInc, onDec }: ProductTileProps) {
         )}
         <div className="mt-auto flex items-center justify-between gap-2 pt-2">
           <span className="text-base font-bold text-gray-900">
-            {formatEurosCents(product.price_cents)}
-            <span className="ml-1 text-xs font-normal text-gray-500">+ IVA</span>
+            {isFreePrice ? (
+              <span className="text-sm text-gray-700">Precio a medida</span>
+            ) : (
+              <>
+                {formatEurosCents(product.price_cents)}
+                <span className="ml-1 text-xs font-normal text-gray-500">+ IVA</span>
+              </>
+            )}
           </span>
 
           {!inCart ? (

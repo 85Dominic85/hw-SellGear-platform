@@ -332,11 +332,15 @@ export async function POST(request: NextRequest) {
     let unitPriceCents = product.price_cents
     let productName = product.name
     // Productos con precio libre negociado por el AE/AM:
-    //   - code='otro' (cualquier item ad-hoc)
-    //   - category='saas_hardware' (ofertas SaaS + Hardware)
-    // Exigimos descripcion y precio > 0; mensajes diferenciados.
+    //   - code='otro'                  (cualquier item ad-hoc)
+    //   - category='saas_hardware'     (ofertas SaaS + Hardware)
+    //   - code='implementacion-pro'    (servicio con precio a medida)
+    // Los dos primeros exigen también descripción; implementación pro no.
+    const isImplPro = product.code === 'implementacion-pro'
     const isFreePriceProduct =
-      product.code === 'otro' || product.category === 'saas_hardware'
+      product.code === 'otro' ||
+      product.category === 'saas_hardware' ||
+      isImplPro
     if (isFinancing) {
       // Financiación: solo 3 productos. El precio = base total del plan
       // (suma de los 3 plazos), que REEMPLAZA al precio de catálogo
@@ -353,7 +357,8 @@ export async function POST(request: NextRequest) {
       unitPriceCents = financingBaseTotalCents(product.code)!
     } else if (isFreePriceProduct) {
       const isSaasHw = product.category === 'saas_hardware'
-      if (!it.product_name_override) {
+      const needsName = !isImplPro
+      if (needsName && !it.product_name_override) {
         return NextResponse.json(
           {
             error: isSaasHw
@@ -369,15 +374,20 @@ export async function POST(request: NextRequest) {
       ) {
         return NextResponse.json(
           {
-            error: isSaasHw
-              ? 'Las lineas SaaS + Hardware requieren un precio negociado mayor que 0.'
-              : 'Las líneas "Otro" requieren un precio unitario mayor que 0.',
+            error: isImplPro
+              ? 'Implementación Pro requiere un precio mayor que 0.'
+              : isSaasHw
+                ? 'Las lineas SaaS + Hardware requieren un precio negociado mayor que 0.'
+                : 'Las líneas "Otro" requieren un precio unitario mayor que 0.',
           },
           { status: 400 },
         )
       }
       unitPriceCents = it.unit_price_override_cents
-      productName = it.product_name_override
+      // Implementación pro conserva el nombre del catálogo si no llega override.
+      if (it.product_name_override) {
+        productName = it.product_name_override
+      }
     }
     resolved.push({
       product_id: product.id,

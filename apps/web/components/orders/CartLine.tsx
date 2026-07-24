@@ -59,11 +59,17 @@ export default function CartLine({
   lockProduct = false,
 }: CartLineProps) {
   const product = products.find((p) => p.id === line.product_id) ?? null
-  // Productos con precio libre negociado por el AE/AM:
-  //   - code='otro' (cualquier item ad-hoc)
-  //   - category='saas_hardware' (ofertas SaaS + Hardware)
-  // Ambos activan los inputs extra de descripcion + precio en euros.
+  // Productos con precio libre negociado por el AE/AM (activan input de precio):
+  //   - code='otro'                  (cualquier item ad-hoc)
+  //   - category='saas_hardware'     (ofertas SaaS + Hardware)
+  //   - code='implementacion-pro'    (servicio con precio a medida)
   const isFreePrice =
+    product?.code === 'otro' ||
+    product?.category === 'saas_hardware' ||
+    product?.code === 'implementacion-pro'
+  // Solo 'otro' y 'saas_hardware' requieren descripción libre. Implementación
+  // pro conserva el nombre del catálogo.
+  const needsName =
     product?.code === 'otro' || product?.category === 'saas_hardware'
 
   const priceCents = isFreePrice
@@ -196,36 +202,46 @@ export default function CartLine({
         </div>
       </div>
 
-      {/* Inputs extra cuando code='otro' o category='saas_hardware' (precio libre) */}
+      {/* Inputs extra cuando el producto tiene precio libre.
+          - Descripción: SOLO si el producto la necesita (otro/saas_hardware).
+          - Precio: SIEMPRE (obligatorio). */}
       {isFreePrice && (
-        <div className="mt-3 grid grid-cols-1 gap-3 border-t border-gray-200 pt-3 sm:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">
-              {product?.category === 'saas_hardware'
-                ? 'Descripción de la oferta SaaS + Hardware'
-                : 'Descripción del producto'}{' '}
-              <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={line.product_name_override}
-              onChange={(e) =>
-                onChange(index, { product_name_override: e.target.value })
-              }
-              placeholder={
-                product?.category === 'saas_hardware'
-                  ? 'Ej: SaaS 12 meses + 2 TPV + 1 KDS'
-                  : 'Ej: Soporte para tablet personalizado'
-              }
-              maxLength={200}
-              className={inputClass}
-            />
-          </div>
+        <div
+          className={`mt-3 grid grid-cols-1 gap-3 border-t border-gray-200 pt-3 ${
+            needsName ? 'sm:grid-cols-2' : ''
+          }`}
+        >
+          {needsName && (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700">
+                {product?.category === 'saas_hardware'
+                  ? 'Descripción de la oferta SaaS + Hardware'
+                  : 'Descripción del producto'}{' '}
+                <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={line.product_name_override}
+                onChange={(e) =>
+                  onChange(index, { product_name_override: e.target.value })
+                }
+                placeholder={
+                  product?.category === 'saas_hardware'
+                    ? 'Ej: SaaS 12 meses + 2 TPV + 1 KDS'
+                    : 'Ej: Soporte para tablet personalizado'
+                }
+                maxLength={200}
+                className={inputClass}
+              />
+            </div>
+          )}
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-700">
               {product?.category === 'saas_hardware'
                 ? 'Precio negociado s/IVA (€)'
-                : 'Precio unitario s/IVA (€)'}{' '}
+                : product?.code === 'implementacion-pro'
+                  ? 'Precio del servicio s/IVA (€)'
+                  : 'Precio unitario s/IVA (€)'}{' '}
               <span className="text-red-500">*</span>
             </label>
             <input
