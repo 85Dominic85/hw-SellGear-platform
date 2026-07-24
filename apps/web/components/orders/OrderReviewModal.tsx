@@ -73,7 +73,8 @@ export default function OrderReviewModal({
       const priceCents =
         p.code === 'otro' ||
         p.category === 'saas_hardware' ||
-        p.code === 'implementacion-pro'
+        p.code === 'implementacion-pro' ||
+        p.code === 'software-qamarero'
           ? l.unit_price_override_cents ?? 0
           : p.price_cents
       return {
@@ -209,7 +210,8 @@ export default function OrderReviewModal({
                   const isFreePrice =
                     p?.code === 'otro' ||
                     p?.category === 'saas_hardware' ||
-                    p?.code === 'implementacion-pro'
+                    p?.code === 'implementacion-pro' ||
+                    p?.code === 'software-qamarero'
                   const displayName =
                     line.product_name_override.trim() || p?.name || '(sin nombre)'
                   const unitPriceCents = isFreePrice

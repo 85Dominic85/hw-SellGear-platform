@@ -63,12 +63,14 @@ export default function CartLine({
   //   - code='otro'                  (cualquier item ad-hoc)
   //   - category='saas_hardware'     (ofertas SaaS + Hardware)
   //   - code='implementacion-pro'    (servicio con precio a medida)
+  //   - code='software-qamarero'     (licencia software por transferencia)
   const isFreePrice =
     product?.code === 'otro' ||
     product?.category === 'saas_hardware' ||
-    product?.code === 'implementacion-pro'
-  // Solo 'otro' y 'saas_hardware' requieren descripción libre. Implementación
-  // pro conserva el nombre del catálogo.
+    product?.code === 'implementacion-pro' ||
+    product?.code === 'software-qamarero'
+  // Solo 'otro' y 'saas_hardware' requieren descripción libre. Los productos
+  // con nombre fijo del catálogo (implementación pro, software qamarero) no.
   const needsName =
     product?.code === 'otro' || product?.category === 'saas_hardware'
 
@@ -239,8 +241,9 @@ export default function CartLine({
             <label className="mb-1 block text-xs font-medium text-gray-700">
               {product?.category === 'saas_hardware'
                 ? 'Precio negociado s/IVA (€)'
-                : product?.code === 'implementacion-pro'
-                  ? 'Precio del servicio s/IVA (€)'
+                : product?.code === 'implementacion-pro' ||
+                    product?.code === 'software-qamarero'
+                  ? 'Precio acordado s/IVA (€)'
                   : 'Precio unitario s/IVA (€)'}{' '}
               <span className="text-red-500">*</span>
             </label>

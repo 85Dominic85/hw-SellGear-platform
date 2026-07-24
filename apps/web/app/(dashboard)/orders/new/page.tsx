@@ -167,13 +167,15 @@ export default function NewOrderPage() {
         return 'Hay un producto del carrito que no existe en el catálogo.'
       }
       const isImplPro = product.code === 'implementacion-pro'
+      const isSoftwareQa = product.code === 'software-qamarero'
       const isFree =
         product.code === 'otro' ||
         product.category === 'saas_hardware' ||
-        isImplPro
+        isImplPro ||
+        isSoftwareQa
       if (isFree) {
-        // implementacion-pro NO exige descripción (usa el nombre de catálogo)
-        const needsName = !isImplPro
+        // Productos con nombre fijo del catálogo no exigen descripción.
+        const needsName = !isImplPro && !isSoftwareQa
         if (needsName && !it.product_name_override.trim()) {
           return product.category === 'saas_hardware'
             ? 'Las líneas SaaS + Hardware requieren descripción de la oferta.'
@@ -182,9 +184,11 @@ export default function NewOrderPage() {
         if (it.unit_price_override_cents === null || it.unit_price_override_cents <= 0) {
           return isImplPro
             ? 'Implementación Pro requiere un precio mayor que 0.'
-            : product.category === 'saas_hardware'
-              ? 'Las líneas SaaS + Hardware requieren un precio negociado mayor que 0.'
-              : 'Las líneas "Otro" requieren un precio unitario mayor que 0.'
+            : isSoftwareQa
+              ? 'Software Qamarero requiere un precio mayor que 0.'
+              : product.category === 'saas_hardware'
+                ? 'Las líneas SaaS + Hardware requieren un precio negociado mayor que 0.'
+                : 'Las líneas "Otro" requieren un precio unitario mayor que 0.'
         }
       }
     }
@@ -636,6 +640,7 @@ export default function NewOrderPage() {
                       items={items}
                       onItemsChange={setItems}
                       vatRateOverride={isCanaryIslands(form.shipping_cp) ? 0 : null}
+                      purchaseType={form.purchase_type}
                     />
                   )
                 )}

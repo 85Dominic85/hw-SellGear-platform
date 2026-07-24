@@ -159,13 +159,15 @@ export async function POST(
 
     // Productos con precio libre negociado (mismo patrón que POST /api/orders).
     const isImplPro = (product as Product).code === 'implementacion-pro'
+    const isSoftwareQa = (product as Product).code === 'software-qamarero'
     const isFreePriceProduct =
       (product as Product).code === 'otro' ||
       (product as Product).category === 'saas_hardware' ||
-      isImplPro
+      isImplPro ||
+      isSoftwareQa
     if (isFreePriceProduct) {
       const isSaasHw = (product as Product).category === 'saas_hardware'
-      const needsName = !isImplPro
+      const needsName = !isImplPro && !isSoftwareQa
       const overrideName =
         typeof body.product_name === 'string' ? body.product_name.trim() : ''
       if (needsName && !overrideName) {
@@ -187,15 +189,18 @@ export async function POST(
           {
             error: isImplPro
               ? 'Implementación Pro requiere un precio mayor que 0.'
-              : isSaasHw
-                ? 'Las líneas SaaS + Hardware requieren un precio negociado mayor que 0.'
-                : 'Las líneas "Otro" requieren un precio unitario mayor que 0.',
+              : isSoftwareQa
+                ? 'Software Qamarero requiere un precio mayor que 0.'
+                : isSaasHw
+                  ? 'Las líneas SaaS + Hardware requieren un precio negociado mayor que 0.'
+                  : 'Las líneas "Otro" requieren un precio unitario mayor que 0.',
           },
           { status: 400 },
         )
       }
       resolvedProductId = (product as Product).id
-      // Implementación pro conserva el nombre del catálogo si no llega override.
+      // Productos con nombre fijo del catálogo (implementación pro, software
+      // qamarero) conservan el nombre si no llega override.
       resolvedProductName = overrideName || (product as Product).name
       resolvedUnitPriceCents = overridePrice
     } else {

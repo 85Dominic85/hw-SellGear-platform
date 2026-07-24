@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Image from 'next/image'
-import type { Product, ProductCategory } from '@/types/database'
+import type { Product, ProductCategory, PurchaseType } from '@/types/database'
 import { formatEurosCents } from '@/lib/pricing'
 import CartLine, { EMPTY_LINE, type CartLineState } from './CartLine'
 
@@ -16,6 +16,13 @@ interface ProductCatalogProps {
    * + IVA por separado, igual que el catalogo en papel).
    */
   vatRateOverride?: number | null
+  /**
+   * Tipo de compra del pedido. Cambia el filtro del catálogo:
+   *   - 'transferencias_saas': solo Implementación Pro + Software Qamarero
+   *     (no envío físico, no tabs de categoría, no "línea libre").
+   *   - resto: catálogo completo con tabs de categoría.
+   */
+  purchaseType?: PurchaseType | ''
 }
 
 interface CategoryFilter {
@@ -59,27 +66,39 @@ export default function ProductCatalog({
   items,
   onItemsChange,
   vatRateOverride = null,
+  purchaseType = '',
 }: ProductCatalogProps) {
   const [activeCategory, setActiveCategory] = useState<
     ProductCategory | 'all'
   >('all')
 
+  // Pedidos de transferencias SaaS NO llevan hardware: solo Implementación
+  // Pro y Software Qamarero. Ocultamos tabs de categoría, línea libre y
+  // panel de tablet regalo. Para el resto de tipos, catálogo completo.
+  const isSaasOnly = purchaseType === 'transferencias_saas'
+  const SAAS_ONLY_CODES = ['implementacion-pro', 'software-qamarero']
+
   // Productos visibles en el catalogo publico.
-  const visibleProducts = useMemo(
-    () =>
-      products
-        .filter(
-          (p) =>
-            p.code !== 'otro' &&
-            p.category !== 'saas_hardware' &&
-            p.category !== 'custom',
-        )
-        .filter(
-          (p) => activeCategory === 'all' || p.category === activeCategory,
-        )
-        .sort((a, b) => a.sort_order - b.sort_order),
-    [products, activeCategory],
-  )
+  const visibleProducts = useMemo(() => {
+    if (isSaasOnly) {
+      return products
+        .filter((p) => SAAS_ONLY_CODES.includes(p.code))
+        .sort((a, b) => a.sort_order - b.sort_order)
+    }
+    return products
+      .filter(
+        (p) =>
+          p.code !== 'otro' &&
+          p.category !== 'saas_hardware' &&
+          p.category !== 'custom' &&
+          // software-qamarero solo es válido en transferencias_saas
+          p.code !== 'software-qamarero',
+      )
+      .filter(
+        (p) => activeCategory === 'all' || p.category === activeCategory,
+      )
+      .sort((a, b) => a.sort_order - b.sort_order)
+  }, [products, activeCategory, isSaasOnly])
 
   // Mapa producto -> qty actual en el carrito (para mostrar badge en el tile).
   const qtyByProduct = useMemo(() => {
@@ -218,23 +237,34 @@ export default function ProductCatalog({
 
   return (
     <div className="space-y-5">
-      {/* Filtros */}
-      <div className="flex flex-wrap items-center gap-2">
-        {CATEGORY_FILTERS.map((f) => (
-          <button
-            type="button"
-            key={f.key}
-            onClick={() => setActiveCategory(f.key)}
-            className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-              activeCategory === f.key
-                ? 'bg-brand text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+      {/* Aviso: transferencias SaaS solo contiene software */}
+      {isSaasOnly && (
+        <div className="rounded-lg bg-blue-50 px-4 py-2.5 text-xs text-blue-800 ring-1 ring-blue-200">
+          Transferencias SaaS solo comercializa software (sin envío físico).
+          Selecciona Software Qamarero y/o Implementación Pro y define el
+          precio acordado con el cliente.
+        </div>
+      )}
+
+      {/* Filtros — solo en catálogo normal (no en transferencias SaaS) */}
+      {!isSaasOnly && (
+        <div className="flex flex-wrap items-center gap-2">
+          {CATEGORY_FILTERS.map((f) => (
+            <button
+              type="button"
+              key={f.key}
+              onClick={() => setActiveCategory(f.key)}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                activeCategory === f.key
+                  ? 'bg-brand text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Grid de productos */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -256,8 +286,9 @@ export default function ProductCatalog({
       </div>
 
       {/* Panel: regalo tablet KDS Lenovo (solo si hay Implementación Pro
-          en el carrito y la tablet existe en el catálogo). */}
-      {hasImplPro && tabletProduct && (
+          en el carrito, la tablet existe en el catálogo, y NO es
+          transferencias_saas — que no envía hardware). */}
+      {!isSaasOnly && hasImplPro && tabletProduct && (
         <div
           className={`rounded-xl border p-4 ${
             hasTabletGift
@@ -309,27 +340,29 @@ export default function ProductCatalog({
         </div>
       )}
 
-      {/* Linea libre: boton */}
-      <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4">
-        <div className="flex flex-wrap items-start gap-3">
-          <div className="flex-1 min-w-[200px]">
-            <h4 className="text-sm font-medium text-gray-900">
-              Producto fuera de catálogo o SaaS + Hardware
-            </h4>
-            <p className="mt-0.5 text-xs text-gray-600">
-              Para solicitudes puntuales o ofertas mixtas con descripción y precio
-              negociados por el AE.
-            </p>
+      {/* Linea libre: boton (oculto en transferencias_saas — solo software) */}
+      {!isSaasOnly && (
+        <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4">
+          <div className="flex flex-wrap items-start gap-3">
+            <div className="flex-1 min-w-[200px]">
+              <h4 className="text-sm font-medium text-gray-900">
+                Producto fuera de catálogo o SaaS + Hardware
+              </h4>
+              <p className="mt-0.5 text-xs text-gray-600">
+                Para solicitudes puntuales o ofertas mixtas con descripción y precio
+                negociados por el AE.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={addFreeLine}
+              className="rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200 transition-colors hover:bg-gray-100"
+            >
+              + Añadir línea libre
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={addFreeLine}
-            className="rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200 transition-colors hover:bg-gray-100"
-          >
-            + Añadir línea libre
-          </button>
         </div>
-      </div>
+      )}
 
       {/* Resumen de lineas del pedido: aqui el AE aplica descuento por linea
           y ajusta cantidad. Las lineas estandar (anadidas via tile) llevan
@@ -388,7 +421,9 @@ function ProductTile({ product, qty, onAdd, onInc, onDec }: ProductTileProps) {
   const [extIdx, setExtIdx] = useState(0)
   const [imgError, setImgError] = useState(false)
   const inCart = qty > 0
-  const isFreePrice = product.code === 'implementacion-pro'
+  const isFreePrice =
+    product.code === 'implementacion-pro' ||
+    product.code === 'software-qamarero'
 
   return (
     <div

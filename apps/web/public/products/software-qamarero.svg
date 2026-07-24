@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <!-- Fondo -->
+  <rect width="400" height="300" fill="#fff7f4"/>
+  <rect x="0.5" y="0.5" width="399" height="299" rx="12" stroke="#ffd9cc" stroke-width="1"/>
+
+  <!-- Nube (contenedor del software en la nube) -->
+  <g transform="translate(60 60)">
+    <path
+      d="M70 40
+         C 70 22, 88 8, 108 12
+         C 118 -2, 142 -2, 152 12
+         C 174 8, 196 22, 200 40
+         C 220 40, 236 56, 236 76
+         C 236 96, 220 112, 200 112
+         L 60 112
+         C 40 112, 24 96, 24 76
+         C 24 56, 40 40, 60 40 Z"
+      fill="#fff2ec"
+      stroke="#ff592f"
+      stroke-width="3"
+      stroke-linejoin="round"
+    />
+  </g>
+
+  <!-- Letra Q grande, centrada en la nube -->
+  <g transform="translate(200 150)" fill="#ff592f">
+    <text
+      x="0"
+      y="0"
+      text-anchor="middle"
+      dominant-baseline="central"
+      font-family="DM Sans, system-ui, sans-serif"
+      font-size="76"
+      font-weight="800"
+    >Q</text>
+  </g>
+
+  <!-- Nodos/dots orbitando (idea de "conectividad software") -->
+  <g fill="#ffb59a">
+    <circle cx="90"  cy="220" r="6"/>
+    <circle cx="200" cy="240" r="6"/>
+    <circle cx="310" cy="220" r="6"/>
+  </g>
+  <g stroke="#ffd9cc" stroke-width="2" stroke-linecap="round">
+    <path d="M96 218 L 194 240" fill="none"/>
+    <path d="M206 240 L 304 220" fill="none"/>
+  </g>
+</svg>

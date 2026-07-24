@@ -102,16 +102,18 @@ export default function AddOrderItemModal({
   )
 
   // ¿El producto seleccionado requiere overrides? (code='otro',
-  // saas_hardware o implementacion-pro).
+  // saas_hardware, implementacion-pro o software-qamarero).
   const requiresOverride = useMemo(() => {
     if (!selectedProduct) return false
     return (
       selectedProduct.code === 'otro' ||
       selectedProduct.category === 'saas_hardware' ||
-      selectedProduct.code === 'implementacion-pro'
+      selectedProduct.code === 'implementacion-pro' ||
+      selectedProduct.code === 'software-qamarero'
     )
   }, [selectedProduct])
-  // Implementación pro solo pide precio, no descripción libre.
+  // Los productos con nombre fijo del catálogo (implementación pro y
+  // software qamarero) solo piden precio, no descripción libre.
   const requiresOverrideName = useMemo(() => {
     if (!selectedProduct) return false
     return (

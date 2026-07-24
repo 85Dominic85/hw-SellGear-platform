@@ -56,8 +56,15 @@ export default function CartSummary({
     .map((l) => {
       const p = l.product_id ? productById.get(l.product_id) ?? null : null
       if (!p) return null
-      const priceCents =
-        p.code === 'otro' ? l.unit_price_override_cents ?? 0 : p.price_cents
+      // Productos con precio libre (override obligatorio en el carrito).
+      const isFreePrice =
+        p.code === 'otro' ||
+        p.category === 'saas_hardware' ||
+        p.code === 'implementacion-pro' ||
+        p.code === 'software-qamarero'
+      const priceCents = isFreePrice
+        ? l.unit_price_override_cents ?? 0
+        : p.price_cents
       return {
         priceCents,
         qty: l.qty,
