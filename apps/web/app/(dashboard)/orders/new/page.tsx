@@ -17,14 +17,20 @@ import WizardSteps from '@/components/orders/WizardSteps'
 import PurchaseTypeTile, {
   PURCHASE_TYPE_ORDER,
 } from '@/components/orders/PurchaseTypeTile'
+import OrderReviewModal from '@/components/orders/OrderReviewModal'
 
 // =============================================================
 // Wizard de creacion de pedido manual.
 //
 // Paso 1: tipo de compra (tiles visuales). Condiciona obligatoriedad
 //         del resto de campos (transferencias_saas = sin envio).
-// Paso 2: datos del solicitante + cliente + refs + envio condicional.
-// Paso 3: catálogo visual de productos + resumen + crear pedido.
+// Paso 2: catálogo visual de productos + resumen (con descuento
+//         global). El IVA aún no puede aplicarse por CP porque la
+//         dirección se pide en paso 3 — el preview usa 21 % por
+//         defecto y el servidor recalcula al insertar.
+// Paso 3: datos del solicitante + cliente + refs + envío condicional.
+//         Al pulsar "Crear pedido" se muestra un popup de revisión
+//         final con el resumen completo antes del POST.
 // =============================================================
 
 interface FormData {
@@ -80,6 +86,8 @@ export default function NewOrderPage() {
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Popup de revisión final antes de crear el pedido.
+  const [showReview, setShowReview] = useState(false)
 
   useEffect(() => {
     async function loadCatalog() {
@@ -135,7 +143,56 @@ export default function NewOrderPage() {
     return null
   }
 
+  // Paso 2 del wizard: productos.
   function validateStep2(): string | null {
+    const filled = items.filter((it) => it.product_id)
+    if (filled.length === 0) {
+      return isFinancing
+        ? 'Selecciona un producto financiable.'
+        : 'Debes añadir al menos un producto al pedido.'
+    }
+    if (isFinancing) {
+      if (filled.length !== 1) {
+        return 'Un pedido de financiación debe tener un único producto.'
+      }
+      const product = products.find((p) => p.id === filled[0].product_id)
+      if (!product || !isFinanceableCode(product.code)) {
+        return 'El producto seleccionado no es financiable.'
+      }
+      return null
+    }
+    for (const it of filled) {
+      const product = products.find((p) => p.id === it.product_id)
+      if (!product) {
+        return 'Hay un producto del carrito que no existe en el catálogo.'
+      }
+      const isImplPro = product.code === 'implementacion-pro'
+      const isFree =
+        product.code === 'otro' ||
+        product.category === 'saas_hardware' ||
+        isImplPro
+      if (isFree) {
+        // implementacion-pro NO exige descripción (usa el nombre de catálogo)
+        const needsName = !isImplPro
+        if (needsName && !it.product_name_override.trim()) {
+          return product.category === 'saas_hardware'
+            ? 'Las líneas SaaS + Hardware requieren descripción de la oferta.'
+            : 'Las líneas "Otro" requieren descripción del producto.'
+        }
+        if (it.unit_price_override_cents === null || it.unit_price_override_cents <= 0) {
+          return isImplPro
+            ? 'Implementación Pro requiere un precio mayor que 0.'
+            : product.category === 'saas_hardware'
+              ? 'Las líneas SaaS + Hardware requieren un precio negociado mayor que 0.'
+              : 'Las líneas "Otro" requieren un precio unitario mayor que 0.'
+        }
+      }
+    }
+    return null
+  }
+
+  // Paso 3 del wizard: datos del solicitante + cliente + envío.
+  function validateStep3(): string | null {
     if (req.requester_name && !form.requester_name.trim()) {
       return 'El nombre del solicitante es obligatorio.'
     }
@@ -168,45 +225,6 @@ export default function NewOrderPage() {
     return null
   }
 
-  function validateStep3(): string | null {
-    const filled = items.filter((it) => it.product_id)
-    if (filled.length === 0) {
-      return isFinancing
-        ? 'Selecciona un producto financiable.'
-        : 'Debes añadir al menos un producto al pedido.'
-    }
-    if (isFinancing) {
-      if (filled.length !== 1) {
-        return 'Un pedido de financiación debe tener un único producto.'
-      }
-      const product = products.find((p) => p.id === filled[0].product_id)
-      if (!product || !isFinanceableCode(product.code)) {
-        return 'El producto seleccionado no es financiable.'
-      }
-      return null
-    }
-    for (const it of filled) {
-      const product = products.find((p) => p.id === it.product_id)
-      if (!product) {
-        return 'Hay un producto del carrito que no existe en el catálogo.'
-      }
-      const isFree = product.code === 'otro' || product.category === 'saas_hardware'
-      if (isFree) {
-        if (!it.product_name_override.trim()) {
-          return product.category === 'saas_hardware'
-            ? 'Las líneas SaaS + Hardware requieren descripción de la oferta.'
-            : 'Las líneas "Otro" requieren descripción del producto.'
-        }
-        if (it.unit_price_override_cents === null || it.unit_price_override_cents <= 0) {
-          return product.category === 'saas_hardware'
-            ? 'Las líneas SaaS + Hardware requieren un precio negociado mayor que 0.'
-            : 'Las líneas "Otro" requieren un precio unitario mayor que 0.'
-        }
-      }
-    }
-    return null
-  }
-
   // ---- Step navigation ----------------------------------------------------
 
   function nextStep() {
@@ -233,8 +251,20 @@ export default function NewOrderPage() {
 
   // ---- Submit -------------------------------------------------------------
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  // Se ejecuta al pulsar "Crear pedido" en el paso 3: valida todo y, si
+  // pasa, abre el popup de revisión final. El POST real lo dispara el
+  // botón "Confirmar" del propio popup (confirmSubmit).
+  function openReview() {
+    setError(null)
+    const err = validateStep1() ?? validateStep2() ?? validateStep3()
+    if (err) {
+      setError(err)
+      return
+    }
+    setShowReview(true)
+  }
+
+  async function confirmSubmit() {
     setError(null)
 
     const err = validateStep1() ?? validateStep2() ?? validateStep3()
@@ -313,7 +343,16 @@ export default function NewOrderPage() {
           />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form
+          onSubmit={(e) => {
+            // Interceptamos el submit del <form>: en el paso 3 el botón
+            // "Crear pedido" abre el popup de revisión (openReview); el
+            // POST real solo se dispara desde confirmSubmit al confirmar.
+            e.preventDefault()
+            if (step === 3) openReview()
+          }}
+          className="space-y-6"
+        >
           {/* =================================================================
               STEP 1: Tipo de compra
               ================================================================= */}
@@ -340,9 +379,9 @@ export default function NewOrderPage() {
           )}
 
           {/* =================================================================
-              STEP 2: Datos del solicitante + cliente + envío condicional
+              STEP 3: Datos del solicitante + cliente + envío condicional
               ================================================================= */}
-          {step === 2 && (
+          {step === 3 && (
             <>
               {/* Solicitante */}
               <div className={sectionClass}>
@@ -555,9 +594,9 @@ export default function NewOrderPage() {
           )}
 
           {/* =================================================================
-              STEP 3: Productos + resumen
+              STEP 2: Productos + resumen
               ================================================================= */}
-          {step === 3 && (
+          {step === 2 && (
             <>
               <div className={sectionClass}>
                 <div className="mb-4">
@@ -664,21 +703,32 @@ export default function NewOrderPage() {
                 <button
                   type="submit"
                   disabled={saving || loadingCatalog || !!catalogError}
-                  className="flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {saving && (
-                    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                  )}
-                  {saving ? 'Creando pedido...' : 'Crear pedido'}
+                  Revisar y crear pedido
                 </button>
               )}
             </div>
           </div>
         </form>
       </div>
+
+      {/* Popup de revisión final antes de crear el pedido. */}
+      {showReview && (
+        <OrderReviewModal
+          form={form}
+          items={items}
+          products={products}
+          discountGlobalPct={discountGlobalPct}
+          requiresShipping={req.shipping}
+          saving={saving}
+          error={error}
+          onCancel={() => {
+            if (!saving) setShowReview(false)
+          }}
+          onConfirm={confirmSubmit}
+        />
+      )}
     </div>
   )
 }

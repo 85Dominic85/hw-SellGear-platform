@@ -15,8 +15,8 @@ interface StepDef {
 
 const STEPS: StepDef[] = [
   { num: 1, label: 'Tipo de compra', hint: 'Selecciona el tipo' },
-  { num: 2, label: 'Cliente y datos', hint: 'Solicitante + cliente' },
-  { num: 3, label: 'Productos',       hint: 'Catálogo + resumen' },
+  { num: 2, label: 'Productos',      hint: 'Catálogo + resumen' },
+  { num: 3, label: 'Cliente y datos', hint: 'Solicitante + envío' },
 ]
 
 /**
