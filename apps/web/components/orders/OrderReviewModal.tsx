@@ -66,7 +66,8 @@ export default function OrderReviewModal({
   const vatOverride = isCanaryIslands(form.shipping_cp) ? 0 : null
 
   const filled = items.filter((it) => it.product_id)
-  const linesForTotals = filled
+  // Detalle por línea con nombre + descuento en euros (para el sub-desglose).
+  const detailed = filled
     .map((l) => {
       const p = l.product_id ? productById.get(l.product_id) ?? null : null
       if (!p) return null
@@ -77,17 +78,34 @@ export default function OrderReviewModal({
         p.code === 'software-qamarero'
           ? l.unit_price_override_cents ?? 0
           : p.price_cents
+      const displayName =
+        l.product_name_override.trim() || p.name || '(sin nombre)'
+      const subtotalCents = priceCents * l.qty
+      const lineDiscountCents = Math.round(
+        subtotalCents * (l.discount_pct / 100),
+      )
       return {
+        name: displayName,
         priceCents,
         qty: l.qty,
         discountPct: l.discount_pct,
         vatRate: vatOverride ?? Number(p.vat_rate),
+        subtotalCents,
+        lineDiscountCents,
       }
     })
     .filter((x): x is NonNullable<typeof x> => x !== null)
 
+  const linesForTotals = detailed.map((d) => ({
+    priceCents: d.priceCents,
+    qty: d.qty,
+    discountPct: d.discountPct,
+    vatRate: d.vatRate,
+  }))
+
   const totals = cartTotals(linesForTotals, discountGlobalPct)
   const vatRates = linesForTotals.map((l) => l.vatRate)
+  const discountedLines = detailed.filter((d) => d.lineDiscountCents > 0)
 
   return (
     <div
@@ -251,11 +269,37 @@ export default function OrderReviewModal({
                 value={formatEurosCents(totals.subtotalCents)}
               />
               {totals.lineDiscountCents > 0 && (
-                <TotalRow
-                  label="Descuentos por línea"
-                  value={`− ${formatEurosCents(totals.lineDiscountCents)}`}
-                  muted
-                />
+                <>
+                  <TotalRow
+                    label="Descuentos por línea"
+                    value={`− ${formatEurosCents(totals.lineDiscountCents)}`}
+                    muted
+                  />
+                  {/* Sub-desglose: nombre + descuento por línea */}
+                  <div className="ml-3 space-y-0.5 border-l border-gray-200 pl-3">
+                    {discountedLines.map((d, i) => {
+                      const isGift = d.discountPct === 100
+                      return (
+                        <div
+                          key={i}
+                          className="flex items-center justify-between text-xs text-gray-500"
+                        >
+                          <span className="truncate">
+                            {isGift ? '🎁 ' : '↳ '}
+                            {d.name}{' '}
+                            <span className="text-gray-400">
+                              ({d.discountPct}
+                              {isGift ? '% · regalo' : '%'})
+                            </span>
+                          </span>
+                          <span className="ml-3 whitespace-nowrap font-mono tabular-nums">
+                            − {formatEurosCents(d.lineDiscountCents)}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
               )}
               {totals.globalDiscountCents > 0 && (
                 <TotalRow
