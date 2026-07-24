@@ -51,6 +51,10 @@ export default function AddOrderItemModal({
   // Común
   const [notes, setNotes] = useState('')
 
+  // Toggle: si el producto es Implementación Pro, ofrecemos añadir la
+  // tablet KDS Lenovo con 100 % de descuento (regalo).
+  const [addTabletGift, setAddTabletGift] = useState(false)
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -115,6 +119,13 @@ export default function AddOrderItemModal({
       selectedProduct.category === 'saas_hardware'
     )
   }, [selectedProduct])
+  // ¿Es Implementación Pro? Activa el toggle "¿lleva tablet?".
+  const isImplPro = selectedProduct?.code === 'implementacion-pro'
+  // Producto tablet regalo (buscado en el catálogo cargado).
+  const tabletProduct = useMemo(
+    () => products.find((p) => p.code === 'tablet-kds-lenovo') ?? null,
+    [products],
+  )
 
   // Productos filtrados por la búsqueda (case insensitive sobre name).
   // Excluimos 'otro' del listado del combobox: para línea libre se usa el
@@ -211,6 +222,35 @@ export default function AddOrderItemModal({
           setError(data.error ?? 'Error al añadir el artículo.')
           return
         }
+        // Si es Implementación Pro y el AE ha marcado el toggle, encadenamos
+        // un segundo POST con la tablet Lenovo a 100 % de descuento (regalo).
+        if (
+          tab === 'catalog' &&
+          isImplPro &&
+          addTabletGift &&
+          tabletProduct
+        ) {
+          const giftRes = await fetch(`/api/orders/${orderId}/items`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              source: 'catalog',
+              product_id: tabletProduct.id,
+              qty: 1,
+              discount_pct: 100,
+              notes: 'Regalo por Implementación Pro',
+            }),
+          })
+          if (!giftRes.ok) {
+            const giftData = await giftRes.json().catch(() => ({}))
+            setError(
+              giftData.error ??
+                'La línea principal se añadió, pero falló añadir la tablet regalo.',
+            )
+            router.refresh()
+            return
+          }
+        }
         router.refresh()
         onClose()
       } catch {
@@ -234,6 +274,9 @@ export default function AddOrderItemModal({
       orderId,
       onClose,
       router,
+      isImplPro,
+      addTabletGift,
+      tabletProduct,
     ],
   )
 
@@ -319,6 +362,38 @@ export default function AddOrderItemModal({
               price={freePrice}
               onPriceChange={setFreePrice}
             />
+          )}
+
+          {/* Toggle: regalo tablet KDS Lenovo (solo si el producto elegido
+              es Implementación Pro y la tablet existe en el catálogo). */}
+          {tab === 'catalog' && isImplPro && tabletProduct && (
+            <label
+              className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
+                addTabletGift
+                  ? 'border-brand/40 bg-brand/5'
+                  : 'border-dashed border-brand/30 bg-brand/5 hover:bg-brand/10'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={addTabletGift}
+                onChange={(e) => setAddTabletGift(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-brand"
+              />
+              <div className="flex-1">
+                <div className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
+                  <span aria-hidden="true">🎁</span>
+                  Incluir Tablet Lenovo Tab Plus como regalo
+                </div>
+                <p className="mt-0.5 text-xs text-gray-600">
+                  Añade una línea de tablet con 100 % de descuento (valor{' '}
+                  <span className="font-mono">
+                    {formatEurosCents(tabletProduct.price_cents)}
+                  </span>
+                  ). Solo si el paquete acordado la incluye.
+                </p>
+              </div>
+            </label>
           )}
 
           {/* Notas (común a las 2 tabs) */}

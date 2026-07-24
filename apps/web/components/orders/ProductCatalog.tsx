@@ -91,6 +91,30 @@ export default function ProductCatalog({
     return map
   }, [items])
 
+  // Índices por code para localizar Implementación Pro y su tablet regalo.
+  const implProProduct = useMemo(
+    () => products.find((p) => p.code === 'implementacion-pro') ?? null,
+    [products],
+  )
+  const tabletProduct = useMemo(
+    () => products.find((p) => p.code === 'tablet-kds-lenovo') ?? null,
+    [products],
+  )
+  // ¿Hay una línea de Implementación Pro en el carrito?
+  const hasImplPro =
+    implProProduct !== null &&
+    items.some((it) => it.product_id === implProProduct.id)
+  // ¿Hay una línea de tablet regalo asociada (mismo SKU + descuento 100)?
+  const tabletGiftIdx = tabletProduct
+    ? items.findIndex(
+        (it) => it.product_id === tabletProduct.id && it.discount_pct === 100,
+      )
+    : -1
+  const hasTabletGift = tabletGiftIdx >= 0
+  // ¿Se ha respondido ya a la pregunta del regalo? (sí o no explícito).
+  // Guardamos "no" como marca local para no acosar al AE si ya dijo que no.
+  const [tabletGiftDeclined, setTabletGiftDeclined] = useState(false)
+
   // Clasificacion de cada linea para mostrarla debajo del cat con CartLine.
   // - 'standard': producto del cat publico (tile). lockProduct=true para que
   //   el AE no pueda cambiar el SKU desde aqui (debe usar las tiles).
@@ -130,15 +154,52 @@ export default function ProductCatalog({
   function adjustQty(productId: string, delta: number) {
     const idx = items.findIndex((it) => it.product_id === productId)
     if (idx < 0) return
-    const next = [...items]
+    let next = [...items]
     const newQty = next[idx].qty + delta
     if (newQty <= 0) {
       next.splice(idx, 1)
+      // Si el AE quita Implementación Pro, retiramos también la tablet
+      // regalo asociada (línea con dto 100 %). Si más adelante quiere una
+      // tablet suelta, puede añadirla de nuevo desde el catálogo.
+      if (
+        implProProduct &&
+        productId === implProProduct.id &&
+        tabletProduct
+      ) {
+        next = next.filter(
+          (it) =>
+            !(it.product_id === tabletProduct.id && it.discount_pct === 100),
+        )
+        setTabletGiftDeclined(false)
+      }
       onItemsChange(next)
       return
     }
     next[idx] = { ...next[idx], qty: newQty }
     onItemsChange(next)
+  }
+
+  // Añade la tablet como regalo (dto 100 %) — solo si no está ya.
+  function addTabletGift() {
+    if (!tabletProduct || hasTabletGift) return
+    onItemsChange([
+      ...items,
+      {
+        ...EMPTY_LINE,
+        product_id: tabletProduct.id,
+        qty: 1,
+        discount_pct: 100,
+      },
+    ])
+    setTabletGiftDeclined(false)
+  }
+
+  // Marca "no lleva tablet" (no acosa al AE en el mismo pedido).
+  function declineTabletGift() {
+    setTabletGiftDeclined(true)
+    if (tabletGiftIdx >= 0) {
+      onItemsChange(items.filter((_, i) => i !== tabletGiftIdx))
+    }
   }
 
   function addFreeLine() {
@@ -193,6 +254,60 @@ export default function ProductCatalog({
           </div>
         )}
       </div>
+
+      {/* Panel: regalo tablet KDS Lenovo (solo si hay Implementación Pro
+          en el carrito y la tablet existe en el catálogo). */}
+      {hasImplPro && tabletProduct && (
+        <div
+          className={`rounded-xl border p-4 ${
+            hasTabletGift
+              ? 'border-brand/40 bg-brand/5'
+              : 'border-dashed border-brand/30 bg-brand/5'
+          }`}
+        >
+          <div className="flex flex-wrap items-center gap-3">
+            <span aria-hidden="true" className="text-xl">🎁</span>
+            <div className="flex-1 min-w-[220px]">
+              <h4 className="text-sm font-medium text-gray-900">
+                ¿Este pedido incluye Tablet Lenovo Tab Plus como regalo?
+              </h4>
+              <p className="mt-0.5 text-xs text-gray-600">
+                Añade una línea de tablet con 100 % de descuento (valor{' '}
+                <span className="font-mono">
+                  {formatEurosCents(tabletProduct.price_cents)}
+                </span>
+                ). Marca &quot;Sí&quot; solo si el paquete acordado la incluye.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={addTabletGift}
+                disabled={hasTabletGift}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                  hasTabletGift
+                    ? 'bg-brand text-white cursor-default'
+                    : 'bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-brand hover:text-white'
+                }`}
+              >
+                Sí, añadir
+              </button>
+              <button
+                type="button"
+                onClick={declineTabletGift}
+                disabled={!hasTabletGift && tabletGiftDeclined}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                  !hasTabletGift && tabletGiftDeclined
+                    ? 'bg-gray-200 text-gray-700 cursor-default'
+                    : 'bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                No, sin tablet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Linea libre: boton */}
       <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4">
