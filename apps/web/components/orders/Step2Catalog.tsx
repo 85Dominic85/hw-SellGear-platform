@@ -21,10 +21,20 @@ import {
   tabletGiftIndex,
   type CartLineState,
 } from '@/lib/catalog/rules'
+import { CATALOG_TABS, type CatalogTabKey } from '@/lib/catalog-taxonomy'
 import CatalogRoot from '@/components/catalog/CatalogRoot'
 import CatalogExplorer from '@/components/catalog/CatalogExplorer'
 import ProductDetailModal from '@/components/catalog/ProductDetailModal'
 import CartLine from './CartLine'
+import CartFab from './CartFab'
+
+/**
+ * Pestañas que se ofrecen en el wizard: las 7 familias peninsulares. La de
+ * Canarias se omite a propósito — la gobierna el toggle de envío.
+ */
+const PENINSULA_TABS: readonly CatalogTabKey[] = CATALOG_TABS
+  .filter((t) => t.region === 'peninsula')
+  .map((t) => t.key)
 
 interface Step2CatalogProps {
   products: Product[]
@@ -36,6 +46,8 @@ interface Step2CatalogProps {
   /** Región elegida en el paso 2; prerrellena el CP del paso 3. */
   region: ProductRegion
   onRegionChange: (region: ProductRegion) => void
+  /** Solo para que el total del botón flotante cuadre con CartSummary. */
+  discountGlobalPct?: number
 }
 
 /**
@@ -60,6 +72,7 @@ export default function Step2Catalog({
   purchaseType = '',
   region,
   onRegionChange,
+  discountGlobalPct = 0,
 }: Step2CatalogProps) {
   const [detailProduct, setDetailProduct] = useState<Product | null>(null)
   // Marca local para no volver a preguntar por el regalo si ya dijo que no.
@@ -121,7 +134,9 @@ export default function Step2Catalog({
             </span>
             <span className="mt-0.5 block text-xs text-gray-600">
               Canarias tiene su propia lista de precios, con importes finales sin
-              IVA. Al marcarlo, el catálogo muestra solo esos productos.
+              IVA. Al marcarlo, el catálogo pasa a mostrar solo esos productos y{' '}
+              <strong className="font-semibold">se vacía el pedido</strong>: las
+              dos listas no son intercambiables.
             </span>
           </span>
         </label>
@@ -134,7 +149,19 @@ export default function Step2Catalog({
         onOpenDetail={setDetailProduct}
         purchaseType={purchaseType}
         showHeading={false}
-        lockedTab={isSaasOnly ? 'service' : undefined}
+        /*
+         * La pestaña se fija por contexto:
+         *   transferencias SaaS -> solo servicios (no hay envío físico)
+         *   envío a Canarias    -> solo la lista canaria
+         *   resto               -> el AE elige familia
+         * En el wizard NO se ofrece la pestaña de Canarias: la gobierna el
+         * toggle de arriba, que además vacía el carrito. Si estuvieran las
+         * dos vías se podrían mezclar dos listas de precios distintas.
+         */
+        lockedTab={
+          isSaasOnly ? 'service' : region === 'canarias' ? 'canarias' : undefined
+        }
+        visibleTabs={PENINSULA_TABS}
         onAdd={(p) => onItemsChange(applyAddProduct(items, p))}
         onInc={(p) => onItemsChange(applyAdjustQty(items, p.id, 1))}
         onDec={(p) => {
@@ -251,6 +278,18 @@ export default function Step2Catalog({
           ))}
         </div>
       )}
+
+      {/* Botón flotante con el pedido: las tarjetas son altas y el resumen
+          queda lejos del pliegue. Va por portal a <body> (ver CartFab). */}
+      <CartFab
+        items={items}
+        products={products}
+        onItemsChange={onItemsChange}
+        vatRateOverride={vatRateOverride}
+        discountGlobalPct={discountGlobalPct}
+        implPro={implPro}
+        tablet={tablet}
+      />
 
       {detailProduct && (
         <ProductDetailModal

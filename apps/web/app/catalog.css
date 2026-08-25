@@ -314,6 +314,29 @@
 .qc .selection-bar-total small { display: block; font-family: var(--font-sans); font-size: 11px; font-weight: 400; color: var(--fg-muted); }
 .qc .selection-bar-actions { display: flex; align-items: center; gap: 10px; }
 
+/* ── Columnas de la rejilla: umbrales propios ──
+   El origen cambiaba de 3 a 2 columnas a 1080px, afinado para su shell de
+   1180px SIN sidebar. Aqui el catalogo vive dentro de un <main> con 240px de
+   sidebar al lado, asi que en un portatil de 1280px el contenedor queda en
+   ~1000px y ese umbral heredado lo dejaba en 2 columnas — con tarjetas altas,
+   justo lo que obliga a scrollear.
+
+   Base: 3 columnas. Y a partir de 1320px una cuarta, porque el paso 2 del
+   wizard llega a 1600px y con solo 3 las tarjetas se hinchan sin que se vean
+   mas productos.
+
+   Los umbrales del hero, la ficha y el scroller de pestañas siguen en
+   1080/800/600: esos si dependen de la forma del bloque, no del recuento. */
+@container qc (min-width: 1320px) {
+  .qc .product-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@container qc (max-width: 900px) {
+  .qc .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container qc (max-width: 620px) {
+  .qc .product-grid { grid-template-columns: 1fr; }
+}
+
 /* =============================================================
    Responsive — CONTAINER QUERIES, no media queries.
 
@@ -330,7 +353,6 @@
   .qc .hero-inner { grid-template-columns: minmax(0, 1fr) 360px; gap: 32px; }
   .qc .hero-copy h1 { font-size: 42px; }
   .qc .hero-showcase { min-height: 320px; }
-  .qc .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   /* Con 8 pestañas el scroller usa columnas de ancho fijo. */
   .qc .category-guides { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 168px; overflow-x: auto; scrollbar-width: thin; }
   .qc .detail-grid { gap: 40px; }
@@ -368,7 +390,6 @@
   .qc .hero-showcase-caption { left: 24px; gap: 8px; font-size: 10px; }
   .qc .trust-row { min-height: 56px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding-block: 10px; font-size: 12px; }
   .qc .trust-row span { align-items: flex-start; gap: 5px; line-height: 1.25; }
-  .qc .product-grid { grid-template-columns: 1fr; }
   .qc .product-content > p { min-height: 0; }
   .qc .product-card-footer { align-items: stretch; flex-direction: column; }
   .qc .select-button, .qc .qty-stepper { width: 100%; justify-content: center; }

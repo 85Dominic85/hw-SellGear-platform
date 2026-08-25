@@ -384,7 +384,11 @@ export default function NewOrderPage() {
         <h1 className="text-2xl font-bold text-gray-900">Crear pedido manual</h1>
       </div>
 
-      <div className="mx-auto max-w-5xl">
+      {/* El paso 2 es una rejilla de productos y agradece el ancho; los pasos
+          1 y 3 son formularios, donde una linea de 1600px se lee peor. */}
+      <div
+        className={`mx-auto ${step === 2 ? 'max-w-[1600px]' : 'max-w-5xl'}`}
+      >
         <div className="mb-6">
           <WizardSteps
             current={step}
@@ -699,6 +703,7 @@ export default function NewOrderPage() {
                           : null
                       }
                       purchaseType={form.purchase_type}
+                      discountGlobalPct={discountGlobalPct}
                       region={region}
                       onRegionChange={(next) => {
                         // Cambiar de region vacia el carrito: los SKU

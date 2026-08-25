@@ -134,7 +134,13 @@ export default function CatalogExplorer({
     if (!lockedTab) setTab('all')
   }
 
-  const dirty = Boolean(query) || sort !== 'recommended' || activeTab !== 'all'
+  // Con la pestaña fijada por contexto (servicios, Canarias) el usuario no la
+  // eligió, así que no cuenta como filtro "sucio": si contara, el botón
+  // Restablecer estaría siempre visible sin nada que restablecer.
+  const dirty =
+    Boolean(query) ||
+    sort !== 'recommended' ||
+    (!lockedTab && activeTab !== 'all')
   const canarias = region === 'canarias'
 
   return (
