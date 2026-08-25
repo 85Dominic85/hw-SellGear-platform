@@ -55,6 +55,16 @@ AIMV Android de 549 € que el catálogo lista como KDS Standard peninsular. Es
 decir: la migración discontinúa de facto el KDS J6412 en península. **Pendiente
 de confirmar con producto antes de aplicar el SQL.**
 
+**Los validadores de jsonb tenían un agujero (corregido en 20260825000004).**
+Escritos como `jsonb_typeof(e->'label') <> 'string'`, no detectaban una clave
+AUSENTE: si la clave no existe, `e->'label'` es NULL, `jsonb_typeof(NULL)` es
+NULL y `NULL <> 'string'` es NULL — que no es TRUE, así que el `WHERE` no
+casaba y el `CHECK` aceptaba el valor. `[{"foo":"bar"}]` colaba en las tres
+columnas. Todo lo demás sí se rechazaba (tipo equivocado, cadena vacía,
+no-array, número negativo, URL remota). Se detectó probando los `CHECK`
+contra la base ya migrada, intentando escrituras inválidas a propósito, no
+leyendo el SQL. Arreglado con `IS DISTINCT FROM`.
+
 **Regresión de accesibilidad corregida de paso.** Los steppers de cantidad del
 `ProductTile` anterior eran de 28 px, por debajo del objetivo táctil. El nuevo
 `AddToOrderButton` lleva todos los controles a 44 px.
@@ -91,5 +101,13 @@ una ventana con BD y código desalineados. El orden importa:
 4. `20260825000003_catalog_import_web_2026.sql` — 17 UPDATE + 13 INSERT + la
    retirada de `picho-wifi` + el `CHECK` de `category`. En una transacción, con
    la foto previa guardada.
+5. `20260825000004_fix_jsonb_validators.sql` — corrige los tres validadores de
+   jsonb. Revalida las filas existentes al final, porque
+   `CREATE OR REPLACE FUNCTION` no las vuelve a comprobar.
+
+Estado a 2026-08-25: los pasos 1 a 4 están aplicados y verificados contra la
+base (35 filas, 33 activas, 8 de Canarias con IVA 0, los 8 packs con su ahorro
+calculado por el trigger, 0 líneas de pedido huérfanas sobre las 316 con
+`product_id`). Queda el paso 5.
 
 Comprobaciones antes y después: al final de cada fichero de migración.
