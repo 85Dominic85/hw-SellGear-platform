@@ -752,7 +752,16 @@ export default function NewOrderPage() {
           {/* =================================================================
               Botones de navegacion
               ================================================================= */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-8">
+          {/* En el paso 2 hay que dejar hueco bajo los botones: el boton
+              flotante del pedido es `fixed bottom-6 right-6`, asi que al llegar
+              al final del scroll se plantaria encima de "Continuar". El FAB
+              ocupa hasta ~86px desde el borde inferior; pb-32 (128px) deja
+              margen incluso si los botones se envuelven en pantalla estrecha. */}
+          <div
+            className={`flex flex-wrap items-center justify-between gap-3 ${
+              step === 2 ? 'pb-32' : 'pb-8'
+            }`}
+          >
             <div>
               {step > 1 && (
                 <button
