@@ -15,11 +15,20 @@ export function validateApiKey(
 ):
   | { ok: true }
   | { ok: false; response: NextResponse } {
-  const expected = process.env[envVarName]
+  // Claves válidas: la específica del endpoint (envVarName) MÁS una clave
+  // compartida opcional para Qarvis (el cerebro del ecosistema, solo lectura).
+  // Añadir QARVIS_API_KEY no altera las claves de los demás consumidores
+  // (Portal, HWToolbox): solo AMPLÍA el conjunto aceptado, de forma
+  // retro-compatible. Si QARVIS_API_KEY no está definida, el comportamiento es
+  // idéntico al anterior.
+  const candidates = [
+    process.env[envVarName],
+    process.env.QARVIS_API_KEY,
+  ].filter((k): k is string => typeof k === 'string' && k.length > 0)
 
   // Config inválida — la app no está lista para servir este endpoint.
-  if (!expected) {
-    console.error(`[external-auth] ${envVarName} no configurada`)
+  if (candidates.length === 0) {
+    console.error(`[external-auth] ${envVarName} (ni QARVIS_API_KEY) configurada`)
     return {
       ok: false,
       response: NextResponse.json(
@@ -40,19 +49,22 @@ export function validateApiKey(
     }
   }
 
-  // timingSafeEqual requiere buffers del mismo tamaño. Si difieren,
-  // comparamos contra un buffer del tamaño del esperado para no filtrar
-  // longitud y devolvemos false explícito.
-  const expectedBuf = Buffer.from(expected, 'utf8')
+  // timingSafeEqual requiere buffers del mismo tamaño. Si difieren, hacemos una
+  // comparación dummy para no filtrar longitud. Se acepta si coincide con
+  // CUALQUIERA de las claves válidas.
   const providedBuf = Buffer.from(provided, 'utf8')
-
   let match = false
-  if (providedBuf.length === expectedBuf.length) {
-    match = timingSafeEqual(providedBuf, expectedBuf)
-  } else {
-    // Hace una comparación dummy para mantener tiempo constante.
-    timingSafeEqual(expectedBuf, expectedBuf)
-    match = false
+  for (const candidate of candidates) {
+    const candidateBuf = Buffer.from(candidate, 'utf8')
+    if (providedBuf.length === candidateBuf.length) {
+      if (timingSafeEqual(providedBuf, candidateBuf)) {
+        match = true
+        break
+      }
+    } else {
+      // Comparación dummy para mantener tiempo ~constante.
+      timingSafeEqual(candidateBuf, candidateBuf)
+    }
   }
 
   if (!match) {

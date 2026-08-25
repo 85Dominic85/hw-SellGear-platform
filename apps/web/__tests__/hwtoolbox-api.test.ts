@@ -97,6 +97,73 @@ describe('validateApiKey for HWTOOLBOX_API_KEY', () => {
 })
 
 // ==========================================================
+// QARVIS_API_KEY — clave compartida de solo lectura (cerebro del ecosistema).
+// Debe validar ADEMÁS de la clave específica de cada endpoint, sin romper la
+// compatibilidad ni permitir cruces indebidos entre las claves existentes.
+// ==========================================================
+
+describe('validateApiKey with shared QARVIS_API_KEY', () => {
+  const ORIG_HW = process.env.HWTOOLBOX_API_KEY
+  const ORIG_MP = process.env.MAIN_PORTAL_API_KEY
+  const ORIG_QV = process.env.QARVIS_API_KEY
+
+  beforeEach(() => {
+    process.env.HWTOOLBOX_API_KEY = 'hw_secret_123'
+    process.env.MAIN_PORTAL_API_KEY = 'mp_secret_456'
+    process.env.QARVIS_API_KEY = 'qv_secret_789'
+  })
+  afterEach(() => {
+    if (ORIG_HW === undefined) delete process.env.HWTOOLBOX_API_KEY
+    else process.env.HWTOOLBOX_API_KEY = ORIG_HW
+    if (ORIG_MP === undefined) delete process.env.MAIN_PORTAL_API_KEY
+    else process.env.MAIN_PORTAL_API_KEY = ORIG_MP
+    if (ORIG_QV === undefined) delete process.env.QARVIS_API_KEY
+    else process.env.QARVIS_API_KEY = ORIG_QV
+  })
+
+  it('accepts QARVIS_API_KEY against the HWTOOLBOX endpoint', () => {
+    const result = validateApiKey(
+      makeRequest({ 'x-api-key': 'qv_secret_789' }),
+      'HWTOOLBOX_API_KEY',
+    )
+    expect(result.ok).toBe(true)
+  })
+
+  it('accepts QARVIS_API_KEY against the MAIN_PORTAL (default) endpoint', () => {
+    const result = validateApiKey(makeRequest({ 'x-api-key': 'qv_secret_789' }))
+    expect(result.ok).toBe(true)
+  })
+
+  it('still accepts the endpoint-specific key when QARVIS_API_KEY is set', () => {
+    const result = validateApiKey(
+      makeRequest({ 'x-api-key': 'hw_secret_123' }),
+      'HWTOOLBOX_API_KEY',
+    )
+    expect(result.ok).toBe(true)
+  })
+
+  it('rejects an unknown key with 403 even with QARVIS_API_KEY configured', () => {
+    const result = validateApiKey(
+      makeRequest({ 'x-api-key': 'nope' }),
+      'HWTOOLBOX_API_KEY',
+    )
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.response.status).toBe(403)
+  })
+
+  it('returns 503 when neither the endpoint key nor QARVIS_API_KEY is set', () => {
+    delete process.env.HWTOOLBOX_API_KEY
+    delete process.env.QARVIS_API_KEY
+    const result = validateApiKey(
+      makeRequest({ 'x-api-key': 'whatever' }),
+      'HWTOOLBOX_API_KEY',
+    )
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.response.status).toBe(503)
+  })
+})
+
+// ==========================================================
 // HWTOOLBOX_VISIBLE_STATUSES
 // ==========================================================
 
