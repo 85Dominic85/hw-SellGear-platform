@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">Imagen pendiente del KDS Android 14 de 22 pulgadas</title>
+  <desc id="desc">Representación temporal de una pantalla KDS de 22 pulgadas.</desc>
+  <rect width="1200" height="900" fill="#f5f5f5"/>
+  <rect x="144" y="210" width="912" height="470" rx="24" fill="#222"/>
+  <rect x="174" y="240" width="852" height="410" rx="8" fill="#3b3b3b"/>
+  <path d="M438 735h324l70 74H368z" fill="#303030"/>
+  <text x="600" y="416" fill="#fff" font-family="Arial, sans-serif" font-size="42" font-weight="700" text-anchor="middle">KDS 22”</text>
+  <text x="600" y="470" fill="#ff592f" font-family="Arial, sans-serif" font-size="26" font-weight="700" text-anchor="middle">IMAGEN PENDIENTE</text>
+  <text x="600" y="512" fill="#d8d8d8" font-family="Arial, sans-serif" font-size="22" text-anchor="middle">Android 14</text>
+</svg>
