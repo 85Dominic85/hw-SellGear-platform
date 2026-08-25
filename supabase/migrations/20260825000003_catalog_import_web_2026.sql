@@ -2,8 +2,10 @@
 -- Importación del catálogo comercial web 2026 a public.products.
 --
 -- Fuente: repo hw-qamarero-catalog, lib/catalog.ts (29 productos en 7
--- categorías). Este fichero está GENERADO por .tmp-catalog-sql.py a partir
--- de ese fuente; no editar a mano sin regenerar.
+-- categorías). Los datos se generaron desde ese fuente en vez de
+-- transcribirse a mano, que es donde viven los errores en 30 filas x 20
+-- campos. Para reimportar: la correspondencia SKU a SKU está en el ADR
+-- docs/ADR-2026-08-25-catalogo-comercial.md.
 --
 -- Qué hace:
 --   * 17 UPDATE   -> las filas existentes reciben nombre del catálogo web,
@@ -902,9 +904,16 @@ COMMIT;
 --     FROM public.products
 --    WHERE price_breakdown IS NOT NULL ORDER BY sort_order;
 --
---   -- Ninguna fila activa sin imagen ni resumen
+--   -- Ninguna fila activa sin resumen, salvo 'otro' (que no es un producto,
+--   -- es el mecanismo de linea libre y no tiene ficha)
 --   SELECT code FROM public.products
---    WHERE active AND (image_url IS NULL OR summary IS NULL) ORDER BY code;
+--    WHERE active AND summary IS NULL ORDER BY code;
+--   -- esperado: solo 'otro'
+--
+--   -- Filas activas sin foto: solo las que no la tienen a proposito
+--   SELECT code FROM public.products
+--    WHERE active AND image_url IS NULL ORDER BY code;
+--   -- esperado: 'otro' y 'saas_hardware'
 --
 --   -- Ningun pedido historico perdio su producto
 --   SELECT count(*) FROM public.order_items oi
