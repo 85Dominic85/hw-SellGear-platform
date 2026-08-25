@@ -3,7 +3,14 @@
 import { useEffect } from 'react'
 import { X, Loader2, Check } from 'lucide-react'
 import type { Product, PurchaseType } from '@/types/database'
-import { cartTotals, formatEurosCents, effectiveTaxLabel } from '@/lib/pricing'
+import {
+  cartTotals,
+  formatEurosCents,
+  effectiveTaxLabel,
+  lineDiscountCents as lineDiscountOf,
+  lineSubtotalCents,
+} from '@/lib/pricing'
+import { isFreePrice } from '@/lib/product-rules'
 import { PURCHASE_TYPE_LABELS, isCanaryIslands } from '@/lib/utils'
 import type { CartLineState } from './CartLine'
 
@@ -71,19 +78,15 @@ export default function OrderReviewModal({
     .map((l) => {
       const p = l.product_id ? productById.get(l.product_id) ?? null : null
       if (!p) return null
-      const priceCents =
-        p.code === 'otro' ||
-        p.category === 'saas_hardware' ||
-        p.code === 'implementacion-pro' ||
-        p.code === 'software-qamarero'
-          ? l.unit_price_override_cents ?? 0
-          : p.price_cents
+      const priceCents = isFreePrice(p)
+        ? l.unit_price_override_cents ?? 0
+        : p.price_cents
       const displayName =
         l.product_name_override.trim() || p.name || '(sin nombre)'
-      const subtotalCents = priceCents * l.qty
-      const lineDiscountCents = Math.round(
-        subtotalCents * (l.discount_pct / 100),
-      )
+      // Mismos helpers que cartTotals: el desglose no puede desviarse del
+      // total por un redondeo distinto.
+      const subtotalCents = lineSubtotalCents(priceCents, l.qty)
+      const lineDiscountCents = lineDiscountOf(priceCents, l.qty, l.discount_pct)
       return {
         name: displayName,
         priceCents,
@@ -225,17 +228,12 @@ export default function OrderReviewModal({
                   const p = line.product_id
                     ? productById.get(line.product_id) ?? null
                     : null
-                  const isFreePrice =
-                    p?.code === 'otro' ||
-                    p?.category === 'saas_hardware' ||
-                    p?.code === 'implementacion-pro' ||
-                    p?.code === 'software-qamarero'
                   const displayName =
                     line.product_name_override.trim() || p?.name || '(sin nombre)'
-                  const unitPriceCents = isFreePrice
+                  const unitPriceCents = isFreePrice(p)
                     ? line.unit_price_override_cents ?? 0
                     : p?.price_cents ?? 0
-                  const subtotal = unitPriceCents * line.qty
+                  const subtotal = lineSubtotalCents(unitPriceCents, line.qty)
                   return (
                     <li
                       key={i}

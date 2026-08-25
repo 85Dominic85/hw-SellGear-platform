@@ -1,6 +1,8 @@
 'use client'
 
 import type { Product, ProductCategory } from '@/types/database'
+import { CATEGORY_ORDER, categoryShortLabel } from '@/lib/catalog-taxonomy'
+import { isFreePrice } from '@/lib/product-rules'
 
 interface ProductPickerProps {
   value: string | null
@@ -8,28 +10,6 @@ interface ProductPickerProps {
   products: Product[]
   disabled?: boolean
 }
-
-const CATEGORY_LABELS: Record<ProductCategory, string> = {
-  pack: 'Packs',
-  tpv: 'TPV',
-  kds: 'KDS (cocina)',
-  printer: 'Impresoras',
-  accessory: 'Periféricos',
-  network: 'Red',
-  saas_hardware: 'SaaS + Hardware',
-  custom: 'Otros',
-}
-
-const CATEGORY_ORDER: ProductCategory[] = [
-  'pack',
-  'tpv',
-  'kds',
-  'printer',
-  'accessory',
-  'network',
-  'saas_hardware',
-  'custom',
-]
 
 export default function ProductPicker({
   value,
@@ -53,13 +33,13 @@ export default function ProductPicker({
     >
       <option value="">Selecciona un producto…</option>
       {CATEGORY_ORDER.filter((c) => grouped.has(c)).map((category) => (
-        <optgroup key={category} label={CATEGORY_LABELS[category]}>
+        <optgroup key={category} label={categoryShortLabel(category)}>
           {grouped.get(category)!.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
-              {p.code !== 'otro' &&
-                p.code !== 'saas_hardware' &&
-                ` — ${(p.price_cents / 100).toFixed(2)} €`}
+              {/* Los productos de precio libre no tienen precio que mostrar:
+                  lo introduce el AE en la línea. */}
+              {!isFreePrice(p) && ` — ${(p.price_cents / 100).toFixed(2)} €`}
             </option>
           ))}
         </optgroup>

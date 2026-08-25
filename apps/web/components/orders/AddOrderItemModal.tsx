@@ -5,6 +5,20 @@ import { useRouter } from 'next/navigation'
 import { X, Loader2, Search } from 'lucide-react'
 import type { Product } from '@/types/database'
 import { formatEurosCents } from '@/lib/pricing'
+import {
+  allowsLineDiscount,
+  isFreePrice,
+  needsCustomName,
+  isHiddenFromCatalog,
+} from '@/lib/product-rules'
+import ProductThumb from '@/components/catalog/ProductThumb'
+import {
+  IMPL_PRO_CODE,
+  TABLET_GIFT_CODE,
+  TABLET_GIFT_NOTE,
+  GIFT_DISCOUNT_PCT,
+  findByCode,
+} from '@/lib/catalog/rules'
 
 interface AddOrderItemModalProps {
   orderId: string
@@ -101,40 +115,24 @@ export default function AddOrderItemModal({
     [products, selectedProductId],
   )
 
-  // ¿El producto seleccionado requiere overrides? (code='otro',
-  // saas_hardware, implementacion-pro o software-qamarero).
-  const requiresOverride = useMemo(() => {
-    if (!selectedProduct) return false
-    return (
-      selectedProduct.code === 'otro' ||
-      selectedProduct.category === 'saas_hardware' ||
-      selectedProduct.code === 'implementacion-pro' ||
-      selectedProduct.code === 'software-qamarero'
-    )
-  }, [selectedProduct])
-  // Los productos con nombre fijo del catálogo (implementación pro y
-  // software qamarero) solo piden precio, no descripción libre.
-  const requiresOverrideName = useMemo(() => {
-    if (!selectedProduct) return false
-    return (
-      selectedProduct.code === 'otro' ||
-      selectedProduct.category === 'saas_hardware'
-    )
-  }, [selectedProduct])
+  // Reglas del producto seleccionado (precio y descripción libres). Viven en
+  // products.pricing_mode, no en una lista de `code`.
+  const requiresOverride = isFreePrice(selectedProduct)
+  const requiresOverrideName = needsCustomName(selectedProduct)
   // ¿Es Implementación Pro? Activa el toggle "¿lleva tablet?".
-  const isImplPro = selectedProduct?.code === 'implementacion-pro'
+  const isImplPro = selectedProduct?.code === IMPL_PRO_CODE
   // Producto tablet regalo (buscado en el catálogo cargado).
   const tabletProduct = useMemo(
-    () => products.find((p) => p.code === 'tablet-kds-lenovo') ?? null,
+    () => findByCode(products, TABLET_GIFT_CODE),
     [products],
   )
 
   // Productos filtrados por la búsqueda (case insensitive sobre name).
-  // Excluimos 'otro' del listado del combobox: para línea libre se usa el
-  // tab "Línea libre"; aquí queremos productos reales del catálogo.
+  // Excluimos los SKU ocultos del catálogo ('otro'): para línea libre se usa
+  // el tab "Línea libre"; aquí queremos productos reales.
   const filteredProducts = useMemo(() => {
     const q = productQuery.trim().toLowerCase()
-    const base = products.filter((p) => p.code !== 'otro')
+    const base = products.filter((p) => !isHiddenFromCatalog(p))
     if (!q) return base
     return base.filter((p) => p.name.toLowerCase().includes(q))
   }, [products, productQuery])
@@ -239,8 +237,8 @@ export default function AddOrderItemModal({
               source: 'catalog',
               product_id: tabletProduct.id,
               qty: 1,
-              discount_pct: 100,
-              notes: 'Regalo por Implementación Pro',
+              discount_pct: GIFT_DISCOUNT_PCT,
+              notes: TABLET_GIFT_NOTE,
             }),
           })
           if (!giftRes.ok) {
@@ -485,9 +483,9 @@ function CatalogTab({
   priceOverride,
   onPriceOverrideChange,
 }: CatalogTabProps) {
-  // saas_hardware fuerza descuento 0 (precio negociado = precio final).
-  // El resto de categorías admite el rango libre 0-100 del input custom.
-  const isSaasHw = selectedProduct?.category === 'saas_hardware'
+  // Las ofertas de precio cerrado fuerzan descuento 0 (el precio negociado ES
+  // el final). Lo dice products.allows_discount, no una lista de `code`.
+  const isSaasHw = !allowsLineDiscount(selectedProduct)
 
   return (
     <>
@@ -531,19 +529,31 @@ function CatalogTab({
                         <button
                           type="button"
                           onClick={() => onSelect(p.id)}
-                          className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors ${
+                          className={`flex w-full items-center gap-3 px-3 py-2 text-left text-sm transition-colors ${
                             active
                               ? 'bg-brand/5 text-gray-900'
                               : 'text-gray-700 hover:bg-gray-50'
                           }`}
                         >
-                          <span className="truncate">{p.name}</span>
+                          {/* Miniatura: esta lista no tenía imágenes, que era
+                              justo la queja de fondo de esta superficie. */}
+                          <ProductThumb product={p} />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate">{p.name}</span>
+                            {p.brand && (
+                              <span className="block truncate text-[11px] text-gray-500">
+                                {[p.brand, p.model].filter(Boolean).join(' · ')}
+                              </span>
+                            )}
+                          </span>
                           <span
-                            className={`font-mono text-xs tabular-nums ${
+                            className={`shrink-0 font-mono text-xs tabular-nums ${
                               active ? 'text-brand' : 'text-gray-500'
                             }`}
                           >
-                            {formatEurosCents(p.price_cents)}
+                            {isFreePrice(p)
+                              ? 'A convenir'
+                              : formatEurosCents(p.price_cents)}
                           </span>
                         </button>
                       </li>

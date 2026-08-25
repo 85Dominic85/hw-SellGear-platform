@@ -1,6 +1,13 @@
 'use client'
 
-import { cartTotals, effectiveTaxLabel, formatEurosCents } from '@/lib/pricing'
+import {
+  cartTotals,
+  effectiveTaxLabel,
+  formatEurosCents,
+  lineDiscountCents as lineDiscountOf,
+  lineSubtotalCents,
+} from '@/lib/pricing'
+import { isFreePrice } from '@/lib/product-rules'
 import type { Product } from '@/types/database'
 import type { CartLineState } from './CartLine'
 
@@ -58,20 +65,15 @@ export default function CartSummary({
       const p = l.product_id ? productById.get(l.product_id) ?? null : null
       if (!p) return null
       // Productos con precio libre (override obligatorio en el carrito).
-      const isFreePrice =
-        p.code === 'otro' ||
-        p.category === 'saas_hardware' ||
-        p.code === 'implementacion-pro' ||
-        p.code === 'software-qamarero'
-      const priceCents = isFreePrice
+      const priceCents = isFreePrice(p)
         ? l.unit_price_override_cents ?? 0
         : p.price_cents
       const displayName =
         l.product_name_override.trim() || p.name || '(sin nombre)'
-      const subtotalCents = priceCents * l.qty
-      const lineDiscountCents = Math.round(
-        subtotalCents * (l.discount_pct / 100),
-      )
+      // Mismos helpers que usa cartTotals, para que el desglose por línea no
+      // pueda desviarse del total por un redondeo distinto.
+      const subtotalCents = lineSubtotalCents(priceCents, l.qty)
+      const lineDiscountCents = lineDiscountOf(priceCents, l.qty, l.discount_pct)
       return {
         name: displayName,
         priceCents,

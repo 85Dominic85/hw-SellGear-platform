@@ -10,6 +10,14 @@ import { isCanaryIslands } from '@/lib/utils'
 import { isValidPurchaseType } from '@/lib/purchase-type'
 import { fieldRequirementsFor } from '@/lib/order-requirements'
 import {
+  isFreePrice,
+  needsCustomName,
+  requiresCanaryShipping,
+  missingNameError,
+  missingPriceError,
+  canaryShippingError,
+} from '@/lib/product-rules'
+import {
   isFinanceableCode,
   financingBaseTotalCents,
   financingInstallments,
@@ -323,27 +331,25 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       )
     }
-    // Valida descuento contra el set permitido (0/10/100) y, si es 100,
-    // que la categoria sea 'printer' (Promocion Printer).
-    const discountCheck = validateLineDiscount(it.discount_pct, product.category)
+    // Rango libre 0-100 entero; los productos con allows_discount = false
+    // (oferta cerrada) fuerzan 0. Regla en lib/product-rules.ts.
+    const discountCheck = validateLineDiscount(it.discount_pct, product)
     if (!discountCheck.ok) {
       return NextResponse.json({ error: discountCheck.error }, { status: 400 })
     }
+    // Los SKU canarios llevan precio FINAL con vat_rate = 0. Si se colara en
+    // un pedido peninsular, overrideVatRate sería null y la línea se
+    // facturaría al 0 % con precio canario. Hay que rechazarlo aquí: el
+    // cliente ya no ofrece la mezcla, pero el servidor no puede confiar.
+    if (requiresCanaryShipping(product) && !isCanaryExempt) {
+      return NextResponse.json(
+        { error: canaryShippingError(product) },
+        { status: 400 },
+      )
+    }
     let unitPriceCents = product.price_cents
     let productName = product.name
-    // Productos con precio libre negociado por el AE/AM:
-    //   - code='otro'                  (cualquier item ad-hoc)
-    //   - category='saas_hardware'     (ofertas SaaS + Hardware)
-    //   - code='implementacion-pro'    (servicio con precio a medida)
-    //   - code='software-qamarero'     (licencia software por transferencia)
-    // Los dos primeros exigen también descripción; los otros no.
-    const isImplPro = product.code === 'implementacion-pro'
-    const isSoftwareQa = product.code === 'software-qamarero'
-    const isFreePriceProduct =
-      product.code === 'otro' ||
-      product.category === 'saas_hardware' ||
-      isImplPro ||
-      isSoftwareQa
+    const isFreePriceProduct = isFreePrice(product)
     if (isFinancing) {
       // Financiación: solo 3 productos. El precio = base total del plan
       // (suma de los 3 plazos), que REEMPLAZA al precio de catálogo
@@ -359,15 +365,9 @@ export async function POST(request: NextRequest) {
       }
       unitPriceCents = financingBaseTotalCents(product.code)!
     } else if (isFreePriceProduct) {
-      const isSaasHw = product.category === 'saas_hardware'
-      const needsName = !isImplPro && !isSoftwareQa
-      if (needsName && !it.product_name_override) {
+      if (needsCustomName(product) && !it.product_name_override) {
         return NextResponse.json(
-          {
-            error: isSaasHw
-              ? 'Las lineas SaaS + Hardware requieren descripcion de la oferta.'
-              : 'Las líneas "Otro" requieren descripción del producto.',
-          },
+          { error: missingNameError(product) },
           { status: 400 },
         )
       }
@@ -376,15 +376,7 @@ export async function POST(request: NextRequest) {
         it.unit_price_override_cents <= 0
       ) {
         return NextResponse.json(
-          {
-            error: isImplPro
-              ? 'Implementación Pro requiere un precio mayor que 0.'
-              : isSoftwareQa
-                ? 'Software Qamarero requiere un precio mayor que 0.'
-                : isSaasHw
-                  ? 'Las lineas SaaS + Hardware requieren un precio negociado mayor que 0.'
-                  : 'Las líneas "Otro" requieren un precio unitario mayor que 0.',
-          },
+          { error: missingPriceError(product) },
           { status: 400 },
         )
       }
@@ -401,8 +393,8 @@ export async function POST(request: NextRequest) {
       qty: it.qty,
       discount_pct: it.discount_pct,
       unit_price_cents: unitPriceCents,
-      // Snapshot: si el envio es a Canarias aplicamos IGIC 7 %; si no, IVA
-      // del producto (21 % por defecto). Decision por shipping_cp.
+      // Snapshot inmutable: envío a Canarias -> exento (0 %); si no, el IVA
+      // del producto (21 % por defecto).
       vat_rate: overrideVatRate ?? Number(product.vat_rate),
     })
   }

@@ -1,0 +1,395 @@
+/* =============================================================
+   Catálogo comercial Qamarero — hoja portada.
+
+   Origen: repo hw-qamarero-catalog, app/globals.css (574 líneas de CSS plano
+   con clases semánticas). Se PORTA en vez de traducirse a utilidades porque
+   la petición era fidelidad literal con la web, y traducir es una
+   transformación con pérdida que ningún test detecta.
+
+   FRONTERA: lo que viene del catálogo web vive aquí; lo que escribimos
+   nosotros (stepper de cantidad, inputs de descuento, panel de tablet
+   regalo, panel de línea libre) usa Tailwind. La frontera es la
+   PROCEDENCIA, no la complejidad — así es decidible.
+
+   Todo está escopado bajo `.qc`, así que no puede afectar al resto de la
+   app. Dos clases raíz:
+     .qc        tokens + línea base. Para modales por portal a <body>.
+     .qc-fluid  añade containment, para el contenido en flujo.
+
+   Los @media del origen (1080/800/600 px) son CONTAINER QUERIES aquí: el
+   dashboard tiene un sidebar de 240px, así que el ancho de viewport no dice
+   nada sobre el espacio real del catálogo. En un monitor de 1280px el
+   catálogo tiene 1040px y con @media caería al layout móvil por error.
+   ============================================================= */
+
+.qc {
+  /* ── Tokens del origen mapeados a los nuestros ──
+     Se referencian los tokens de la app en vez de re-hardcodear los hex, para
+     que un cambio de token se propague. Los valores coinciden ya.
+     OJO con --fg: mapea a --gray-900 (#212121), NO a --foreground (#0d0d12,
+     más oscuro), o todos los grises del port se descuadran. */
+  --canvas: #ffffff;
+  --surface: #ffffff;
+  --surface-muted: var(--gray-50);
+  --surface-soft: var(--gray-100);
+  --border: var(--gray-300);
+  --border-light: var(--gray-200);
+  --fg: var(--gray-900);
+  --fg-muted: var(--gray-600);
+  --fg-subtle: var(--gray-500);
+  --brand-strong: var(--orange-600);
+  --brand-weak: var(--orange-50);
+  --coral: var(--orange-300);
+  --danger: var(--red-500);
+
+  /* ── Tokens propios del catálogo ──
+     Los radios NO se fusionan con --radius-sm/md/lg de la app: nombres
+     confundibles, valores distintos (8/12/16 aquí, 6/8/10 allí). */
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --radius-l: 16px;
+  --shadow-card:
+    0 1px 2px rgba(33, 33, 33, 0.04), 0 8px 24px rgba(33, 33, 33, 0.06);
+  --shadow-raised: 0 20px 60px rgba(33, 33, 33, 0.16);
+  /* El foco del catálogo es un naranja más oscuro que el de la app. */
+  --qc-ring: #d44020;
+
+  background: var(--canvas);
+  color: var(--fg);
+  font-family: var(--font-sans);
+}
+
+.qc-fluid {
+  container: qc / inline-size;
+}
+
+/* ── Línea base ──
+   El origen se apoya en los márgenes por defecto del navegador y solo pone
+   `margin-top: 0` en h1/h2/h3/p. El Preflight de Tailwind los pone TODOS a 0
+   y quita los bullets de ul/ol, así que hay que restaurarlos dentro de .qc o
+   se rompen .empty-results p, .components-card ul y .detail-summary.
+   Especificidad 0-1-1 con :is(), así que cualquier regla portada (.qc .x,
+   0-2-0) la sobrescribe. */
+.qc :is(p, h1, h2, h3, h4) {
+  margin: 0 0 1em;
+}
+.qc :is(ul, ol) {
+  margin: 1em 0;
+  padding-inline-start: 40px;
+  list-style: revert;
+}
+.qc :focus-visible {
+  outline: 2px solid var(--qc-ring);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.qc ::selection {
+  background: var(--brand-weak);
+}
+.qc a {
+  color: inherit;
+  text-decoration: none;
+}
+.qc :is(button, select) {
+  cursor: pointer;
+}
+.qc :is(button, input, select) {
+  font: inherit;
+}
+
+/* =============================================================
+   Estructura y botones
+   ============================================================= */
+.qc .section-shell { width: min(1180px, calc(100% - 40px)); margin-inline: auto; }
+.qc .eyebrow { display: inline-flex; color: var(--brand-hover); font-size: 12px; font-weight: 700; text-transform: uppercase; }
+.qc .eyebrow.light { color: var(--orange-100); }
+
+.qc .button { min-height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; border: 1px solid transparent; border-radius: var(--radius-s); padding: 11px 18px; font-weight: 700; cursor: pointer; transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease; }
+.qc .button:hover { transform: translateY(-1px); }
+.qc .button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.qc .button-primary { background: var(--cta); color: #ffffff; }
+.qc .button-primary:hover { background: var(--cta-hover); color: #ffffff; }
+.qc .button-secondary { background: var(--surface); border-color: var(--border); color: var(--fg); }
+.qc .button-secondary:hover { border-color: #bdbdbd; background: var(--surface-soft); }
+.qc .icon-button { width: 44px; height: 44px; flex: 0 0 44px; border: 0; border-radius: 50%; display: grid; place-items: center; background: transparent; color: var(--fg); cursor: pointer; }
+.qc .icon-button:hover { background: var(--surface-soft); }
+.qc .text-button { min-height: 44px; border: 0; background: transparent; color: var(--brand-hover); font-weight: 700; }
+.qc .text-button:disabled { opacity: 0.5; }
+.qc .back-link { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 24px; color: var(--fg-muted); font-weight: 700; }
+.qc .back-link:hover { color: var(--brand-hover); }
+.qc .commercial-note { margin: 18px 0 0; color: var(--fg-muted); font-size: 12px; line-height: 1.5; }
+
+/* =============================================================
+   Hero
+   ============================================================= */
+.qc .hero { position: relative; overflow: hidden; background: var(--surface-muted); border-bottom: 1px solid var(--border-light); }
+.qc .hero::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 7px; background: var(--brand); }
+.qc .hero-inner { min-height: 460px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(400px, 0.9fr); align-items: center; gap: 48px; padding-top: 48px; padding-bottom: 36px; }
+.qc .hero-copy { position: relative; z-index: 1; }
+.qc .hero-copy h1 { max-width: 700px; margin: 16px 0 20px; font-size: 50px; line-height: 1.02; }
+.qc .hero-copy > p { max-width: 650px; margin-bottom: 28px; color: #616161; font-size: 18px; line-height: 1.55; }
+.qc .hero-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.qc .hero-showcase { position: relative; min-width: 0; min-height: 360px; isolation: isolate; }
+.qc .hero-showcase-panel { position: absolute; inset: 30px 0 38px 48px; z-index: -1; border-left: 5px solid var(--brand); background: #fee4dc; }
+.qc .hero-device { position: absolute; }
+.qc .hero-device img { object-fit: contain; filter: drop-shadow(0 20px 22px rgba(33, 33, 33, 0.16)); }
+.qc .hero-device-tpv { width: 62%; height: 72%; left: -2%; bottom: 40px; z-index: 2; }
+.qc .hero-device-kds { width: 46%; height: 53%; right: 1%; top: 20px; z-index: 1; }
+.qc .hero-device-printer { width: 27%; height: 31%; right: 7%; bottom: 50px; z-index: 3; }
+.qc .hero-showcase-caption { position: absolute; right: 0; bottom: 0; left: 48px; display: flex; justify-content: space-between; gap: 20px; border-top: 1px solid var(--border); padding-top: 12px; color: var(--fg-muted); font-size: 13px; }
+.qc .hero-showcase-caption strong { color: var(--fg); text-align: right; }
+.qc .trust-row { min-height: 62px; display: flex; align-items: center; gap: 32px; border-top: 1px solid var(--border-light); color: #616161; font-size: 14px; font-weight: 600; }
+.qc .trust-row span { display: inline-flex; align-items: center; gap: 8px; }
+.qc .trust-row svg { color: var(--brand-hover); }
+
+/* =============================================================
+   Explorador: encabezado, pestañas de categoría
+   ============================================================= */
+.qc .catalog-explorer { padding-top: 52px; padding-bottom: 76px; }
+.qc .catalog-explorer.embedded { padding-top: 0; padding-bottom: 0; }
+.qc .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 40px; margin-bottom: 32px; }
+.qc .section-heading h2 { margin: 8px 0 0; font-size: 38px; line-height: 1.08; }
+.qc .section-heading > p { max-width: 430px; margin-bottom: 3px; color: var(--fg-muted); line-height: 1.55; }
+
+/* 8 pestañas (el origen tenía 7): 7 familias + Canarias. Si la etiqueta
+   "Periféricos" recorta, se acorta el `short` en lib/catalog-taxonomy.ts. */
+.qc .category-guides { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); margin-bottom: 20px; border-block: 1px solid var(--border); }
+.qc .category-guides button { min-height: 92px; display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; gap: 8px; border: 0; border-right: 1px solid var(--border); background: var(--surface); padding: 14px 11px; color: var(--fg); text-align: left; }
+.qc .category-guides button:last-child { border-right: 0; }
+.qc .category-guides button:hover { background: var(--surface-muted); }
+.qc .category-guides button.active { background: var(--fg); color: #ffffff; }
+.qc .category-guides button > svg { color: var(--brand-hover); }
+.qc .category-guides button.active > svg { color: var(--orange-100); }
+.qc .category-guides button span { min-width: 0; display: grid; gap: 3px; }
+.qc .category-guides button strong { font-size: 13px; }
+.qc .category-guides button small { color: var(--fg-muted); font-size: 11px; line-height: 1.3; }
+.qc .category-guides button.active small { color: var(--gray-300); }
+/* Canarias destacada: no es una familia, es otra lista de precios. */
+.qc .category-guides button.guide-canarias { background: var(--brand-weak); box-shadow: inset 4px 0 0 var(--brand); }
+.qc .category-guides button.guide-canarias:hover { background: #f7ddd9; }
+.qc .category-guides button.guide-canarias > svg { color: var(--brand); }
+.qc .category-guides button.guide-canarias strong { color: var(--brand-hover); }
+.qc .category-guides button.guide-canarias.active { background: var(--brand); color: #ffffff; }
+.qc .category-guides button.guide-canarias.active > svg,
+.qc .category-guides button.guide-canarias.active strong,
+.qc .category-guides button.guide-canarias.active small { color: #ffffff; }
+
+/* =============================================================
+   Buscador, orden y resultados
+   ============================================================= */
+.qc .catalog-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 12px; margin-bottom: 16px; }
+.qc .search-field, .qc .sort-field { min-height: 52px; display: flex; align-items: center; gap: 11px; border: 1px solid var(--border); border-radius: var(--radius-s); background: var(--surface); padding: 0 16px; color: var(--fg-muted); }
+.qc .search-field:focus-within, .qc .sort-field:focus-within { border-color: var(--qc-ring); box-shadow: 0 0 0 1px var(--qc-ring); }
+.qc .search-field input { width: 100%; height: 50px; border: 0; outline: 0; background: transparent; color: var(--fg); }
+.qc .search-field input::placeholder { color: var(--fg-subtle); }
+.qc .search-field button { width: 44px; height: 44px; margin-right: -12px; border: 0; background: transparent; color: var(--fg-muted); display: grid; place-items: center; }
+.qc .sort-field select { width: 100%; height: 50px; border: 0; outline: 0; background: transparent; color: var(--fg); font-weight: 600; }
+.qc .catalog-results-meta { min-height: 52px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; color: var(--fg-muted); font-size: 14px; }
+.qc .catalog-results-meta strong { color: var(--fg); }
+.qc .catalog-results-meta button { min-height: 44px; border: 0; background: transparent; color: var(--brand-hover); font-weight: 700; }
+.qc .empty-results { min-height: 320px; display: grid; place-items: center; align-content: center; border: 1px dashed var(--border); border-radius: var(--radius-s); background: var(--surface-muted); text-align: center; padding: 40px; }
+.qc .empty-results > svg { margin-bottom: 18px; color: var(--coral); }
+.qc .empty-results h3 { margin-bottom: 8px; font-size: 24px; }
+.qc .empty-results p { color: var(--fg-muted); margin: 0 0 18px; }
+
+/* =============================================================
+   Tarjeta de producto
+   ============================================================= */
+.qc .product-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.qc .product-card { min-width: 0; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-light); border-radius: var(--radius-s); background: var(--surface); box-shadow: var(--shadow-card); transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease; }
+.qc .product-card:hover { border-color: #d0d0d0; box-shadow: 0 14px 36px rgba(33, 33, 33, 0.1); transform: translateY(-2px); }
+.qc .product-card.in-cart { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand), var(--shadow-card); }
+.qc .product-media { position: relative; display: block; width: 100%; aspect-ratio: 4 / 3; overflow: hidden; background: var(--surface-soft); border: 0; padding: 0; text-align: left; }
+.qc .product-image { object-fit: contain; padding: 22px; transition: transform 220ms ease; }
+.qc .product-card:hover .product-image { transform: scale(1.025); }
+.qc .product-media-fallback { display: grid; place-items: center; width: 100%; height: 100%; background: linear-gradient(135deg, var(--surface-soft), var(--gray-200)); color: var(--fg-subtle); }
+.qc .product-badge { position: absolute; top: 14px; left: 14px; z-index: 1; border-radius: 4px; background: var(--fg); color: #ffffff; padding: 5px 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.qc .product-qty-badge { position: absolute; top: 14px; right: 14px; z-index: 1; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--brand); color: #ffffff; padding: 4px 10px; font-size: 12px; font-weight: 700; }
+.qc .product-content { flex: 1; display: flex; flex-direction: column; padding: 20px; }
+.qc .product-meta { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-bottom: 8px; color: var(--brand-hover); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.qc .product-title-link { min-height: 44px; display: flex; align-items: flex-start; border: 0; background: none; padding: 0; text-align: left; color: inherit; }
+.qc .product-title-link h3 { margin: 0; font-size: 21px; line-height: 1.18; }
+.qc .product-title-link:hover { color: var(--brand-hover); }
+.qc .product-content > p { min-height: 48px; margin: 8px 0 16px; color: var(--fg-muted); font-size: 14px; line-height: 1.5; }
+.qc .mini-specs { display: grid; gap: 7px; margin: 0 0 20px; padding: 14px 0 0; border-top: 1px solid var(--border-light); list-style: none; color: #616161; font-size: 13px; }
+.qc .mini-specs li::before { content: ""; display: inline-block; width: 5px; height: 5px; margin: 0 9px 2px 0; border-radius: 50%; background: var(--coral); }
+.qc .product-card-footer { margin-top: auto; display: flex; align-items: end; justify-content: space-between; gap: 12px; }
+.qc .price { display: flex; flex-direction: column; }
+.qc .price strong { font-family: var(--font-mono); font-size: 20px; white-space: nowrap; }
+.qc .price small { color: var(--fg-muted); }
+.qc .price-pending { max-width: 175px; }
+.qc .price-pending strong { color: var(--brand-hover); font-size: 15px; }
+.qc .price-pending small { line-height: 1.25; }
+
+/* Desglose del pack y ahorro frente a comprar por separado. */
+.qc .pack-comparison { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; margin: -4px 0 18px; border-radius: 6px; background: var(--surface-soft); padding: 9px 11px; color: var(--fg-muted); font-size: 12px; line-height: 1.35; }
+.qc .pack-comparison strong { color: var(--fg); }
+.qc .pack-comparison.saving { background: #edf8f0; color: #48634f; }
+.qc .pack-comparison.saving strong { color: #176b32; }
+.qc .detail-pack-comparison { max-width: 520px; margin: -10px 0 24px; padding: 12px 14px; font-size: 14px; }
+.qc .pack-price-breakdown { width: 100%; display: grid; gap: 5px; margin: 8px 0 0; border-top: 1px solid rgba(33, 33, 33, 0.09); padding: 9px 0 0; list-style: none; }
+.qc .pack-price-breakdown li { display: flex; justify-content: space-between; gap: 16px; }
+.qc .pack-price-breakdown b { color: inherit; white-space: nowrap; font-family: var(--font-mono); font-weight: 700; }
+
+/* Modelos alternativos: el catálogo no debe prometer una marca única. */
+.qc .model-options { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 12px; margin-top: 12px; border: 1px solid var(--border-light); border-radius: var(--radius-s); background: var(--surface); padding: 10px; }
+.qc .model-options.compact { margin: 11px 0 0; padding: 8px; }
+.qc .model-option-images { display: flex; gap: 6px; }
+.qc .model-option-image { position: relative; width: 54px; aspect-ratio: 1; overflow: hidden; border: 1px solid var(--border-light); border-radius: 5px; background: var(--surface-soft); }
+.qc .model-option-image img { object-fit: contain; padding: 3px; }
+.qc .model-options.compact .model-option-image { width: 38px; }
+.qc .model-options-copy { display: grid; gap: 2px; color: var(--fg-muted); font-size: 11px; line-height: 1.35; }
+.qc .model-options-copy strong { color: var(--fg); font-size: 12px; }
+.qc .model-options.compact .model-options-copy span { display: none; }
+
+/* Botón añadir / stepper. 44px mínimo: el ProductTile anterior usaba 28px,
+   por debajo del objetivo táctil accesible. */
+.qc .select-button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid var(--border); border-radius: var(--radius-s); background: var(--surface); padding: 8px 12px; color: var(--fg); font-size: 13px; font-weight: 700; }
+.qc .select-button:hover { border-color: var(--brand); }
+.qc .select-button.selected { border-color: var(--brand); background: var(--brand-weak); color: var(--brand-hover); }
+.qc .qty-stepper { display: flex; align-items: center; border: 1px solid var(--border); border-radius: var(--radius-s); overflow: hidden; background: var(--surface); }
+.qc .qty-stepper button { width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: transparent; color: var(--fg); font-size: 18px; font-weight: 700; }
+.qc .qty-stepper button:hover:not(:disabled) { background: var(--surface-soft); color: var(--brand-hover); }
+.qc .qty-stepper button:disabled { opacity: 0.35; cursor: not-allowed; }
+.qc .qty-stepper span { min-width: 34px; text-align: center; font-family: var(--font-mono); font-size: 15px; font-weight: 700; }
+
+/* =============================================================
+   Ficha de producto
+   ============================================================= */
+.qc .page-hero { padding: 48px 0 40px; border-bottom: 1px solid var(--border-light); background: var(--surface-muted); }
+.qc .page-hero h1 { margin: 10px 0 12px; font-size: 42px; line-height: 1.05; }
+.qc .page-hero p { max-width: 620px; color: var(--fg-muted); font-size: 17px; }
+.qc .page-hero-count { margin-top: 20px; font-size: 13px; font-weight: 700; }
+.qc .canarias-hero { background: linear-gradient(180deg, var(--brand-weak), var(--surface-muted)); box-shadow: inset 6px 0 0 var(--brand); }
+.qc .canarias-tax-note { display: inline-flex; align-items: center; gap: 8px; margin-top: 16px; border-radius: 999px; background: var(--brand); padding: 9px 15px; color: #ffffff; font-size: 14px; font-weight: 700; }
+.qc .category-products { padding-top: 48px; padding-bottom: 80px; }
+
+.qc .detail-shell { padding-top: 32px; padding-bottom: 64px; }
+.qc .detail-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr); gap: 56px; align-items: center; }
+.qc .detail-media { position: relative; min-height: 460px; background: var(--surface-soft); border-radius: var(--radius-s); overflow: hidden; }
+.qc .detail-media img { object-fit: contain; padding: 40px; }
+.qc .detail-badge { top: 20px; left: 20px; }
+.qc .detail-copy h1 { margin: 12px 0 14px; font-size: 42px; line-height: 1.05; }
+.qc .detail-summary { color: var(--fg-muted); font-size: 17px; line-height: 1.55; }
+.qc .detail-price { display: flex; align-items: baseline; gap: 10px; margin: 24px 0; }
+.qc .detail-price strong { font-family: var(--font-mono); font-size: 30px; }
+.qc .detail-price span { color: var(--fg-muted); }
+.qc .detail-price-pending strong { color: var(--brand-hover); font-size: 22px; }
+.qc .highlight-list { display: grid; gap: 10px; margin: 0 0 28px; padding: 0; list-style: none; }
+.qc .highlight-list li { display: flex; align-items: center; gap: 10px; }
+.qc .highlight-list svg { flex: 0 0 auto; color: var(--brand); }
+.qc .detail-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.qc .detail-info { padding: 64px 0; background: var(--surface-muted); border-block: 1px solid var(--border-light); }
+.qc .detail-info-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr); gap: 64px; }
+.qc .detail-info h2 { margin: 8px 0 24px; font-size: 32px; }
+.qc .spec-table { margin: 0; border-top: 1px solid var(--border); }
+.qc .spec-table > div { display: grid; grid-template-columns: 170px 1fr; gap: 24px; padding: 15px 0; border-bottom: 1px solid var(--border); }
+.qc .spec-table dt { color: var(--fg-muted); margin: 0; }
+.qc .spec-table dd { margin: 0; font-weight: 700; }
+.qc .detail-info aside { display: grid; align-content: start; gap: 16px; }
+.qc .ideal-card, .qc .components-card { border: 1px solid var(--border); border-radius: var(--radius-s); background: var(--surface); padding: 24px; }
+.qc .icon-disc { width: 44px; height: 44px; display: grid; place-items: center; margin-bottom: 18px; border-radius: 50%; background: var(--brand-weak); color: var(--brand-hover); }
+.qc .ideal-card p { margin: 8px 0 0; font-size: 17px; font-weight: 700; line-height: 1.4; }
+.qc .components-card h3 { margin-bottom: 12px; font-size: 19px; }
+.qc .components-card ul { display: grid; gap: 8px; margin: 0; padding-left: 20px; color: var(--fg-muted); }
+.qc .product-note { border-left: 4px solid var(--coral); background: var(--brand-weak); padding: 15px 17px; color: #8b2d18; line-height: 1.5; }
+/* Nota INTERNA para el comercial: gris, nunca naranja, para que se distinga
+   de un aviso al cliente. NUNCA debe salir en comunicación al cliente. */
+.qc .product-note.product-note-internal { border-left-color: var(--gray-500); background: var(--gray-100); color: var(--gray-700); }
+.qc .related-section { padding-top: 64px; padding-bottom: 80px; }
+
+/* =============================================================
+   Barra de selección (sticky abajo)
+
+   El origen usaba una píldora en su header sticky + un drawer lateral. Aquí
+   no hay header propio (el dashboard ya tiene el suyo y dos navegaciones
+   compitiendo no es fidelidad, es un collage), así que la selección vive en
+   una barra inferior, que es el patrón correcto dentro de una herramienta.
+   ============================================================= */
+.qc .selection-bar { position: sticky; bottom: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-top: 28px; border: 1px solid var(--border); border-radius: var(--radius-m); background: rgba(255, 255, 255, 0.97); backdrop-filter: blur(10px); box-shadow: var(--shadow-card); padding: 14px 18px; }
+.qc .selection-bar-info { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.qc .selection-bar-count { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; }
+.qc .selection-bar-count b { min-width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: var(--cta); color: #ffffff; font-family: var(--font-mono); font-size: 12px; }
+.qc .selection-bar-total { font-family: var(--font-mono); font-size: 18px; font-weight: 700; }
+.qc .selection-bar-total small { display: block; font-family: var(--font-sans); font-size: 11px; font-weight: 400; color: var(--fg-muted); }
+.qc .selection-bar-actions { display: flex; align-items: center; gap: 10px; }
+
+/* =============================================================
+   Responsive — CONTAINER QUERIES, no media queries.
+
+   El origen usa @media 1080/800/600px. Aquí el catálogo vive dentro de un
+   <main> con un sidebar de 240px al lado, así que el ancho de viewport no
+   dice nada sobre el espacio real: en un monitor de 1280px el catálogo tiene
+   1040px y con @media caería al layout móvil por error.
+
+   Con @container los números del origen responden al espacio que el
+   catálogo realmente tiene, lo que hace el port MÁS fiel que copiarlo tal
+   cual. Requiere .qc-fluid en el contenedor.
+   ============================================================= */
+@container qc (max-width: 1080px) {
+  .qc .hero-inner { grid-template-columns: minmax(0, 1fr) 360px; gap: 32px; }
+  .qc .hero-copy h1 { font-size: 42px; }
+  .qc .hero-showcase { min-height: 320px; }
+  .qc .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Con 8 pestañas el scroller usa columnas de ancho fijo. */
+  .qc .category-guides { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 168px; overflow-x: auto; scrollbar-width: thin; }
+  .qc .detail-grid { gap: 40px; }
+  .qc .detail-media { min-height: 400px; }
+  .qc .detail-actions { grid-template-columns: 1fr; }
+}
+
+@container qc (max-width: 800px) {
+  .qc .section-shell { width: min(100% - 24px, 680px); }
+  .qc .hero::before { width: 5px; }
+  .qc .hero-inner { min-height: auto; grid-template-columns: 1fr; gap: 24px; padding-top: 40px; padding-bottom: 20px; }
+  .qc .hero-copy h1 { max-width: 640px; font-size: 38px; }
+  .qc .hero-copy > p { font-size: 17px; }
+  .qc .hero-showcase { width: min(100%, 620px); min-height: 320px; margin-inline: auto; }
+  .qc .trust-row { flex-wrap: wrap; gap: 12px 24px; padding-block: 14px; }
+  .qc .catalog-explorer { padding-top: 40px; padding-bottom: 60px; }
+  .qc .section-heading { display: block; }
+  .qc .section-heading h2 { font-size: 32px; }
+  .qc .section-heading > p { margin-top: 14px; }
+  .qc .catalog-toolbar { grid-template-columns: 1fr; }
+  .qc .detail-grid { grid-template-columns: 1fr; }
+  .qc .detail-copy { max-width: 620px; }
+  .qc .detail-info-grid { grid-template-columns: 1fr; gap: 40px; }
+}
+
+@container qc (max-width: 600px) {
+  .qc .section-shell { width: calc(100% - 20px); }
+  .qc .hero-inner { gap: 18px; padding-top: 28px; padding-bottom: 14px; }
+  .qc .hero-copy h1 { margin-top: 10px; font-size: 32px; line-height: 1.06; }
+  .qc .hero-copy > p { margin-bottom: 22px; font-size: 16px; }
+  .qc .hero-actions { gap: 8px; }
+  .qc .hero-actions .button { min-width: 0; flex: 1; padding-inline: 12px; white-space: nowrap; }
+  .qc .hero-showcase { min-height: 220px; }
+  .qc .hero-showcase-panel { inset: 14px 0 31px 24px; border-left-width: 4px; }
+  .qc .hero-showcase-caption { left: 24px; gap: 8px; font-size: 10px; }
+  .qc .trust-row { min-height: 56px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding-block: 10px; font-size: 12px; }
+  .qc .trust-row span { align-items: flex-start; gap: 5px; line-height: 1.25; }
+  .qc .product-grid { grid-template-columns: 1fr; }
+  .qc .product-content > p { min-height: 0; }
+  .qc .product-card-footer { align-items: stretch; flex-direction: column; }
+  .qc .select-button, .qc .qty-stepper { width: 100%; justify-content: center; }
+  .qc .page-hero { padding: 32px 0; }
+  .qc .page-hero h1, .qc .detail-copy h1 { font-size: 30px; }
+  .qc .detail-shell { padding-top: 20px; padding-bottom: 48px; }
+  .qc .detail-media { min-height: 300px; }
+  .qc .detail-media img { padding: 24px; }
+  .qc .detail-price strong { font-size: 26px; }
+  .qc .detail-info { padding: 48px 0; }
+  .qc .spec-table > div { grid-template-columns: 1fr; gap: 5px; }
+  .qc .selection-bar { flex-direction: column; align-items: stretch; }
+  .qc .selection-bar-actions .button { width: 100%; }
+}
+
+/* El origen lo aplica en global; aquí escopado. Lo necesitan el hover de la
+   tarjeta (translateY) y el zoom de la imagen (scale). */
+@media (prefers-reduced-motion: reduce) {
+  .qc *, .qc *::before, .qc *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -2,7 +2,7 @@
 // Validaciones puras (testeables) para pedidos.
 // =============================================================
 
-import type { Product } from '@/types/database'
+import { allowsLineDiscount, type ProductLike } from '@/lib/product-rules'
 
 /** Rango permitido para descuentos (por línea y global). */
 export const MIN_DISCOUNT_PCT = 0
@@ -15,8 +15,10 @@ export const MAX_DISCOUNT_PCT = 100
  *   - Rango libre 0-100 (entero). Antes existía un set fijo
  *     {0, 10, 100} con la promo "Printer 100%"; ahora cualquier
  *     categoría puede aplicar cualquier descuento entre 0 y 100.
- *   - `saas_hardware` sigue forzando 0: el precio negociado por el
- *     AE/AM ES el precio final acordado con el cliente.
+ *   - Los productos con `allows_discount = false` (hoy solo SaaS + Hardware)
+ *     fuerzan 0: el precio negociado por el AE/AM ES el precio final
+ *     acordado con el cliente. El dato vive en la fila, no en un `code`
+ *     hardcodeado — ver lib/product-rules.ts.
  *   - Los pedidos de financiación (`hardware_financiacion`) siguen
  *     rechazando descuentos en el POST /api/orders (plan de plazos
  *     fijo), pero la validación aquí no lo sabe — el caller (route)
@@ -27,7 +29,7 @@ export const MAX_DISCOUNT_PCT = 100
  */
 export function validateLineDiscount(
   pct: unknown,
-  category: Product['category'] | null | undefined,
+  product: ProductLike | null | undefined,
 ): { ok: true; pct: number } | { ok: false; error: string } {
   if (typeof pct !== 'number' || !Number.isFinite(pct)) {
     return { ok: false, error: 'Descuento inválido.' }
@@ -43,10 +45,10 @@ export function validateLineDiscount(
       error: `Descuento fuera de rango: debe estar entre ${MIN_DISCOUNT_PCT}% y ${MAX_DISCOUNT_PCT}%.`,
     }
   }
-  // Las ofertas SaaS + Hardware llevan precio libre negociado por el AE/AM.
-  // No se permiten descuentos sobre ese precio: el número introducido en
-  // unit_price_override_cents ES el precio final acordado con el cliente.
-  if (category === 'saas_hardware' && pct !== 0) {
+  // Ofertas de precio cerrado: el número introducido en
+  // unit_price_override_cents ES el precio final acordado con el cliente, así
+  // que un descuento encima no tiene sentido.
+  if (pct !== 0 && !allowsLineDiscount(product)) {
     return {
       ok: false,
       error:

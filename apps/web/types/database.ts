@@ -30,22 +30,102 @@ export type ProductCategory =
   | 'printer'
   | 'accessory'
   | 'network'
+  /** Servicios y SaaS: Implementación Pro, Software Qamarero, SaaS + Hardware. */
+  | 'service'
+  /** Solo `otro`. Sin pestaña en el catálogo: es el mecanismo de línea libre. */
   | 'custom'
+  /**
+   * @deprecated Migrado a 'service' en 20260825000002. Se conserva un release
+   * porque el SQL se aplica a mano (CLAUDE.md) y hay una ventana en la que la
+   * BD puede tener el valor viejo mientras el build ya lleva el nuevo.
+   * Al quitarlo, TypeScript señalará los sitios que queden por limpiar.
+   */
   | 'saas_hardware'
+
+/**
+ * Eje ORTOGONAL a `category`. Los SKU canarios llevan precio FINAL y
+ * vat_rate = 0: no es una exención sobre el precio peninsular, es otra lista
+ * de precios (TPV Pro 627 € + IVA en península, 539,07 € finales en Canarias).
+ * Un TPV canario sigue siendo category = 'tpv'.
+ */
+export type ProductRegion = 'peninsula' | 'canarias'
+
+/**
+ * Cómo se fija el precio de una línea con este producto.
+ *   catalog          — precio de catálogo (`price_cents`).
+ *   free_price       — el AE introduce el precio; el nombre es fijo.
+ *   free_price_named — el AE introduce precio Y descripción.
+ * Sustituye al predicado que estaba replicado por `code` en 7 ficheros.
+ */
+export type ProductPricingMode = 'catalog' | 'free_price' | 'free_price_named'
+
+/** Entrada de `products.specifications`: array para preservar el orden curado. */
+export interface ProductSpec {
+  label: string
+  value: string
+}
+
+/** Entrada de `products.price_breakdown`. Importes en CÉNTIMOS. */
+export interface ProductPriceBreakdownItem {
+  label: string
+  price_cents: number
+  quantity?: number
+}
+
+/** Entrada de `products.model_options`: modelos que se envían según stock. */
+export interface ProductModelOption {
+  name: string
+  image_url: string
+}
 
 export interface Product {
   id: string
   code: string
   name: string
+  /** Descripción técnica/ops para hardware. El texto comercial es `summary`. */
   description: string | null
   category: ProductCategory
   price_cents: number
   vat_rate: number
+  /** Bultos estimados para TIPSA. No es lo mismo que `components.length`. */
   package_count: number
   active: boolean
   sort_order: number
   created_at: string
   updated_at: string
+
+  // ── Ficha comercial (20260825000001). Nullable: el SQL se aplica a mano,
+  // así que el código tiene que tolerar filas aún sin metadatos.
+  /** `id` en hw-qamarero-catalog/lib/catalog.ts. Solo linaje de importación. */
+  catalog_slug?: string | null
+  brand?: string | null
+  model?: string | null
+  /** One-liner comercial. Las tarjetas y la ficha lo prefieren a `description`. */
+  summary?: string | null
+  ideal_for?: string | null
+  badge?: string | null
+  /** Nota INTERNA para el comercial. NUNCA en comunicación al cliente. */
+  internal_note?: string | null
+  availability_note?: string | null
+  model_availability_note?: string | null
+  price_prefix?: string | null
+  /** Ruta bajo /products/. Reemplaza la derivación por `code` del cliente. */
+  image_url?: string | null
+
+  // ── Ejes de negocio
+  region?: ProductRegion
+  pricing_mode?: ProductPricingMode
+  /** FALSE ⇒ la línea no admite `discount_pct` distinto de 0. */
+  allows_discount?: boolean
+
+  // ── Listas y estructuras ordenadas
+  highlights?: string[]
+  components?: string[]
+  specifications?: ProductSpec[]
+  price_breakdown?: ProductPriceBreakdownItem[] | null
+  model_options?: ProductModelOption[] | null
+  /** Suma de `price_breakdown`. Lo mantiene un trigger. */
+  standalone_price_cents?: number | null
 }
 
 export interface UserProfile {

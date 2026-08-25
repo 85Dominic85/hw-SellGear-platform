@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { canEditOrder } from '@/lib/auth'
 import { validateLineDiscount } from '@/lib/orders-validation'
+import type { ProductLike } from '@/lib/product-rules'
 import { cartTotals } from '@/lib/pricing'
 import type { UserRole, PurchaseType } from '@/types/database'
 
@@ -65,11 +66,14 @@ export async function PATCH(
 
   const admin = createAdminClient()
 
-  // 3. Cargar el item con su producto (para conocer categoría y validar
-  //    el descuento) y confirmar que pertenece al pedido.
+  // 3. Cargar el item con su producto (para validar el descuento contra sus
+  //    reglas) y confirmar que pertenece al pedido.
+  //    Requiere la migración 20260825000001 aplicada (allows_discount).
   const { data: item, error: itemError } = await admin
     .from('order_items')
-    .select('id, order_id, product_id, products:products(category, code)')
+    .select(
+      'id, order_id, product_id, products:products(category, code, allows_discount)',
+    )
     .eq('id', itemId)
     .eq('order_id', orderId)
     .single()
@@ -79,22 +83,8 @@ export async function PATCH(
 
   // El embed products puede tiparse como objeto o array segun el inference
   // de Supabase; tratamos ambos casos.
-  const productRaw = item.products as
-    | { category: string; code: string }
-    | Array<{ category: string; code: string }>
-    | null
+  const productRaw = item.products as ProductLike | ProductLike[] | null
   const product = Array.isArray(productRaw) ? productRaw[0] ?? null : productRaw
-  const category = product?.category as
-    | 'pack'
-    | 'tpv'
-    | 'kds'
-    | 'printer'
-    | 'accessory'
-    | 'network'
-    | 'custom'
-    | 'saas_hardware'
-    | null
-    | undefined
 
   // 4. Bloquear el descuento en pedidos de financiación (mantiene la
   //    invariante del POST /api/orders).
@@ -118,8 +108,8 @@ export async function PATCH(
     )
   }
 
-  // 5. Validar el nuevo descuento contra la categoría.
-  const check = validateLineDiscount(body.discount_pct, category)
+  // 5. Validar el nuevo descuento contra las reglas del producto.
+  const check = validateLineDiscount(body.discount_pct, product)
   if (!check.ok) {
     return NextResponse.json({ error: check.error }, { status: 400 })
   }

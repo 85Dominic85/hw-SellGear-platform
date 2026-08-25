@@ -30,6 +30,14 @@ import { canEditOrder } from '@/lib/auth'
 import { validateLineDiscount } from '@/lib/orders-validation'
 import { isCanaryIslands } from '@/lib/utils'
 import type { UserRole, Product } from '@/types/database'
+import {
+  isFreePrice,
+  needsCustomName,
+  requiresCanaryShipping,
+  missingNameError,
+  missingPriceError,
+  canaryShippingError,
+} from '@/lib/product-rules'
 
 export const runtime = 'nodejs'
 
@@ -144,39 +152,31 @@ export async function POST(
       )
     }
 
-    // Validar descuento contra la categoría (0/10/100, 100 solo printer,
-    // saas_hardware no admite descuento).
+    // Los SKU canarios llevan precio FINAL con vat_rate = 0: si se colara en
+    // un pedido peninsular se facturaría al 0 % con precio canario.
+    if (requiresCanaryShipping(product as Product) && !isCanaryExempt) {
+      return NextResponse.json(
+        { error: canaryShippingError(product as Product) },
+        { status: 400 },
+      )
+    }
+
+    // Rango libre 0-100 entero; allows_discount = false fuerza 0.
     const discountPctRaw =
       typeof body.discount_pct === 'number' ? body.discount_pct : 0
-    const discountCheck = validateLineDiscount(
-      discountPctRaw,
-      (product as Product).category,
-    )
+    const discountCheck = validateLineDiscount(discountPctRaw, product as Product)
     if (!discountCheck.ok) {
       return NextResponse.json({ error: discountCheck.error }, { status: 400 })
     }
     resolvedDiscountPct = discountCheck.pct
 
     // Productos con precio libre negociado (mismo patrón que POST /api/orders).
-    const isImplPro = (product as Product).code === 'implementacion-pro'
-    const isSoftwareQa = (product as Product).code === 'software-qamarero'
-    const isFreePriceProduct =
-      (product as Product).code === 'otro' ||
-      (product as Product).category === 'saas_hardware' ||
-      isImplPro ||
-      isSoftwareQa
-    if (isFreePriceProduct) {
-      const isSaasHw = (product as Product).category === 'saas_hardware'
-      const needsName = !isImplPro && !isSoftwareQa
+    if (isFreePrice(product as Product)) {
       const overrideName =
         typeof body.product_name === 'string' ? body.product_name.trim() : ''
-      if (needsName && !overrideName) {
+      if (needsCustomName(product as Product) && !overrideName) {
         return NextResponse.json(
-          {
-            error: isSaasHw
-              ? 'Las líneas SaaS + Hardware requieren descripción de la oferta.'
-              : 'Las líneas "Otro" requieren descripción del producto.',
-          },
+          { error: missingNameError(product as Product) },
           { status: 400 },
         )
       }
@@ -186,15 +186,7 @@ export async function POST(
           : 0
       if (overridePrice <= 0) {
         return NextResponse.json(
-          {
-            error: isImplPro
-              ? 'Implementación Pro requiere un precio mayor que 0.'
-              : isSoftwareQa
-                ? 'Software Qamarero requiere un precio mayor que 0.'
-                : isSaasHw
-                  ? 'Las líneas SaaS + Hardware requieren un precio negociado mayor que 0.'
-                  : 'Las líneas "Otro" requieren un precio unitario mayor que 0.',
-          },
+          { error: missingPriceError(product as Product) },
           { status: 400 },
         )
       }

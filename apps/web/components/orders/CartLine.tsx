@@ -3,27 +3,21 @@
 import ProductPicker from './ProductPicker'
 import type { Product } from '@/types/database'
 import { lineTotalCents, formatEurosCents } from '@/lib/pricing'
+import type { CartLineState } from '@/lib/catalog/rules'
+import {
+  allowsLineDiscount,
+  customNameLabel,
+  customNamePlaceholder,
+  freePriceLabel,
+  isFreePrice,
+  needsCustomName,
+} from '@/lib/product-rules'
 
-export interface CartLineState {
-  product_id: string | null
-  product_name_override: string
-  unit_price_override_cents: number | null
-  qty: number
-  /**
-   * Descuento por linea. Rango libre 0-100 entero. `saas_hardware`
-   * sigue forzando 0 (precio negociado = precio final). Financiación
-   * también sigue rechazando ≠0 (validación en POST /api/orders).
-   */
-  discount_pct: number
-}
-
-export const EMPTY_LINE: CartLineState = {
-  product_id: null,
-  product_name_override: '',
-  unit_price_override_cents: null,
-  qty: 1,
-  discount_pct: 0,
-}
+// El estado del carrito y sus reducers viven en lib/catalog/rules.ts (dato
+// puro, compartido con /catalogo y con el modal de la ficha de pedido). Aquí
+// se reexportan para no romper los imports existentes.
+export type { CartLineState } from '@/lib/catalog/rules'
+export { EMPTY_LINE } from '@/lib/catalog/rules'
 
 interface CartLineProps {
   line: CartLineState
@@ -42,8 +36,8 @@ interface CartLineProps {
    * Si es true, el ProductPicker queda deshabilitado. Lo usa el wizard
    * cuando el producto se anadio via tile del cat (ProductCatalog) — el
    * AE no debe cambiar el SKU desde aqui, solo qty / descuento / quitar.
-   * Para lineas libres ('otro' / 'saas_hardware') es false: el AE sigue
-   * pudiendo elegir entre los dos SKUs especiales.
+   * Para lineas libres es false: el AE sigue pudiendo elegir entre los SKU
+   * de precio libre con descripcion (pricing_mode = 'free_price_named').
    */
   lockProduct?: boolean
 }
@@ -59,22 +53,13 @@ export default function CartLine({
   lockProduct = false,
 }: CartLineProps) {
   const product = products.find((p) => p.id === line.product_id) ?? null
-  // Productos con precio libre negociado por el AE/AM (activan input de precio):
-  //   - code='otro'                  (cualquier item ad-hoc)
-  //   - category='saas_hardware'     (ofertas SaaS + Hardware)
-  //   - code='implementacion-pro'    (servicio con precio a medida)
-  //   - code='software-qamarero'     (licencia software por transferencia)
-  const isFreePrice =
-    product?.code === 'otro' ||
-    product?.category === 'saas_hardware' ||
-    product?.code === 'implementacion-pro' ||
-    product?.code === 'software-qamarero'
-  // Solo 'otro' y 'saas_hardware' requieren descripción libre. Los productos
-  // con nombre fijo del catálogo (implementación pro, software qamarero) no.
-  const needsName =
-    product?.code === 'otro' || product?.category === 'saas_hardware'
+  // Reglas del producto (precio libre, descripción libre, descuento) — viven
+  // en products.pricing_mode / allows_discount, no en un `code` hardcodeado.
+  const freePrice = isFreePrice(product)
+  const needsName = needsCustomName(product)
+  const discountLocked = !allowsLineDiscount(product)
 
-  const priceCents = isFreePrice
+  const priceCents = freePrice
     ? line.unit_price_override_cents ?? 0
     : product?.price_cents ?? 0
   const vatRate =
@@ -98,19 +83,17 @@ export default function CartLine({
           <ProductPicker
             value={line.product_id}
             onChange={(productId) => {
-              // Reset del descuento al cambiar de producto solo si el
-              // nuevo es saas_hardware (precio libre negociado = precio
-              // final; no admite descuento). Para el resto de categorías
-              // preservamos el descuento libre 0-100 que ya hubiera.
+              // Reset del descuento al cambiar de producto solo si el nuevo
+              // no admite descuento (precio negociado = precio final). Para
+              // el resto preservamos el descuento 0-100 que ya hubiera.
               const newProduct = products.find((p) => p.id === productId)
-              const resetForSaasHw =
-                newProduct?.category === 'saas_hardware' &&
-                line.discount_pct !== 0
+              const mustReset =
+                !allowsLineDiscount(newProduct) && line.discount_pct !== 0
               onChange(index, {
                 product_id: productId,
                 product_name_override: '',
                 unit_price_override_cents: null,
-                ...(resetForSaasHw ? { discount_pct: 0 } : {}),
+                ...(mustReset ? { discount_pct: 0 } : {}),
               })
             }}
             products={products}
@@ -148,7 +131,7 @@ export default function CartLine({
             step={1}
             value={line.discount_pct}
             onChange={(e) => {
-              if (product?.category === 'saas_hardware') {
+              if (discountLocked) {
                 onChange(index, { discount_pct: 0 })
                 return
               }
@@ -159,10 +142,10 @@ export default function CartLine({
               onChange(index, { discount_pct: clamped })
             }}
             className={`${inputClass} text-center`}
-            disabled={product?.category === 'saas_hardware'}
+            disabled={discountLocked}
             title={
-              product?.category === 'saas_hardware'
-                ? 'SaaS + Hardware no admite descuento (precio negociado es el final).'
+              discountLocked
+                ? 'Esta oferta no admite descuento (el precio negociado ya es el final).'
                 : 'Descuento por línea: entero entre 0 y 100'
             }
           />
@@ -207,7 +190,7 @@ export default function CartLine({
       {/* Inputs extra cuando el producto tiene precio libre.
           - Descripción: SOLO si el producto la necesita (otro/saas_hardware).
           - Precio: SIEMPRE (obligatorio). */}
-      {isFreePrice && (
+      {freePrice && (
         <div
           className={`mt-3 grid grid-cols-1 gap-3 border-t border-gray-200 pt-3 ${
             needsName ? 'sm:grid-cols-2' : ''
@@ -216,9 +199,7 @@ export default function CartLine({
           {needsName && (
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-700">
-                {product?.category === 'saas_hardware'
-                  ? 'Descripción de la oferta SaaS + Hardware'
-                  : 'Descripción del producto'}{' '}
+                {product ? customNameLabel(product) : 'Descripción del producto'}{' '}
                 <span className="text-red-500">*</span>
               </label>
               <input
@@ -228,9 +209,7 @@ export default function CartLine({
                   onChange(index, { product_name_override: e.target.value })
                 }
                 placeholder={
-                  product?.category === 'saas_hardware'
-                    ? 'Ej: SaaS 12 meses + 2 TPV + 1 KDS'
-                    : 'Ej: Soporte para tablet personalizado'
+                  product ? customNamePlaceholder(product) : 'Ej: Soporte para tablet personalizado'
                 }
                 maxLength={200}
                 className={inputClass}
@@ -239,12 +218,7 @@ export default function CartLine({
           )}
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-700">
-              {product?.category === 'saas_hardware'
-                ? 'Precio negociado s/IVA (€)'
-                : product?.code === 'implementacion-pro' ||
-                    product?.code === 'software-qamarero'
-                  ? 'Precio acordado s/IVA (€)'
-                  : 'Precio unitario s/IVA (€)'}{' '}
+              {product ? freePriceLabel(product) : 'Precio unitario s/IVA (€)'}{' '}
               <span className="text-red-500">*</span>
             </label>
             <input

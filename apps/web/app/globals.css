@@ -1,6 +1,17 @@
 @import "tailwindcss";
 
 /* =============================================================
+   Catálogo comercial — hoja portada del repo hw-qamarero-catalog.
+
+   Va aquí porque los @import deben preceder a cualquier otra regla. No
+   importa para la cascada: Tailwind v4 emite sus utilidades dentro de
+   @layer, y el CSS SIN capa gana a cualquier capa independientemente del
+   orden de origen. Así las reglas .qc portadas ganan a las utilidades
+   dentro de ese subárbol sin necesidad de !important.
+   ============================================================= */
+@import "./catalog.css";
+
+/* =============================================================
    Qamarero Design Tokens (Figma Design System)
    Portados desde los tokens oficiales entregados por Diseño.
    Marca: naranja #ff592f. Tipografía: DM Sans + Space Mono.
@@ -117,6 +128,15 @@
   --input: var(--gray-300);
   --ring: var(--brand); /* focus ring = naranja de marca */
 
+  /* ── CTA del catálogo comercial ──
+     El catálogo web usa un naranja más oscuro para el botón primario. No es
+     un color nuevo: #c03818 ya es --brand-hover. Se declara como token
+     propio porque allí es el color en REPOSO, no el de hover, y en el hero
+     convive con --brand (barra lateral, badge) para dar jerarquía.
+     Contraste sobre blanco: 5,9:1 (frente a 4,6:1 de --brand). */
+  --cta: #c03818;
+  --cta-hover: #a53116;
+
   /* ── Radios (Qamarero Style Guide) ── */
   --radius-sm: 6px;
   --radius-md: 8px;
@@ -148,6 +168,8 @@
   --color-brand: var(--brand);
   --color-brand-hover: var(--brand-hover);
   --color-brand-foreground: var(--brand-foreground);
+  --color-cta: var(--cta);
+  --color-cta-hover: var(--cta-hover);
 
   /* Semánticos como utilities */
   --color-success: var(--success);

@@ -1,17 +1,25 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import type { PurchaseType, Product } from '@/types/database'
+import type { PurchaseType, Product, ProductRegion } from '@/types/database'
 import { isCanaryIslands } from '@/lib/utils'
 import { fieldRequirementsFor } from '@/lib/order-requirements'
+import {
+  isFreePrice,
+  needsCustomName,
+  missingNameError,
+  missingPriceError,
+} from '@/lib/product-rules'
 import type { CartLineState } from '@/components/orders/CartLine'
 import CartSummary from '@/components/orders/CartSummary'
-import ProductCatalog from '@/components/orders/ProductCatalog'
+import Step2Catalog from '@/components/orders/Step2Catalog'
 import FinancingCatalog from '@/components/orders/FinancingCatalog'
 import FinancingSummary from '@/components/orders/FinancingSummary'
 import { isFinanceableCode } from '@/lib/financing'
+import { SELECTION_PARAM, parseCatalogPicks } from '@/lib/catalog/order-link'
+import { applyAddProduct } from '@/lib/catalog/rules'
 import BankReceiptInput from '@/components/orders/BankReceiptInput'
 import WizardSteps from '@/components/orders/WizardSteps'
 import PurchaseTypeTile, {
@@ -88,6 +96,13 @@ export default function NewOrderPage() {
   const [error, setError] = useState<string | null>(null)
   // Popup de revisión final antes de crear el pedido.
   const [showReview, setShowReview] = useState(false)
+  /**
+   * Región del pedido, elegida en el paso 2. El CP se pide en el paso 3, así
+   * que sin esto el catálogo no sabría qué lista de precios mostrar y se
+   * podrían mezclar SKU peninsulares y canarios (el servidor lo rechaza, pero
+   * descubrirlo al confirmar sería el peor momento).
+   */
+  const [region, setRegion] = useState<ProductRegion>('peninsula')
 
   useEffect(() => {
     async function loadCatalog() {
@@ -107,6 +122,49 @@ export default function NewOrderPage() {
     }
     loadCatalog()
   }, [])
+
+  // ---------------------------------------------------------------
+  // Puente desde /catalogo: ?sel=code:qty,...
+  //
+  // Se aplica DESPUES de que resuelva el catalogo, porque los picks vienen
+  // por `code` y CartLineState referencia `product_id`, asi que el mapeo
+  // necesita la lista de productos.
+  //
+  // NO se salta el paso 1 a proposito: purchase_type gobierna todos los
+  // requisitos posteriores, y selectPurchaseType VACIA el carrito al cruzar
+  // la frontera de financiacion. Llegar precargado y que el carrito se
+  // vaciara en silencio seria el peor resultado posible.
+  // ---------------------------------------------------------------
+  const searchParams = useSearchParams()
+  const picksApplied = useRef(false)
+  const [importedCount, setImportedCount] = useState(0)
+
+  useEffect(() => {
+    if (picksApplied.current) return
+    if (loadingCatalog || catalogError || products.length === 0) return
+
+    const picks = parseCatalogPicks(searchParams.get(SELECTION_PARAM))
+    picksApplied.current = true
+    if (picks.length === 0) return
+
+    const byCode = new Map(products.map((p) => [p.code, p]))
+    let next: CartLineState[] = []
+    let applied = 0
+    for (const pick of picks) {
+      const product = byCode.get(pick.code)
+      // Los codes desconocidos o inactivos se descartan en silencio: la URL
+      // es entrada del usuario y el catalogo puede haber cambiado.
+      if (!product) continue
+      next = applyAddProduct(next, product, pick.qty)
+      applied += 1
+    }
+    if (applied === 0) return
+
+    setItems(next)
+    setImportedCount(applied)
+    // replace, nunca push: un refresh no debe volver a aplicar los picks.
+    router.replace('/orders/new')
+  }, [loadingCatalog, catalogError, products, searchParams, router])
 
   function setField<K extends keyof FormData>(key: K, value: FormData[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -166,29 +224,17 @@ export default function NewOrderPage() {
       if (!product) {
         return 'Hay un producto del carrito que no existe en el catálogo.'
       }
-      const isImplPro = product.code === 'implementacion-pro'
-      const isSoftwareQa = product.code === 'software-qamarero'
-      const isFree =
-        product.code === 'otro' ||
-        product.category === 'saas_hardware' ||
-        isImplPro ||
-        isSoftwareQa
-      if (isFree) {
-        // Productos con nombre fijo del catálogo no exigen descripción.
-        const needsName = !isImplPro && !isSoftwareQa
-        if (needsName && !it.product_name_override.trim()) {
-          return product.category === 'saas_hardware'
-            ? 'Las líneas SaaS + Hardware requieren descripción de la oferta.'
-            : 'Las líneas "Otro" requieren descripción del producto.'
+      // Espejo cliente de la validación de POST /api/orders. Los mensajes
+      // salen del mismo helper, así que no pueden divergir del servidor.
+      if (isFreePrice(product)) {
+        if (needsCustomName(product) && !it.product_name_override.trim()) {
+          return missingNameError(product)
         }
-        if (it.unit_price_override_cents === null || it.unit_price_override_cents <= 0) {
-          return isImplPro
-            ? 'Implementación Pro requiere un precio mayor que 0.'
-            : isSoftwareQa
-              ? 'Software Qamarero requiere un precio mayor que 0.'
-              : product.category === 'saas_hardware'
-                ? 'Las líneas SaaS + Hardware requieren un precio negociado mayor que 0.'
-                : 'Las líneas "Otro" requieren un precio unitario mayor que 0.'
+        if (
+          it.unit_price_override_cents === null ||
+          it.unit_price_override_cents <= 0
+        ) {
+          return missingPriceError(product)
         }
       }
     }
@@ -603,6 +649,13 @@ export default function NewOrderPage() {
           {step === 2 && (
             <>
               <div className={sectionClass}>
+                {importedCount > 0 && (
+                  <div className="mb-4 rounded-lg bg-blue-50 px-4 py-2.5 text-xs text-blue-800 ring-1 ring-blue-200">
+                    {importedCount}{' '}
+                    {importedCount === 1 ? 'producto' : 'productos'} traídos del
+                    catálogo. Revisa la selección antes de continuar.
+                  </div>
+                )}
                 <div className="mb-4">
                   <h2 className="text-sm font-semibold text-gray-900">
                     {isFinancing ? 'Producto a financiar' : 'Productos'}
@@ -635,12 +688,30 @@ export default function NewOrderPage() {
                       vatRate={financingVatRate}
                     />
                   ) : (
-                    <ProductCatalog
+                    <Step2Catalog
                       products={products}
                       items={items}
                       onItemsChange={setItems}
-                      vatRateOverride={isCanaryIslands(form.shipping_cp) ? 0 : null}
+                      vatRateOverride={
+                        region === 'canarias' ||
+                        isCanaryIslands(form.shipping_cp)
+                          ? 0
+                          : null
+                      }
                       purchaseType={form.purchase_type}
+                      region={region}
+                      onRegionChange={(next) => {
+                        // Cambiar de region vacia el carrito: los SKU
+                        // peninsulares y canarios son listas de precios
+                        // distintas y no son intercambiables.
+                        setRegion(next)
+                        setItems([])
+                        // Prerrellena / limpia el CP del paso 3 para que el
+                        // servidor calcule el IVA correcto.
+                        if (next === 'canarias' && !isCanaryIslands(form.shipping_cp)) {
+                          setField('shipping_cp', '')
+                        }
+                      }}
                     />
                   )
                 )}
