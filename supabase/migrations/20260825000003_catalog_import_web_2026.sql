@@ -32,7 +32,8 @@
 -- Los pedidos históricos NO se alteran: order_items guarda snapshot
 -- inmutable de product_name, unit_price_cents y vat_rate.
 --
--- Requiere 20260825000001 y 20260825000002 aplicadas.
+-- Requiere 20260825000001 y 20260825000002 aplicadas. Hay una guarda al
+-- principio que lo comprueba y falla con un mensaje claro si falta alguna.
 -- Aplicación manual en Supabase SQL Editor, DENTRO DE UNA TRANSACCIÓN.
 -- =============================================================
 
@@ -41,6 +42,49 @@
 --     FROM public.products ORDER BY code;
 
 BEGIN;
+
+-- -------------------------------------------------------------
+-- Guarda de precondiciones.
+--
+-- Falla AQUI, en la primera linea, en vez de en el CHECK de category de la
+-- linea 880: el resultado es el mismo (todo dentro de la transaccion se
+-- revierte) pero el mensaje dice que hacer.
+-- -------------------------------------------------------------
+DO $guard$
+DECLARE
+  faltan_columnas text;
+  categorias_malas text;
+BEGIN
+  -- 20260825000001 aplicada?
+  SELECT string_agg(c, ', ')
+    INTO faltan_columnas
+    FROM unnest(ARRAY['region','pricing_mode','allows_discount','catalog_slug',
+                      'summary','image_url','specifications','price_breakdown',
+                      'standalone_price_cents']) AS c
+   WHERE NOT EXISTS (
+     SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'products'
+        AND column_name = c
+   );
+  IF faltan_columnas IS NOT NULL THEN
+    RAISE EXCEPTION
+      'Falta aplicar 20260825000001_products_rich_metadata.sql: no existen las columnas %.',
+      faltan_columnas;
+  END IF;
+
+  -- 20260825000002 aplicada? Es lo que mueve saas_hardware -> service.
+  SELECT string_agg(DISTINCT category, ', ')
+    INTO categorias_malas
+    FROM public.products
+   WHERE category NOT IN ('pack','tpv','kds','printer','accessory',
+                          'network','service','custom');
+  IF categorias_malas IS NOT NULL THEN
+    RAISE EXCEPTION
+      'Hay filas con category fuera de la lista permitida (%). Si aparece "saas_hardware", falta aplicar 20260825000002_products_pricing_flags.sql. Si es otro valor, la BD tiene una categoria que este catalogo no contempla: revisala antes de continuar.',
+      categorias_malas;
+  END IF;
+END
+$guard$;
 
 -- -------------------------------------------------------------
 -- Packs
