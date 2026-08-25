@@ -21,6 +21,10 @@
 -- Aplicación manual en Supabase SQL Editor.
 -- =============================================================
 
+-- En Postgres el DDL es transaccional: si algo falla a mitad, ROLLBACK deja
+-- la tabla exactamente como estaba en vez de a medio migrar.
+BEGIN;
+
 -- -------------------------------------------------------------
 -- 1. Columnas
 -- -------------------------------------------------------------
@@ -245,3 +249,26 @@ DROP POLICY IF EXISTS "products: manager full" ON public.products;
 CREATE POLICY "products: manager full" ON public.products FOR ALL
   USING (public.get_my_role() = 'manager')
   WITH CHECK (public.get_my_role() = 'manager');
+
+COMMIT;
+
+-- -------------------------------------------------------------
+-- Comprobaciones DESPUÉS de aplicar:
+-- -------------------------------------------------------------
+--   -- Las 20 columnas nuevas existen
+--   SELECT count(*) FROM information_schema.columns
+--    WHERE table_schema = 'public' AND table_name = 'products'
+--      AND column_name IN ('catalog_slug','brand','model','summary','ideal_for',
+--        'badge','internal_note','availability_note','model_availability_note',
+--        'price_prefix','image_url','region','pricing_mode','allows_discount',
+--        'highlights','components','specifications','price_breakdown',
+--        'model_options','standalone_price_cents');
+--   -- esperado: 20
+--
+--   -- Las 22 filas existentes quedaron intactas y con los defaults nuevos
+--   SELECT count(*) AS filas,
+--          count(*) FILTER (WHERE region = 'peninsula')     AS peninsula,
+--          count(*) FILTER (WHERE pricing_mode = 'catalog') AS catalogo,
+--          count(*) FILTER (WHERE allows_discount)          AS con_descuento
+--     FROM public.products;
+--   -- esperado: 22 / 22 / 22 / 22
