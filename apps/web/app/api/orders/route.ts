@@ -24,6 +24,14 @@ import {
 } from '@/lib/financing'
 import { notifyOrderEvent, formatItemsSummary } from '@/lib/slack'
 
+/**
+ * Tope de `order_items.notes` que acepta este endpoint.
+ *
+ * La columna es TEXT sin límite y el valor llega del cliente. Hoy el wizard
+ * solo manda la constante TABLET_GIFT_NOTE, así que 500 sobra de largo.
+ */
+const MAX_ITEM_NOTES_LEN = 500
+
 export async function POST(request: NextRequest) {
   // 1. Authenticate via user session
   const supabase = await createClient()
@@ -199,6 +207,14 @@ export async function POST(request: NextRequest) {
     discount_pct: number
     product_name_override: string | null
     unit_price_override_cents: number | null
+    /**
+     * Nota de la línea -> order_items.notes. La usa el wizard para marcar la
+     * tablet de regalo por Implementación Pro: en la ficha del pedido es lo
+     * único que explica una línea a 0 €, y sin ella quien prepara el envío no
+     * sabe que la tablet va incluida. Mismo contrato que
+     * POST /api/orders/[id]/items.
+     */
+    notes: string | null
   }
 
   const cartInputs: CartItemInput[] = []
@@ -240,6 +256,12 @@ export async function POST(request: NextRequest) {
       unit_price_override_cents:
         typeof r.unit_price_override_cents === 'number'
           ? Math.floor(r.unit_price_override_cents)
+          : null,
+      // order_items.notes es TEXT sin límite, y esto llega de un cliente: se
+      // recorta a 500 para que no se pueda usar como saco de datos.
+      notes:
+        typeof r.notes === 'string'
+          ? r.notes.trim().slice(0, MAX_ITEM_NOTES_LEN) || null
           : null,
     })
   }
@@ -311,6 +333,7 @@ export async function POST(request: NextRequest) {
     discount_pct: number
     unit_price_cents: number
     vat_rate: number
+    notes: string | null
   }
   // Politica fiscal Canarias (actualizada 21-may-2026):
   //   - Por acuerdo comercial de la empresa, las ventas/envios a Canarias
@@ -396,6 +419,7 @@ export async function POST(request: NextRequest) {
       // Snapshot inmutable: envío a Canarias -> exento (0 %); si no, el IVA
       // del producto (21 % por defecto).
       vat_rate: overrideVatRate ?? Number(product.vat_rate),
+      notes: it.notes,
     })
   }
 
@@ -459,6 +483,7 @@ export async function POST(request: NextRequest) {
       discount_pct: line.discount_pct,
       unit_price_cents: line.unit_price_cents,
       vat_rate: line.vat_rate,
+      notes: line.notes,
     })),
   )
 

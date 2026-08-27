@@ -372,6 +372,10 @@ export default function NewOrderPage() {
             discount_pct: it.discount_pct,
             product_name_override: it.product_name_override.trim() || null,
             unit_price_override_cents: it.unit_price_override_cents,
+            // Traza de la línea (hoy solo la de tablet regalo). Sin esto la
+            // ficha del pedido enseñaba "—" en la columna de notas y una
+            // tablet a 0 € era indistinguible de un descuento equivocado.
+            notes: it.notes,
           })),
         }),
       })

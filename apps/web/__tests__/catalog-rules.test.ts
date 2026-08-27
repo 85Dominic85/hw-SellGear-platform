@@ -14,6 +14,7 @@ import {
   GIFT_DISCOUNT_PCT,
   IMPL_PRO_CODE,
   TABLET_GIFT_CODE,
+  TABLET_GIFT_NOTE,
   applyAddFreeLine,
   applyAddProduct,
   applyAddTabletGift,
@@ -243,5 +244,40 @@ describe('applyAddProduct con precio de referencia', () => {
     const next = applyAddProduct(items, implProConTarifa)
     expect(next[0].qty).toBe(2)
     expect(next[0].unit_price_override_cents).toBe(35000)
+  })
+})
+
+describe('nota de la línea de regalo', () => {
+  // order_items.notes es la columna que lee quien prepara el envío. Sin ella
+  // una tablet a 0 € parece un descuento equivocado y se queda sin enviar,
+  // así que esto es traza operativa, no cosmética.
+  it('applyAddTabletGift deja la nota en la línea', () => {
+    const next = applyAddTabletGift([], tablet)
+    expect(next[0]).toMatchObject({
+      product_id: tablet.id,
+      qty: 1,
+      discount_pct: GIFT_DISCOUNT_PCT,
+      notes: TABLET_GIFT_NOTE,
+    })
+  })
+
+  it('la línea vacía y las de catálogo no llevan nota', () => {
+    expect(EMPTY_LINE.notes).toBeNull()
+    expect(applyAddProduct([], tpv)[0].notes).toBeNull()
+    expect(applyAddFreeLine([])[0].notes).toBeNull()
+  })
+
+  it('una tablet comprada (no regalada) no lleva la nota del regalo', () => {
+    expect(applyAddProduct([], tablet)[0].notes).toBeNull()
+  })
+
+  it('sigue siendo idempotente: no duplica la línea ni la nota', () => {
+    const once = applyAddTabletGift([], tablet)
+    expect(applyAddTabletGift(once, tablet)).toBe(once)
+  })
+
+  it('applyDeclineTabletGift se lleva la línea con su nota', () => {
+    const withGift = applyAddTabletGift([], tablet)
+    expect(applyDeclineTabletGift(withGift, tablet)).toHaveLength(0)
   })
 })

@@ -27,6 +27,15 @@ export interface CartLineState {
    * financiación también rechaza != 0 en POST /api/orders.
    */
   discount_pct: number
+  /**
+   * Nota de la línea, tal cual va a `order_items.notes`.
+   *
+   * En la ficha del pedido es la columna que lee quien prepara el envío, y es
+   * lo único que explica una línea a 0 €: sin ella la tablet de regalo parece
+   * un error de precio y se queda sin enviar. La pone `applyAddTabletGift`;
+   * el wizard no tiene campo libre para el resto de líneas.
+   */
+  notes: string | null
 }
 
 export const EMPTY_LINE: CartLineState = {
@@ -35,6 +44,7 @@ export const EMPTY_LINE: CartLineState = {
   unit_price_override_cents: null,
   qty: 1,
   discount_pct: 0,
+  notes: null,
 }
 
 // -------------------------------------------------------------
@@ -154,7 +164,14 @@ export function applyAdjustQty(
   return next
 }
 
-/** Añade la tablet como regalo (descuento 100 %). Idempotente. */
+/**
+ * Añade la tablet como regalo (descuento 100 %). Idempotente.
+ *
+ * La nota viaja a `order_items.notes` y es imprescindible: en la ficha del
+ * pedido es lo único que distingue el regalo de un descuento del 100 % puesto
+ * por error, así que sin ella quien prepara el envío no sabe que la tablet
+ * entra en el paquete.
+ */
 export function applyAddTabletGift(
   items: CartLineState[],
   tablet: Product | null,
@@ -167,6 +184,7 @@ export function applyAddTabletGift(
       product_id: tablet.id,
       qty: 1,
       discount_pct: GIFT_DISCOUNT_PCT,
+      notes: TABLET_GIFT_NOTE,
     },
   ]
 }
