@@ -6,7 +6,7 @@ import type { Product } from '@/types/database'
 import { cartTotals } from '@/lib/pricing'
 import { formatCatalogPrice } from '@/lib/catalog/format'
 import { buildNewOrderHref } from '@/lib/catalog/order-link'
-import { isFreePrice } from '@/lib/product-rules'
+import { isFreePrice, referencePriceCents } from '@/lib/product-rules'
 import { useCatalogSelection } from './CatalogSelectionProvider'
 
 interface CatalogSelectionBarProps {
@@ -36,17 +36,31 @@ export default function CatalogSelectionBar({
     .map(([code, qty]) => ({ product: byCode.get(code), qty }))
     .filter((x): x is { product: Product; qty: number } => Boolean(x.product))
 
-  // Los productos de precio libre no cuentan para el total: su importe se
-  // acuerda en el pedido. Se avisa aparte en vez de sumarlos como 0 sin decir
-  // nada.
-  const priced = selected.filter((x) => !isFreePrice(x.product))
-  const pendingCount = selected.length - priced.length
+  /*
+   * Un producto cuenta para el total si tiene cifra: la de tarifa, o la de
+   * referencia si es de precio libre pero está tarifado (Implementación Pro,
+   * 500 €). Solo quedan fuera los que se cotizan de cero, y de esos se avisa
+   * aparte en vez de sumarlos como 0 sin decir nada.
+   *
+   * Antes el filtro era `!isFreePrice`, así que en cuanto la tarjeta empezó a
+   * mostrar los 500 € de Implementación Pro esta barra seguía diciendo 0 €:
+   * dos cifras distintas para el mismo producto en la misma pantalla.
+   */
+  const withPrice = selected
+    .map((x) => ({
+      ...x,
+      priceCents: isFreePrice(x.product)
+        ? referencePriceCents(x.product)
+        : x.product.price_cents,
+    }))
+    .filter((x): x is typeof x & { priceCents: number } => x.priceCents !== null)
+  const pendingCount = selected.length - withPrice.length
 
-  // Preview al 21 %: el IVA real depende del CP, que se pide en el paso 3.
-  // Para Canarias el vat_rate del producto ya es 0.
+  // Preview: el IVA real depende del CP, que se pide en el paso 3. Para
+  // Canarias el vat_rate del producto ya es 0.
   const totals = cartTotals(
-    priced.map((x) => ({
-      priceCents: x.product.price_cents,
+    withPrice.map((x) => ({
+      priceCents: x.priceCents,
       qty: x.qty,
       discountPct: 0,
       vatRate: Number(x.product.vat_rate),

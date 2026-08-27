@@ -114,18 +114,22 @@ export default function CartSummary({
   const totals = cartTotals(computed, discountGlobalPct)
   const totalPackages = totalPackagesOf(detailed)
   const editable = typeof onDiscountGlobalChange === 'function'
-  // Las líneas sin producto no cuentan como producto del pedido.
-  const withProduct = detailed.filter((d) => d.product !== null)
+  // Se cuenta lo MISMO que pinta la lista de abajo (y que el botón flotante).
+  // Antes se contaban solo las líneas con producto, así que la cabecera decía
+  // "1 línea" con dos filas debajo.
+  const unidades = detailed.reduce((n, d) => n + d.qty, 0)
+  // El TOTAL no incluye las líneas de precio libre sin importe: hay que
+  // decirlo, o el resumen promete una cifra que va a subir.
+  const pendientes = detailed.filter((d) => d.pendingPrice).length
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="mb-3 flex items-baseline justify-between gap-3">
         <h3 className="text-sm font-semibold text-gray-900">Total del pedido</h3>
-        {withProduct.length > 0 && (
+        {detailed.length > 0 && (
           <span className="text-xs text-gray-500">
-            {withProduct.length}{' '}
-            {withProduct.length === 1 ? 'línea' : 'líneas'} ·{' '}
-            {withProduct.reduce((n, d) => n + d.qty, 0)} ud. · importes s/IVA
+            {detailed.length} {detailed.length === 1 ? 'línea' : 'líneas'} ·{' '}
+            {unidades} ud.
           </span>
         )}
       </div>
@@ -136,11 +140,21 @@ export default function CartSummary({
           Todavía no has añadido ningún producto.
         </p>
       ) : (
+        <>
+        {/* Rótulo de la columna. CartLine, tres bloques más arriba, pinta la
+            misma línea con su "Total c/IVA": sin decir de qué base habla cada
+            una, el AE veía dos cifras con un 21 % de diferencia para el mismo
+            producto. Aquí es s/IVA porque así la lista suma exactamente la
+            base imponible de abajo. */}
+        <p className="mb-1 text-right text-[11px] font-medium uppercase tracking-wide text-gray-400">
+          Importe s/IVA
+        </p>
         <ul className="mb-3 divide-y divide-gray-100 border-y border-gray-100">
           {detailed.map((d) => (
             <LineRow key={d.index} detail={d} />
           ))}
         </ul>
+        </>
       )}
 
       <div className="space-y-1.5">
@@ -201,10 +215,24 @@ export default function CartSummary({
           bold
           highlight
         />
-        <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3 text-xs text-gray-500">
-          <span>Bultos TIPSA (estimado)</span>
-          <span className="font-mono tabular-nums">{totalPackages}</span>
-        </div>
+        {/* El total omite las líneas de precio libre sin importe: entran con
+            precio 0 y totalsInput solo descarta las que no tienen producto.
+            El botón flotante ya lo avisaba, pero el FAB solo existe en el
+            paso 2 y este resumen también se pinta en el paso 3. */}
+        {pendientes > 0 && (
+          <p className="pt-1 text-xs text-brand-hover">
+            {pendientes} {pendientes === 1 ? 'línea' : 'líneas'} sin precio: el
+            TOTAL todavía no {pendientes === 1 ? 'la' : 'las'} incluye.
+          </p>
+        )}
+        {/* En transferencias SaaS no hay envío, así que una fila de bultos a 0
+            solo sería ruido. */}
+        {totalPackages > 0 && (
+          <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3 text-xs text-gray-500">
+            <span>Bultos TIPSA (estimado)</span>
+            <span className="font-mono tabular-nums">{totalPackages}</span>
+          </div>
+        )}
       </div>
     </div>
   )

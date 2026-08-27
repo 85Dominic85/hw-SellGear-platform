@@ -193,7 +193,10 @@ export default function NewOrderPage() {
       ? isCanaryIslands(form.shipping_cp)
         ? 0
         : null
-      : region === 'canarias'
+      : // Sin CP la única pista es la región, y solo vale si hay envío: en
+        // transferencias SaaS no se pide dirección, así que la región no
+        // puede decidir el impuesto.
+        req.shipping && region === 'canarias'
         ? 0
         : null
 
@@ -202,9 +205,27 @@ export default function NewOrderPage() {
   function selectPurchaseType(type: PurchaseType) {
     const wasFinancing = form.purchase_type === 'hardware_financiacion'
     const willBeFinancing = type === 'hardware_financiacion'
-    if (wasFinancing !== willBeFinancing) {
+    const willShip = fieldRequirementsFor(type).shipping
+    /*
+     * El carrito se vacía al cruzar cualquiera de las dos fronteras: los
+     * productos financiables no son intercambiables con el resto, y los de
+     * transferencias SaaS (software e implementación, sin envío) tampoco con
+     * el hardware. Antes solo se vaciaba en la de financiación, así que al
+     * pasar de SaaS a un pedido con envío quedaba Software Qamarero en el
+     * carrito, invisible en el catálogo (isCatalogVisible lo oculta fuera de
+     * SaaS) pero contando en el total.
+     */
+    if (wasFinancing !== willBeFinancing || req.shipping !== willShip) {
       setItems([])
     }
+    /*
+     * Sin envío la región vuelve a península. El toggle de Canarias se oculta
+     * en transferencias SaaS, así que una región canaria elegida antes se
+     * quedaba puesta e invisible: los resúmenes anunciaban «Exento (Canarias)»
+     * y un total un 21 % por debajo del que factura el servidor, que en ese
+     * flujo nunca ve un CP.
+     */
+    if (!willShip) setRegion('peninsula')
     setField('purchase_type', type)
   }
 

@@ -348,14 +348,23 @@ export default function AddOrderItemModal({
               selectedProduct={selectedProduct}
               onSelect={(id) => {
                 setSelectedProductId(id)
+                const next = products.find((p) => p.id === id) ?? null
                 // Los servicios con tarifa (Implementación Pro, 500 €) entran
                 // con el importe ya puesto, igual que en el paso 2 del wizard.
-                // Y al cambiar de producto se limpia el importe anterior, que
-                // antes quedaba pegado de la selección previa.
-                const ref = referencePriceCents(
-                  products.find((p) => p.id === id) ?? null,
-                )
+                const ref = referencePriceCents(next)
                 setCatalogPriceOverride(ref === null ? '' : (ref / 100).toString())
+                /*
+                 * La descripción SIEMPRE se limpia al cambiar de producto.
+                 * Es obligatorio, no cosmético: el campo solo se pinta en los
+                 * SKU `free_price_named`, así que si venías de SaaS + Hardware
+                 * con texto escrito y pasabas a Implementación Pro, el input
+                 * desaparecía de la pantalla pero el texto seguía en el estado
+                 * y se enviaba igual como `product_name` — la línea del pedido
+                 * quedaba con el nombre del producto equivocado, sin que el AE
+                 * pudiera verlo ni corregirlo, y de ahí viajaba a la ficha, al
+                 * aviso de Slack y al albarán.
+                 */
+                setCatalogNameOverride('')
               }}
               qty={catalogQty}
               onQtyChange={setCatalogQty}

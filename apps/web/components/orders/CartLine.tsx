@@ -11,7 +11,9 @@ import {
   freePriceLabel,
   isFreePrice,
   needsCustomName,
+  referencePriceCents,
 } from '@/lib/product-rules'
+import { MAX_QTY } from '@/lib/catalog/order-link'
 
 // El estado del carrito y sus reducers viven en lib/catalog/rules.ts (dato
 // puro, compartido con /catalogo y con el modal de la ficha de pedido). Aquí
@@ -50,6 +52,17 @@ interface CartLineProps {
    * regalo está «No, sin tablet».
    */
   lockDiscount?: boolean
+  /**
+   * Bloquea la cantidad de ESTA línea a la que ya tiene.
+   * Lo usa el paso 2 en los productos de precio libre y en la línea de
+   * regalo: la tarjeta del catálogo ya los trata como cantidad fija a 1
+   * (`lockQty` de AddToOrderButton), así que dejar aquí un input libre
+   * permitía escribir 4 y quedarse con cuatro implantaciones —o cuatro
+   * tablets gratis— mientras la tarjeta seguía diciendo «Añadido».
+   */
+  lockQty?: boolean
+  /** Marca visible de línea de regalo, para que no parezca una línea normal. */
+  isGift?: boolean
 }
 
 export default function CartLine({
@@ -62,6 +75,8 @@ export default function CartLine({
   vatRateOverride = null,
   lockProduct = false,
   lockDiscount = false,
+  lockQty = false,
+  isGift = false,
 }: CartLineProps) {
   const product = products.find((p) => p.id === line.product_id) ?? null
   // Reglas del producto (precio libre, descripción libre, descuento) — viven
@@ -80,11 +95,34 @@ export default function CartLine({
     ? lineTotalCents(priceCents, line.qty, line.discount_pct, vatRate)
     : 0
 
+  /**
+   * Nombre para los `aria-label`. Con una línea por producto en el paso 2,
+   * un lector de pantalla recorría dos docenas de spinbuttons sin nombre: el
+   * único sitio donde estaba el producto era un `select` deshabilitado, que
+   * además queda fuera del orden de tabulación.
+   */
+  const rotulo =
+    line.product_name_override.trim() || product?.name || `línea ${index + 1}`
+
+  // min-h-11 = 44px, el objetivo táctil que ya cumplen CartFab y
+  // AddToOrderButton. Antes eran 38px, y ahora se repiten por cada línea.
   const inputClass =
-    'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand'
+    'w-full min-h-11 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500'
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+    <div
+      className={`rounded-lg border p-3 ${
+        isGift
+          ? 'border-brand/40 bg-brand/5'
+          : 'border-gray-200 bg-gray-50'
+      }`}
+    >
+      {isGift && (
+        <p className="mb-2 text-xs font-medium text-brand-hover">
+          🎁 Regalo por Implementación Pro · cantidad y descuento fijos. Para
+          retirarlo, «No, sin tablet» en el panel de arriba.
+        </p>
+      )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-12">
         {/* Selector producto */}
         <div className="sm:col-span-5">
@@ -103,7 +141,11 @@ export default function CartLine({
               onChange(index, {
                 product_id: productId,
                 product_name_override: '',
-                unit_price_override_cents: null,
+                // El importe del producto anterior no puede quedarse pegado,
+                // pero el del nuevo sí se aplica si tiene tarifa: si no, el
+                // mismo SKU entraba con 500 € desde su tarjeta y en blanco
+                // desde este selector.
+                unit_price_override_cents: referencePriceCents(newProduct),
                 ...(mustReset ? { discount_pct: 0 } : {}),
               })
             }}
@@ -120,13 +162,25 @@ export default function CartLine({
           <input
             type="number"
             min={1}
+            max={MAX_QTY}
             value={line.qty}
-            onChange={(e) =>
-              onChange(index, {
-                qty: Math.max(1, parseInt(e.target.value) || 1),
-              })
-            }
+            onChange={(e) => {
+              const raw = parseInt(e.target.value, 10)
+              const clamped = Number.isFinite(raw)
+                ? Math.max(1, Math.min(MAX_QTY, raw))
+                : 1
+              onChange(index, { qty: clamped })
+            }}
             className={`${inputClass} text-center`}
+            disabled={lockQty}
+            aria-label={`Cantidad de ${rotulo}`}
+            title={
+              lockQty
+                ? isGift
+                  ? 'La línea de regalo es de una unidad.'
+                  : 'Este producto se vende por unidad.'
+                : `Cantidad: entre 1 y ${MAX_QTY}`
+            }
           />
         </div>
 
@@ -154,6 +208,7 @@ export default function CartLine({
             }}
             className={`${inputClass} text-center`}
             disabled={discountLocked}
+            aria-label={`Descuento en % de ${rotulo}`}
             title={
               lockDiscount
                 ? 'Es la línea del regalo por Implementación Pro. Para retirarla usa «No, sin tablet».'
@@ -164,12 +219,13 @@ export default function CartLine({
           />
         </div>
 
-        {/* Total línea (con IVA) */}
+        {/* Total línea. Con vat_rate 0 (Canarias) rotularlo "c/IVA" afirmaría
+            un impuesto que no existe en esa línea. */}
         <div className="sm:col-span-2">
           <label className="mb-1 block text-xs font-medium text-gray-700">
-            Total c/IVA
+            {vatRate > 0 ? 'Total c/IVA' : 'Total'}
           </label>
-          <div className="rounded-lg border border-transparent bg-white px-3 py-2 text-sm font-medium text-gray-900">
+          <div className="flex min-h-11 items-center rounded-lg border border-transparent bg-white px-3 text-sm font-medium text-gray-900">
             {product ? formatEurosCents(lineTotal) : '—'}
           </div>
         </div>
@@ -180,8 +236,9 @@ export default function CartLine({
             type="button"
             onClick={() => onRemove(index)}
             disabled={!canRemove}
-            className="flex h-9 w-full items-center justify-center rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-30"
-            title="Eliminar línea"
+            className="flex h-11 w-full items-center justify-center rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-30"
+            aria-label={`Quitar ${rotulo} del pedido`}
+            title={`Quitar ${rotulo}`}
           >
             <svg
               className="h-4 w-4"
@@ -226,6 +283,7 @@ export default function CartLine({
                 }
                 maxLength={200}
                 className={inputClass}
+                aria-label={`Descripción de ${rotulo}`}
               />
             </div>
           )}
@@ -252,6 +310,7 @@ export default function CartLine({
               }}
               placeholder="0,00"
               className={inputClass}
+              aria-label={`Precio unitario sin IVA de ${rotulo}`}
             />
           </div>
         </div>

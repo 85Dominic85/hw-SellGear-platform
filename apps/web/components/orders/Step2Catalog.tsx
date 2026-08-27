@@ -84,12 +84,31 @@ export default function Step2Catalog({
   const qtyMap = useMemo(() => qtyByProduct(items), [items])
 
   const hasImplPro = implPro !== null && hasProduct(items, implPro.id)
-  const giftIdx = tabletGiftIndex(items, tablet)
+  /*
+   * El 100 % en una tablet solo cuenta como regalo si Implementación Pro está
+   * en el pedido. Sin esa condición, un AE que pusiera 100 % de descuento a una
+   * tablet suelta se quedaba encerrado: la línea se auto-marcaba como regalo,
+   * el input de descuento se deshabilitaba y el panel que lo explica ni se
+   * renderiza sin Implementación Pro, así que no había forma de volver a 90 %
+   * salvo borrar la línea.
+   */
+  const giftIdx = hasImplPro ? tabletGiftIndex(items, tablet) : -1
   const hasGift = giftIdx >= 0
   const productById = useMemo(
     () => new Map(products.map((p) => [p.id, p])),
     [products],
   )
+
+  /**
+   * ¿Hay alguna línea que pida importe? Con envío a Canarias todos los SKU son
+   * `pricing_mode = 'catalog'`, así que ninguna CartLine pinta campo de
+   * precio: prometerlo en el texto describía un campo que no aparece.
+   */
+  const hasFreePriceLine = items.some((l) => {
+    if (!l.product_id) return true
+    const p = productById.get(l.product_id)
+    return p ? isFreePrice(p) : true
+  })
 
   /** Solo los SKU que admiten descripción libre pueden elegirse en una línea libre. */
   const freeLineProducts = useMemo(
@@ -266,9 +285,14 @@ export default function Step2Catalog({
               Líneas del pedido
             </h4>
             <p className="mt-1 text-xs text-gray-600">
-              Cantidad, descuento y —en los productos con precio acordado— el
-              importe. Los que tienen tarifa entran con su precio de catálogo ya
-              puesto.
+              Aquí se ajusta la cantidad y el descuento de cada línea.
+              {hasFreePriceLine && (
+                <>
+                  {' '}
+                  Las de precio acordado piden además el importe, que entra
+                  prerrellenado si el producto tiene tarifa.
+                </>
+              )}
             </p>
           </div>
           {items.map((line, idx) => {
@@ -312,6 +336,15 @@ export default function Step2Catalog({
                 vatRateOverride={vatRateOverride}
                 lockProduct={fromCatalog}
                 lockDiscount={idx === giftIdx}
+                /*
+                 * La tarjeta del catálogo ya trata los de precio libre como
+                 * cantidad fija a 1 (`lockQty` de AddToOrderButton), así que
+                 * aquí no puede haber un input libre: se escribía 4 y quedaban
+                 * cuatro implantaciones mientras el botón seguía diciendo
+                 * «Añadido». El regalo, por definición, es una unidad.
+                 */
+                lockQty={idx === giftIdx || (product !== null && isFreePrice(product))}
+                isGift={idx === giftIdx}
               />
             )
           })}
