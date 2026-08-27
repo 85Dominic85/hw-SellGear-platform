@@ -9,7 +9,11 @@ import {
   type CatalogTabKey,
 } from '@/lib/catalog-taxonomy'
 import { normalizeSearch } from '@/lib/catalog/format'
-import { isCatalogVisible, isFreePrice } from '@/lib/product-rules'
+import {
+  isCatalogVisible,
+  isFreePrice,
+  referencePriceCents,
+} from '@/lib/product-rules'
 import CategoryGuides from './CategoryGuides'
 import CatalogResultsMeta from './CatalogResultsMeta'
 import CatalogToolbar, { type CatalogSort } from './CatalogToolbar'
@@ -101,10 +105,14 @@ export default function CatalogExplorer({
       ).includes(needle)
     })
 
-    // Los productos sin precio de catálogo van a los extremos al ordenar por
-    // precio: no tienen cifra con la que compararse.
-    const priceOf = (p: Product, fallback: number) =>
-      isFreePrice(p) ? fallback : p.price_cents
+    // Al ordenar por precio, los que no tienen cifra con la que compararse
+    // (Software Qamarero, oferta mixta) van a los extremos.
+    const priceOf = (p: Product, fallback: number) => {
+      if (!isFreePrice(p)) return p.price_cents
+      // Los de precio libre CON tarifa (Implementación Pro) sí tienen cifra:
+      // mandarlos al extremo chirriaba, porque la tarjeta enseña 500 €.
+      return referencePriceCents(p) ?? fallback
+    }
 
     if (sort === 'price-asc') {
       return [...result].sort(

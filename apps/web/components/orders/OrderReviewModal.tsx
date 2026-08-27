@@ -3,14 +3,8 @@
 import { useEffect } from 'react'
 import { X, Loader2, Check } from 'lucide-react'
 import type { Product, PurchaseType } from '@/types/database'
-import {
-  cartTotals,
-  formatEurosCents,
-  effectiveTaxLabel,
-  lineDiscountCents as lineDiscountOf,
-  lineSubtotalCents,
-} from '@/lib/pricing'
-import { isFreePrice } from '@/lib/product-rules'
+import { cartTotals, formatEurosCents, effectiveTaxLabel } from '@/lib/pricing'
+import { cartLineDetails, totalsInput } from '@/lib/cart-detail'
 import { PURCHASE_TYPE_LABELS, isCanaryIslands } from '@/lib/utils'
 import type { CartLineState } from './CartLine'
 
@@ -69,46 +63,24 @@ export default function OrderReviewModal({
     return () => document.removeEventListener('keydown', onKey)
   }, [saving, onCancel])
 
-  const productById = new Map(products.map((p) => [p.id, p]))
   const vatOverride = isCanaryIslands(form.shipping_cp) ? 0 : null
 
-  const filled = items.filter((it) => it.product_id)
-  // Detalle por línea con nombre + descuento en euros (para el sub-desglose).
-  const detailed = filled
-    .map((l) => {
-      const p = l.product_id ? productById.get(l.product_id) ?? null : null
-      if (!p) return null
-      const priceCents = isFreePrice(p)
-        ? l.unit_price_override_cents ?? 0
-        : p.price_cents
-      const displayName =
-        l.product_name_override.trim() || p.name || '(sin nombre)'
-      // Mismos helpers que cartTotals: el desglose no puede desviarse del
-      // total por un redondeo distinto.
-      const subtotalCents = lineSubtotalCents(priceCents, l.qty)
-      const lineDiscountCents = lineDiscountOf(priceCents, l.qty, l.discount_pct)
-      return {
-        name: displayName,
-        priceCents,
-        qty: l.qty,
-        discountPct: l.discount_pct,
-        vatRate: vatOverride ?? Number(p.vat_rate),
-        subtotalCents,
-        lineDiscountCents,
-      }
-    })
-    .filter((x): x is NonNullable<typeof x> => x !== null)
-
-  const linesForTotals = detailed.map((d) => ({
-    priceCents: d.priceCents,
-    qty: d.qty,
-    discountPct: d.discountPct,
-    vatRate: d.vatRate,
-  }))
+  // Detalle por línea compartido con CartSummary y el botón flotante
+  // (lib/cart-detail). Aquí el cálculo estaba escrito DOS veces —una para el
+  // sub-desglose de descuentos y otra dentro del <ul> de productos— y ya se
+  // habían desviado: el <ul> pintaba el importe de la línea SIN restar el
+  // descuento, así que la tablet regalo salía a 199,00 € en la revisión final
+  // aunque no se cobrase.
+  //
+  // Solo las líneas con producto: las vacías no se envían en el POST.
+  const detailed = cartLineDetails(items, products, vatOverride).filter(
+    (d) => d.product !== null,
+  )
+  const linesForTotals = totalsInput(detailed)
 
   const totals = cartTotals(linesForTotals, discountGlobalPct)
   const vatRates = linesForTotals.map((l) => l.vatRate)
-  const discountedLines = detailed.filter((d) => d.lineDiscountCents > 0)
+  const discountedLines = detailed.filter((d) => d.discountCents > 0)
 
   return (
     <div
@@ -219,48 +191,40 @@ export default function OrderReviewModal({
           )}
 
           {/* Productos */}
-          <Section title={`Productos (${filled.length})`}>
-            {filled.length === 0 ? (
+          <Section title={`Productos (${detailed.length})`}>
+            {detailed.length === 0 ? (
               <p className="text-sm italic text-gray-400">Sin productos.</p>
             ) : (
               <ul className="divide-y divide-gray-100">
-                {filled.map((line, i) => {
-                  const p = line.product_id
-                    ? productById.get(line.product_id) ?? null
-                    : null
-                  const displayName =
-                    line.product_name_override.trim() || p?.name || '(sin nombre)'
-                  const unitPriceCents = isFreePrice(p)
-                    ? line.unit_price_override_cents ?? 0
-                    : p?.price_cents ?? 0
-                  const subtotal = lineSubtotalCents(unitPriceCents, line.qty)
-                  return (
-                    <li
-                      key={i}
-                      className="flex items-start justify-between gap-3 py-2 text-sm"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium text-gray-900">
-                          {displayName}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {line.qty} × {formatEurosCents(unitPriceCents)}
-                          {line.discount_pct > 0 &&
-                            ` · Descuento ${line.discount_pct}%`}
-                        </p>
-                      </div>
-                      <span className="font-mono text-sm text-gray-900 tabular-nums">
-                        {formatEurosCents(subtotal)}
-                      </span>
-                    </li>
-                  )
-                })}
+                {detailed.map((d) => (
+                  <li
+                    key={d.index}
+                    className="flex items-start justify-between gap-3 py-2 text-sm"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-gray-900">
+                        {d.isGift && <span aria-hidden="true">🎁 </span>}
+                        {d.name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {d.qty} × {formatEurosCents(d.unitPriceCents)}
+                        {d.discountPct > 0 &&
+                          ` · Descuento ${d.discountPct}% (− ${formatEurosCents(
+                            d.discountCents,
+                          )})`}
+                      </p>
+                    </div>
+                    <span className="font-mono text-sm text-gray-900 tabular-nums">
+                      {formatEurosCents(d.netCents)}
+                    </span>
+                  </li>
+                ))}
               </ul>
             )}
           </Section>
 
           {/* Totales */}
-          {filled.length > 0 && (
+          {detailed.length > 0 && (
             <Section title="Totales">
               <TotalRow
                 label="Subtotal s/IVA"
@@ -275,27 +239,24 @@ export default function OrderReviewModal({
                   />
                   {/* Sub-desglose: nombre + descuento por línea */}
                   <div className="ml-3 space-y-0.5 border-l border-gray-200 pl-3">
-                    {discountedLines.map((d, i) => {
-                      const isGift = d.discountPct === 100
-                      return (
-                        <div
-                          key={i}
-                          className="flex items-center justify-between text-xs text-gray-500"
-                        >
-                          <span className="truncate">
-                            {isGift ? '🎁 ' : '↳ '}
-                            {d.name}{' '}
-                            <span className="text-gray-400">
-                              ({d.discountPct}
-                              {isGift ? '% · regalo' : '%'})
-                            </span>
+                    {discountedLines.map((d) => (
+                      <div
+                        key={d.index}
+                        className="flex items-center justify-between text-xs text-gray-500"
+                      >
+                        <span className="truncate">
+                          {d.isGift ? '🎁 ' : '↳ '}
+                          {d.name}{' '}
+                          <span className="text-gray-400">
+                            ({d.discountPct}
+                            {d.isGift ? '% · regalo' : '%'})
                           </span>
-                          <span className="ml-3 whitespace-nowrap font-mono tabular-nums">
-                            − {formatEurosCents(d.lineDiscountCents)}
-                          </span>
-                        </div>
-                      )
-                    })}
+                        </span>
+                        <span className="ml-3 whitespace-nowrap font-mono tabular-nums">
+                          − {formatEurosCents(d.discountCents)}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </>
               )}

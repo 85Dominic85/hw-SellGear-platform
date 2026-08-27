@@ -1,6 +1,6 @@
 import type { Product } from '@/types/database'
 import { formatCatalogPrice, priceSuffix } from '@/lib/catalog/format'
-import { isFreePrice } from '@/lib/product-rules'
+import { isFreePrice, referencePriceCents } from '@/lib/product-rules'
 
 interface PriceTagProps {
   product: Product
@@ -9,16 +9,24 @@ interface PriceTagProps {
 }
 
 /**
- * Precio de catálogo, o el estado "a convenir" de los productos con precio
- * negociado. El catálogo NO tarifica esos productos: el importe se introduce
- * en la línea del pedido, así que aquí decirlo es más honesto que inventar
- * una cifra.
+ * Precio de catálogo, o el estado "a convenir" de los productos que se
+ * cotizan de cero.
+ *
+ * Hay tres casos, no dos:
+ *   · catálogo            -> precio fijo
+ *   · precio libre CON tarifa (Implementación Pro, 500 €) -> se muestra el
+ *     PVP y se avisa de que la línea del pedido lo puede ajustar
+ *   · precio libre SIN tarifa (Software Qamarero, SaaS + Hardware) -> el
+ *     catálogo no se inventa una cifra
+ *
+ * El segundo caso faltaba: Implementación Pro salía como «Precio a medida» y
+ * el comercial tenía que saberse la tarifa de memoria.
  */
 export default function PriceTag({ product, variant = 'card' }: PriceTagProps) {
-  const pending = isFreePrice(product)
   const base = variant === 'detail' ? 'detail-price' : 'price'
+  const reference = referencePriceCents(product)
 
-  if (pending) {
+  if (isFreePrice(product) && reference === null) {
     return (
       <div
         className={
@@ -29,6 +37,15 @@ export default function PriceTag({ product, variant = 'card' }: PriceTagProps) {
       >
         <strong>Precio a medida</strong>
         <small>Se acuerda con el cliente en el pedido</small>
+      </div>
+    )
+  }
+
+  if (reference !== null) {
+    return (
+      <div className={base}>
+        <strong>{formatCatalogPrice(reference)}</strong>
+        <small>{priceSuffix(product.vat_rate)} · ajustable en el pedido</small>
       </div>
     )
   }

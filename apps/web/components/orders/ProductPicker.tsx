@@ -2,7 +2,7 @@
 
 import type { Product, ProductCategory } from '@/types/database'
 import { CATEGORY_ORDER, categoryShortLabel } from '@/lib/catalog-taxonomy'
-import { isFreePrice } from '@/lib/product-rules'
+import { isFreePrice, referencePriceCents } from '@/lib/product-rules'
 
 interface ProductPickerProps {
   value: string | null
@@ -34,14 +34,18 @@ export default function ProductPicker({
       <option value="">Selecciona un producto…</option>
       {CATEGORY_ORDER.filter((c) => grouped.has(c)).map((category) => (
         <optgroup key={category} label={categoryShortLabel(category)}>
-          {grouped.get(category)!.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-              {/* Los productos de precio libre no tienen precio que mostrar:
-                  lo introduce el AE en la línea. */}
-              {!isFreePrice(p) && ` — ${(p.price_cents / 100).toFixed(2)} €`}
-            </option>
-          ))}
+          {grouped.get(category)!.map((p) => {
+            // Los de precio libre solo tienen cifra si llevan tarifa
+            // (Implementación Pro, 500 €); el resto lo introduce el AE en la
+            // línea, así que aquí no hay nada que enseñar.
+            const cents = isFreePrice(p) ? referencePriceCents(p) : p.price_cents
+            return (
+              <option key={p.id} value={p.id}>
+                {p.name}
+                {cents !== null && ` — ${(cents / 100).toFixed(2)} €`}
+              </option>
+            )
+          })}
         </optgroup>
       ))}
     </select>

@@ -40,6 +40,16 @@ interface CartLineProps {
    * de precio libre con descripcion (pricing_mode = 'free_price_named').
    */
   lockProduct?: boolean
+  /**
+   * Bloquea el descuento de ESTA línea (no del producto).
+   * Lo usa el paso 2 con la línea de tablet regalo: su 100 % no es un
+   * descuento comercial, es la única marca que distingue un regalo de un
+   * descuento manual (ver tabletGiftIndex en lib/catalog/rules.ts). Si el AE
+   * lo cambiara, el panel «¿incluye tablet como regalo?» dejaría de
+   * reconocerla y «Sí, añadir» metería una segunda tablet. Para retirar el
+   * regalo está «No, sin tablet».
+   */
+  lockDiscount?: boolean
 }
 
 export default function CartLine({
@@ -51,13 +61,14 @@ export default function CartLine({
   onRemove,
   vatRateOverride = null,
   lockProduct = false,
+  lockDiscount = false,
 }: CartLineProps) {
   const product = products.find((p) => p.id === line.product_id) ?? null
   // Reglas del producto (precio libre, descripción libre, descuento) — viven
   // en products.pricing_mode / allows_discount, no en un `code` hardcodeado.
   const freePrice = isFreePrice(product)
   const needsName = needsCustomName(product)
-  const discountLocked = !allowsLineDiscount(product)
+  const discountLocked = lockDiscount || !allowsLineDiscount(product)
 
   const priceCents = freePrice
     ? line.unit_price_override_cents ?? 0
@@ -144,9 +155,11 @@ export default function CartLine({
             className={`${inputClass} text-center`}
             disabled={discountLocked}
             title={
-              discountLocked
-                ? 'Esta oferta no admite descuento (el precio negociado ya es el final).'
-                : 'Descuento por línea: entero entre 0 y 100'
+              lockDiscount
+                ? 'Es la línea del regalo por Implementación Pro. Para retirarla usa «No, sin tablet».'
+                : discountLocked
+                  ? 'Esta oferta no admite descuento (el precio negociado ya es el final).'
+                  : 'Descuento por línea: entero entre 0 y 100'
             }
           />
         </div>

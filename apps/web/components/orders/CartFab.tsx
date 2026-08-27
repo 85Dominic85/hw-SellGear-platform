@@ -4,16 +4,10 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Minus, Package, Plus, X } from 'lucide-react'
 import type { Product } from '@/types/database'
-import {
-  cartTotals,
-  effectiveTaxLabel,
-  formatEurosCents,
-  lineDiscountCents as lineDiscountOf,
-  lineSubtotalCents,
-} from '@/lib/pricing'
+import { cartTotals, effectiveTaxLabel, formatEurosCents } from '@/lib/pricing'
 import { isFreePrice } from '@/lib/product-rules'
+import { cartLineDetails, totalsInput } from '@/lib/cart-detail'
 import {
-  GIFT_DISCOUNT_PCT,
   applyAdjustQty,
   applyRemoveLine,
   type CartLineState,
@@ -59,46 +53,15 @@ export default function CartFab({
   const [open, setOpen] = useState(false)
   const closeRef = useRef<HTMLButtonElement>(null)
 
-  const byId = new Map(products.map((p) => [p.id, p]))
-
-  const detalle = items.map((line, idx) => {
-    const product = line.product_id ? byId.get(line.product_id) ?? null : null
-    const priceCents = product
-      ? isFreePrice(product)
-        ? line.unit_price_override_cents ?? 0
-        : product.price_cents
-      : 0
-    const nombre =
-      line.product_name_override.trim() || product?.name || '(sin definir)'
-    const vatRate = vatRateOverride ?? (product ? Number(product.vat_rate) : 21)
-    return {
-      idx,
-      line,
-      product,
-      nombre,
-      priceCents,
-      vatRate,
-      subtotalCents: lineSubtotalCents(priceCents, line.qty),
-      discountCents: lineDiscountOf(priceCents, line.qty, line.discount_pct),
-      // Una línea de precio libre sin importe todavía no suma nada.
-      pendiente: Boolean(product && isFreePrice(product) && priceCents === 0),
-    }
-  })
-
-  const totals = cartTotals(
-    detalle
-      .filter((d) => d.product)
-      .map((d) => ({
-        priceCents: d.priceCents,
-        qty: d.line.qty,
-        discountPct: d.line.discount_pct,
-        vatRate: d.vatRate,
-      })),
-    discountGlobalPct,
-  )
+  // El detalle por línea sale de lib/cart-detail, el mismo que usan
+  // CartSummary y la revisión final: así el popup no puede contar una cosa y
+  // el resumen de abajo otra.
+  const detalle = cartLineDetails(items, products, vatRateOverride)
+  const computed = totalsInput(detalle)
+  const totals = cartTotals(computed, discountGlobalPct)
 
   const unidades = items.reduce((n, l) => n + l.qty, 0)
-  const pendientes = detalle.filter((d) => d.pendiente).length
+  const pendientes = detalle.filter((d) => d.pendingPrice).length
 
   // Escape para cerrar, foco inicial y bloqueo del scroll de fondo.
   useEffect(() => {
@@ -161,7 +124,8 @@ export default function CartFab({
                 <h2 className="text-base font-semibold text-gray-900">Tu pedido</h2>
                 <p className="mt-0.5 text-xs text-gray-500">
                   {items.length} {items.length === 1 ? 'línea' : 'líneas'} ·{' '}
-                  {unidades} {unidades === 1 ? 'unidad' : 'unidades'}
+                  {unidades} {unidades === 1 ? 'unidad' : 'unidades'} · importes
+                  s/IVA
                 </p>
               </div>
               <button
@@ -177,7 +141,7 @@ export default function CartFab({
 
             <ul className="min-h-0 flex-1 divide-y divide-gray-100 overflow-y-auto">
               {detalle.map((d) => (
-                <li key={d.idx} className="flex items-center gap-3 px-5 py-3">
+                <li key={d.index} className="flex items-center gap-3 px-5 py-3">
                   {d.product ? (
                     <ProductThumb product={d.product} size={44} />
                   ) : (
@@ -186,19 +150,19 @@ export default function CartFab({
 
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-gray-900">
-                      {d.nombre}
+                      {d.name}
                     </p>
                     <p className="mt-0.5 text-xs text-gray-500">
-                      {d.pendiente ? (
+                      {d.pendingPrice ? (
                         <span className="text-brand-hover">
                           Falta el precio acordado
                         </span>
                       ) : (
                         <>
-                          {d.line.qty} × {formatEurosCents(d.priceCents)}
+                          {d.line.qty} × {formatEurosCents(d.unitPriceCents)}
                           {d.line.discount_pct > 0 && (
                             <span className="ml-1 text-brand-hover">
-                              {d.line.discount_pct === GIFT_DISCOUNT_PCT
+                              {d.isGift
                                 ? '· 🎁 regalo'
                                 : `· −${d.line.discount_pct} %`}
                             </span>
@@ -222,7 +186,7 @@ export default function CartFab({
                             }),
                           )
                         }
-                        aria-label={`Quitar una unidad de ${d.nombre}`}
+                        aria-label={`Quitar una unidad de ${d.name}`}
                         className="flex h-11 w-11 items-center justify-center rounded-l-lg text-gray-600 transition-colors hover:bg-gray-100"
                       >
                         <Minus size={15} aria-hidden="true" />
@@ -235,7 +199,7 @@ export default function CartFab({
                         onClick={() =>
                           onItemsChange(applyAdjustQty(items, d.product!.id, 1))
                         }
-                        aria-label={`Añadir una unidad de ${d.nombre}`}
+                        aria-label={`Añadir una unidad de ${d.name}`}
                         className="flex h-11 w-11 items-center justify-center rounded-r-lg text-gray-600 transition-colors hover:bg-gray-100"
                       >
                         <Plus size={15} aria-hidden="true" />
@@ -244,8 +208,8 @@ export default function CartFab({
                   ) : (
                     <button
                       type="button"
-                      onClick={() => onItemsChange(applyRemoveLine(items, d.idx))}
-                      aria-label={`Quitar ${d.nombre} del pedido`}
+                      onClick={() => onItemsChange(applyRemoveLine(items, d.index))}
+                      aria-label={`Quitar ${d.name} del pedido`}
                       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
                     >
                       <X size={16} aria-hidden="true" />
@@ -253,9 +217,7 @@ export default function CartFab({
                   )}
 
                   <span className="w-20 shrink-0 text-right font-mono text-sm font-semibold text-gray-900">
-                    {d.pendiente
-                      ? '—'
-                      : formatEurosCents(d.subtotalCents - d.discountCents)}
+                    {d.pendingPrice ? '—' : formatEurosCents(d.netCents)}
                   </span>
                 </li>
               ))}
@@ -278,9 +240,7 @@ export default function CartFab({
                 />
               )}
               <Fila
-                label={effectiveTaxLabel(
-                  detalle.filter((d) => d.product).map((d) => d.vatRate),
-                )}
+                label={effectiveTaxLabel(computed.map((c) => c.vatRate))}
                 value={formatEurosCents(totals.vatCents)}
               />
               <div className="flex items-baseline justify-between border-t border-gray-200 pt-2">

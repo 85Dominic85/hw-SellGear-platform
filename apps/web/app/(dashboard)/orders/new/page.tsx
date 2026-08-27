@@ -177,6 +177,26 @@ export default function NewOrderPage() {
   // IVA aplicable al plan de financiación: 0 si Canarias, 21 resto.
   const financingVatRate = isCanaryIslands(form.shipping_cp) ? 0 : 21
 
+  /**
+   * IVA del preview de las líneas. En cuanto hay un CP de 5 dígitos manda el
+   * CP; antes (el paso 2 va antes de pedir la dirección) la única pista es el
+   * toggle de región. El servidor recalcula al insertar en cualquier caso.
+   *
+   * Tiene que ser UNA sola expresión compartida: cuando Step2Catalog/CartFab
+   * recibían `region === 'canarias' || isCanaryIslands(cp)` y CartSummary solo
+   * `isCanaryIslands(cp)`, un pedido con región canaria y el CP todavía vacío
+   * se tarificaba al 0 % en el botón flotante y al 21 % en el resumen de
+   * abajo: dos totales distintos en la misma pantalla.
+   */
+  const previewVatOverride =
+    form.shipping_cp.trim().length === 5
+      ? isCanaryIslands(form.shipping_cp)
+        ? 0
+        : null
+      : region === 'canarias'
+        ? 0
+        : null
+
   // Cambiar el tipo de compra resetea el carrito al cruzar la frontera de
   // financiación (los productos financiables y el resto no son intercambiables).
   function selectPurchaseType(type: PurchaseType) {
@@ -644,6 +664,30 @@ export default function NewOrderPage() {
                   className={`${inputClass} resize-none`}
                 />
               </div>
+
+              {/* Recordatorio de qué se está comprando.
+                  El paso 3 pedía los datos de envío sin enseñar los productos
+                  ni el total, así que el AE rellenaba la dirección a ciegas y
+                  no descubría un error del carrito hasta el popup de revisión.
+                  Aquí el CP ya se conoce, así que el IVA que se muestra es el
+                  definitivo. Solo lectura: el descuento global se toca en el
+                  paso 2. */}
+              {!loadingCatalog && !catalogError && items.length > 0 && (
+                isFinancing ? (
+                  <FinancingSummary
+                    lines={items}
+                    products={products}
+                    vatRate={financingVatRate}
+                  />
+                ) : (
+                  <CartSummary
+                    lines={items}
+                    products={products}
+                    vatRateOverride={previewVatOverride}
+                    discountGlobalPct={discountGlobalPct}
+                  />
+                )
+              )}
             </>
           )}
 
@@ -696,12 +740,7 @@ export default function NewOrderPage() {
                       products={products}
                       items={items}
                       onItemsChange={setItems}
-                      vatRateOverride={
-                        region === 'canarias' ||
-                        isCanaryIslands(form.shipping_cp)
-                          ? 0
-                          : null
-                      }
+                      vatRateOverride={previewVatOverride}
                       purchaseType={form.purchase_type}
                       discountGlobalPct={discountGlobalPct}
                       region={region}
@@ -733,7 +772,7 @@ export default function NewOrderPage() {
                   <CartSummary
                     lines={items}
                     products={products}
-                    vatRateOverride={isCanaryIslands(form.shipping_cp) ? 0 : null}
+                    vatRateOverride={previewVatOverride}
                     discountGlobalPct={discountGlobalPct}
                     onDiscountGlobalChange={setDiscountGlobalPct}
                   />

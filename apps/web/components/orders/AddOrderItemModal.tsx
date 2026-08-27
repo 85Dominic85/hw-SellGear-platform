@@ -7,9 +7,13 @@ import type { Product } from '@/types/database'
 import { formatEurosCents } from '@/lib/pricing'
 import {
   allowsLineDiscount,
+  customNameLabel,
+  customNamePlaceholder,
+  freePriceLabel,
   isFreePrice,
   needsCustomName,
   isHiddenFromCatalog,
+  referencePriceCents,
 } from '@/lib/product-rules'
 import ProductThumb from '@/components/catalog/ProductThumb'
 import {
@@ -342,12 +346,23 @@ export default function AddOrderItemModal({
               productQuery={productQuery}
               onProductQueryChange={setProductQuery}
               selectedProduct={selectedProduct}
-              onSelect={setSelectedProductId}
+              onSelect={(id) => {
+                setSelectedProductId(id)
+                // Los servicios con tarifa (Implementación Pro, 500 €) entran
+                // con el importe ya puesto, igual que en el paso 2 del wizard.
+                // Y al cambiar de producto se limpia el importe anterior, que
+                // antes quedaba pegado de la selección previa.
+                const ref = referencePriceCents(
+                  products.find((p) => p.id === id) ?? null,
+                )
+                setCatalogPriceOverride(ref === null ? '' : (ref / 100).toString())
+              }}
               qty={catalogQty}
               onQtyChange={setCatalogQty}
               discountPct={discountPct}
               onDiscountChange={setDiscountPct}
               requiresOverride={requiresOverride}
+              requiresOverrideName={requiresOverrideName}
               nameOverride={catalogNameOverride}
               onNameOverrideChange={setCatalogNameOverride}
               priceOverride={catalogPriceOverride}
@@ -459,6 +474,8 @@ interface CatalogTabProps {
   discountPct: number
   onDiscountChange: (n: number) => void
   requiresOverride: boolean
+  /** Solo `free_price_named` pide además descripción. */
+  requiresOverrideName: boolean
   nameOverride: string
   onNameOverrideChange: (s: string) => void
   priceOverride: string
@@ -478,6 +495,7 @@ function CatalogTab({
   discountPct,
   onDiscountChange,
   requiresOverride,
+  requiresOverrideName,
   nameOverride,
   onNameOverrideChange,
   priceOverride,
@@ -566,25 +584,34 @@ function CatalogTab({
         )}
       </div>
 
-      {/* Overrides para productos especiales (otro / saas_hardware) */}
+      {/* Overrides de los productos con precio acordado.
+          La descripción SOLO en `free_price_named` (otro / SaaS + Hardware):
+          antes se pintaba para todo `isFreePrice`, así que Implementación Pro y
+          Software Qamarero mostraban un campo marcado como obligatorio con
+          asterisco rojo que el submit no exigía. Las etiquetas salen de
+          lib/product-rules para no divergir de CartLine. */}
       {requiresOverride && (
         <>
+          {requiresOverrideName && selectedProduct && (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700">
+                {customNameLabel(selectedProduct)}
+                <span className="ml-1 text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={nameOverride}
+                onChange={(e) => onNameOverrideChange(e.target.value)}
+                placeholder={customNamePlaceholder(selectedProduct)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+              />
+            </div>
+          )}
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-700">
-              Descripción del producto
-              <span className="ml-1 text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={nameOverride}
-              onChange={(e) => onNameOverrideChange(e.target.value)}
-              placeholder="Ej. Cable HDMI 2m"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">
-              Precio negociado s/IVA (€)
+              {selectedProduct
+                ? freePriceLabel(selectedProduct)
+                : 'Precio negociado s/IVA (€)'}
               <span className="ml-1 text-red-500">*</span>
             </label>
             <input

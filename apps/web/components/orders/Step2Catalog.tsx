@@ -84,21 +84,12 @@ export default function Step2Catalog({
   const qtyMap = useMemo(() => qtyByProduct(items), [items])
 
   const hasImplPro = implPro !== null && hasProduct(items, implPro.id)
-  const hasGift = tabletGiftIndex(items, tablet) >= 0
+  const giftIdx = tabletGiftIndex(items, tablet)
+  const hasGift = giftIdx >= 0
   const productById = useMemo(
     () => new Map(products.map((p) => [p.id, p])),
     [products],
   )
-
-  /** Líneas libres: se editan con CartLine, el resto se toca desde la tarjeta. */
-  const freeLineIdx = items
-    .map((line, idx) => ({ line, idx }))
-    .filter(({ line }) => {
-      if (!line.product_id) return true
-      const p = productById.get(line.product_id)
-      return p ? isFreePrice(p) && p.category === 'custom' : true
-    })
-    .map(({ idx }) => idx)
 
   /** Solo los SKU que admiten descripción libre pueden elegirse en una línea libre. */
   const freeLineProducts = useMemo(
@@ -231,17 +222,21 @@ export default function Step2Catalog({
         </div>
       )}
 
-      {/* Línea libre: producto fuera de catálogo u oferta SaaS + Hardware. */}
+      {/* Línea libre. Ya no cubre SaaS + Hardware: desde que la migración
+          20260825000002 lo movió a `category = 'service'` tiene tarjeta propia
+          en la pestaña Servicios, y el ProductPicker de aquí solo ofrece los
+          SKU `custom` (es decir, `otro`). */}
       {!isSaasOnly && (
         <div className="mt-5 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4">
           <div className="flex flex-wrap items-start gap-3">
             <div className="min-w-[220px] flex-1">
               <h4 className="text-sm font-medium text-gray-900">
-                Producto fuera de catálogo o SaaS + Hardware
+                Producto fuera de catálogo
               </h4>
               <p className="mt-0.5 text-xs text-gray-600">
-                Para solicitudes puntuales u ofertas mixtas, con descripción y
-                precio negociados por el AE.
+                Para solicitudes puntuales, con descripción y precio negociados
+                por el AE. Las ofertas SaaS + Hardware tienen su propia tarjeta
+                en la pestaña Servicios.
               </p>
             </div>
             <button
@@ -255,27 +250,71 @@ export default function Step2Catalog({
         </div>
       )}
 
-      {/* Solo las líneas libres necesitan CartLine: el resto se ajusta desde
-          la tarjeta, así que repetir aquí un selector deshabilitado con el
-          producto ya elegido —como hacía ProductCatalog— era ruido. */}
-      {freeLineIdx.length > 0 && (
+      {/* Una CartLine por CADA línea del pedido.
+          Al pasar al catálogo en tarjetas esto se limitó a las líneas libres,
+          con el argumento de que repetir un selector deshabilitado era ruido.
+          El coste fue mayor que el ruido: CartLine es el único sitio del paso 2
+          con input de descuento y de precio acordado, así que dejó de haber
+          forma de descontar un producto de catálogo y de tarifar los tres SKU
+          de servicio (Implementación Pro, Software Qamarero, SaaS + Hardware).
+          Ahora vuelven todas; el selector de producto va bloqueado en las que
+          vienen de una tarjeta. */}
+      {items.length > 0 && (
         <div className="mt-5 space-y-3">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Líneas libres
-          </h4>
-          {freeLineIdx.map((idx) => (
-            <CartLine
-              key={idx}
-              index={idx}
-              line={items[idx]}
-              products={freeLineProducts}
-              canRemove
-              onChange={(i, partial) => onItemsChange(applyUpdateLine(items, i, partial))}
-              onRemove={(i) => onItemsChange(applyRemoveLine(items, i))}
-              vatRateOverride={vatRateOverride}
-              lockProduct={false}
-            />
-          ))}
+          <div>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              Líneas del pedido
+            </h4>
+            <p className="mt-1 text-xs text-gray-600">
+              Cantidad, descuento y —en los productos con precio acordado— el
+              importe. Los que tienen tarifa entran con su precio de catálogo ya
+              puesto.
+            </p>
+          </div>
+          {items.map((line, idx) => {
+            const product = line.product_id
+              ? productById.get(line.product_id) ?? null
+              : null
+            /*
+             * El SKU solo se elige en las líneas libres. Si viene de una
+             * tarjeta del catálogo el producto ya está decidido, y cambiarlo
+             * aquí dejaría la tarjeta (con su contador) y la línea contando
+             * cosas distintas. Ojo: hay que pasarle el catálogo COMPLETO, no
+             * `freeLineProducts`, o CartLine no encuentra el producto y se
+             * queda sin nombre ni precio.
+             */
+            const fromCatalog = product !== null && product.category !== 'custom'
+            return (
+              <CartLine
+                key={idx}
+                index={idx}
+                line={line}
+                products={fromCatalog ? products : freeLineProducts}
+                canRemove
+                onChange={(i, partial) =>
+                  onItemsChange(applyUpdateLine(items, i, partial))
+                }
+                onRemove={(i) => {
+                  // Quitar Implementación Pro desde aquí tiene que arrastrar
+                  // la tablet regalo igual que quitarla desde la tarjeta.
+                  if (implPro && line.product_id === implPro.id) {
+                    setGiftDeclined(false)
+                    onItemsChange(
+                      applyAdjustQty(items, implPro.id, -line.qty, {
+                        implPro,
+                        tablet,
+                      }),
+                    )
+                    return
+                  }
+                  onItemsChange(applyRemoveLine(items, i))
+                }}
+                vatRateOverride={vatRateOverride}
+                lockProduct={fromCatalog}
+                lockDiscount={idx === giftIdx}
+              />
+            )
+          })}
         </div>
       )}
 

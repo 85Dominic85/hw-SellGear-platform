@@ -14,6 +14,7 @@
 // =============================================================
 
 import type { Product } from '@/types/database'
+import { referencePriceCents } from '@/lib/product-rules'
 
 export interface CartLineState {
   product_id: string | null
@@ -90,7 +91,15 @@ export function tabletGiftIndex(
 // Reducers — siempre devuelven un array nuevo, nunca mutan
 // -------------------------------------------------------------
 
-/** Añade el producto, o suma 1 si ya está en el carrito. */
+/**
+ * Añade el producto, o suma 1 si ya está en el carrito.
+ *
+ * Los productos de precio libre CON tarifa (Implementación Pro, 500 €) entran
+ * con el importe ya puesto: es el precio de la oferta y lo normal es no
+ * tocarlo, pero el AE puede ajustarlo o descontarlo desde la línea. Los que
+ * no tienen tarifa entran a `null` y el paso 2 no deja continuar hasta que se
+ * rellenen.
+ */
 export function applyAddProduct(
   items: CartLineState[],
   product: Product,
@@ -102,7 +111,15 @@ export function applyAddProduct(
     next[idx] = { ...next[idx], qty: next[idx].qty + qty }
     return next
   }
-  return [...items, { ...EMPTY_LINE, product_id: product.id, qty }]
+  return [
+    ...items,
+    {
+      ...EMPTY_LINE,
+      product_id: product.id,
+      qty,
+      unit_price_override_cents: referencePriceCents(product),
+    },
+  ]
 }
 
 /**

@@ -4,10 +4,13 @@ import {
   cartTotals,
   effectiveTaxLabel,
   formatEurosCents,
-  lineDiscountCents as lineDiscountOf,
-  lineSubtotalCents,
 } from '@/lib/pricing'
-import { isFreePrice } from '@/lib/product-rules'
+import {
+  cartLineDetails,
+  totalPackages as totalPackagesOf,
+  totalsInput,
+  type CartLineDetail,
+} from '@/lib/cart-detail'
 import type { Product } from '@/types/database'
 import type { CartLineState } from './CartLine'
 
@@ -50,6 +53,53 @@ function Row({ label, value, bold, highlight }: RowProps) {
   )
 }
 
+/**
+ * Una línea del pedido en el resumen.
+ *
+ * El resumen solo enseñaba los totales. Al sustituir ProductCatalog (que
+ * pintaba un CartLine por línea) por el catálogo en tarjetas, el comercial se
+ * quedó sin ver QUÉ había elegido: para comprobarlo tenía que abrir el popup
+ * del botón flotante o volver a recorrer el catálogo mirando los contadores.
+ */
+function LineRow({ detail }: { detail: CartLineDetail }) {
+  const { name, qty, unitPriceCents, discountPct, discountCents, netCents } =
+    detail
+
+  return (
+    <li className="flex items-start justify-between gap-3 py-2">
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-gray-900">
+          {detail.isGift && <span aria-hidden="true">🎁 </span>}
+          {name}
+        </p>
+        <p className="mt-0.5 text-xs text-gray-500">
+          {detail.product === null ? (
+            <span className="text-brand-hover">Elige el producto</span>
+          ) : detail.pendingPrice ? (
+            <span className="text-brand-hover">Falta el precio acordado</span>
+          ) : (
+            <>
+              {qty} × {formatEurosCents(unitPriceCents)}
+              {discountPct > 0 && (
+                <span className="text-brand-hover">
+                  {' · '}
+                  {detail.isGift ? 'regalo' : `−${discountPct} %`}
+                  {' ('}−{formatEurosCents(discountCents)})
+                </span>
+              )}
+            </>
+          )}
+        </p>
+      </div>
+      <span className="shrink-0 font-mono text-sm font-medium tabular-nums text-gray-900">
+        {detail.product === null || detail.pendingPrice
+          ? '—'
+          : formatEurosCents(netCents)}
+      </span>
+    </li>
+  )
+}
+
 export default function CartSummary({
   lines,
   products,
@@ -57,88 +107,49 @@ export default function CartSummary({
   discountGlobalPct = 0,
   onDiscountGlobalChange,
 }: CartSummaryProps) {
-  const productById = new Map(products.map((p) => [p.id, p]))
-
-  // Detalle por línea (con nombre) para el desglose de descuentos.
-  const detailed = lines
-    .map((l) => {
-      const p = l.product_id ? productById.get(l.product_id) ?? null : null
-      if (!p) return null
-      // Productos con precio libre (override obligatorio en el carrito).
-      const priceCents = isFreePrice(p)
-        ? l.unit_price_override_cents ?? 0
-        : p.price_cents
-      const displayName =
-        l.product_name_override.trim() || p.name || '(sin nombre)'
-      // Mismos helpers que usa cartTotals, para que el desglose por línea no
-      // pueda desviarse del total por un redondeo distinto.
-      const subtotalCents = lineSubtotalCents(priceCents, l.qty)
-      const lineDiscountCents = lineDiscountOf(priceCents, l.qty, l.discount_pct)
-      return {
-        name: displayName,
-        priceCents,
-        qty: l.qty,
-        discountPct: l.discount_pct,
-        vatRate: vatRateOverride ?? Number(p.vat_rate),
-        packageCount: p.package_count,
-        subtotalCents,
-        lineDiscountCents,
-      }
-    })
-    .filter((x): x is NonNullable<typeof x> => x !== null)
-
-  const computed = detailed.map((d) => ({
-    priceCents: d.priceCents,
-    qty: d.qty,
-    discountPct: d.discountPct,
-    vatRate: d.vatRate,
-  }))
-
+  // Un único cálculo por línea para la lista Y para los totales (lib/cart-detail).
+  // Antes cada bloque hacía el suyo y podían desviarse por un redondeo distinto.
+  const detailed = cartLineDetails(lines, products, vatRateOverride)
+  const computed = totalsInput(detailed)
   const totals = cartTotals(computed, discountGlobalPct)
-  const totalPackages = detailed.reduce(
-    (sum, l) => sum + l.qty * l.packageCount,
-    0,
-  )
+  const totalPackages = totalPackagesOf(detailed)
   const editable = typeof onDiscountGlobalChange === 'function'
-  // Líneas con descuento aplicado > 0 (para el desglose visible).
-  const discountedLines = detailed.filter((d) => d.lineDiscountCents > 0)
+  // Las líneas sin producto no cuentan como producto del pedido.
+  const withProduct = detailed.filter((d) => d.product !== null)
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <h3 className="mb-3 text-sm font-semibold text-gray-900">Total del pedido</h3>
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <h3 className="text-sm font-semibold text-gray-900">Total del pedido</h3>
+        {withProduct.length > 0 && (
+          <span className="text-xs text-gray-500">
+            {withProduct.length}{' '}
+            {withProduct.length === 1 ? 'línea' : 'líneas'} ·{' '}
+            {withProduct.reduce((n, d) => n + d.qty, 0)} ud. · importes s/IVA
+          </span>
+        )}
+      </div>
+
+      {/* Lista de productos */}
+      {detailed.length === 0 ? (
+        <p className="mb-3 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-3 py-4 text-center text-xs text-gray-500">
+          Todavía no has añadido ningún producto.
+        </p>
+      ) : (
+        <ul className="mb-3 divide-y divide-gray-100 border-y border-gray-100">
+          {detailed.map((d) => (
+            <LineRow key={d.index} detail={d} />
+          ))}
+        </ul>
+      )}
+
       <div className="space-y-1.5">
         <Row label="Subtotal s/IVA" value={formatEurosCents(totals.subtotalCents)} />
         {totals.lineDiscountCents > 0 && (
-          <>
-            <Row
-              label="Descuentos por línea"
-              value={`− ${formatEurosCents(totals.lineDiscountCents)}`}
-            />
-            {/* Sub-desglose: nombre + descuento por línea (solo las que tienen dto>0) */}
-            <div className="ml-3 space-y-0.5 border-l border-gray-200 pl-3">
-              {discountedLines.map((d, i) => {
-                const isGift = d.discountPct === 100
-                return (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between text-xs text-gray-500"
-                  >
-                    <span className="truncate">
-                      {isGift ? '🎁 ' : '↳ '}
-                      {d.name}{' '}
-                      <span className="text-gray-400">
-                        ({d.discountPct}
-                        {isGift ? '% · regalo' : '%'})
-                      </span>
-                    </span>
-                    <span className="ml-3 whitespace-nowrap font-mono tabular-nums">
-                      − {formatEurosCents(d.lineDiscountCents)}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          </>
+          <Row
+            label="Descuentos por línea"
+            value={`− ${formatEurosCents(totals.lineDiscountCents)}`}
+          />
         )}
 
         {/* Descuento global editable (o solo lectura si no hay callback) */}

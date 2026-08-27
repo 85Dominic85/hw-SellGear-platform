@@ -211,3 +211,37 @@ describe('applySelectFinanced', () => {
     expect(next[0]).toMatchObject({ product_id: tpv.id, qty: 1, discount_pct: 0 })
   })
 })
+
+describe('applyAddProduct con precio de referencia', () => {
+  // Implementación Pro tras la migración 20260827000001: entra con sus 500 €
+  // ya puestos para que el AE no tenga que saberse la tarifa, y sigue siendo
+  // editable en la línea.
+  const implProConTarifa: Product = {
+    ...implPro,
+    price_cents: 50000,
+    pricing_mode: 'free_price',
+  } as Product
+
+  it('prerrellena el importe de un precio libre con tarifa', () => {
+    const next = applyAddProduct([], implProConTarifa)
+    expect(next[0].unit_price_override_cents).toBe(50000)
+  })
+
+  it('un producto de catálogo no lleva override: su precio es el de tarifa', () => {
+    expect(applyAddProduct([], tpv)[0].unit_price_override_cents).toBeNull()
+  })
+
+  it('un precio libre sin tarifa entra a null y el paso 2 lo bloquea', () => {
+    // implPro del fixture tiene price_cents = 0 (estado pre-migración).
+    expect(applyAddProduct([], implPro)[0].unit_price_override_cents).toBeNull()
+  })
+
+  it('sumar cantidad no toca el importe que ya hubiera tecleado el AE', () => {
+    const items = [
+      line({ product_id: implProConTarifa.id, qty: 1, unit_price_override_cents: 35000 }),
+    ]
+    const next = applyAddProduct(items, implProConTarifa)
+    expect(next[0].qty).toBe(2)
+    expect(next[0].unit_price_override_cents).toBe(35000)
+  })
+})

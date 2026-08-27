@@ -19,6 +19,7 @@ import {
   productImageUrl,
   productRegion,
   productRules,
+  referencePriceCents,
   requiresCanaryShipping,
   PRODUCT_IMAGE_FALLBACK,
 } from '@/lib/product-rules'
@@ -257,5 +258,48 @@ describe('productRules (struct agregado)', () => {
     expect(productRules({ code: 'pack-pro', category: 'pack' }).financeable).toBe(true)
     expect(productRules({ code: 'kds-estandar', category: 'kds' }).financeable).toBe(true)
     expect(productRules(catalogProduct).financeable).toBe(false)
+  })
+})
+
+describe('precio de referencia', () => {
+  // El caso que motivó la migración 20260827000001: Implementación Pro tiene
+  // tarifa (500 €) y lo que varía es el descuento, pero salía como
+  // «Precio a medida» porque el CHECK obligaba a price_cents = 0.
+  const implPro: ProductLike = {
+    code: 'implementacion-pro',
+    category: 'service',
+    price_cents: 50000,
+    pricing_mode: 'free_price',
+    allows_discount: true,
+  }
+
+  it('devuelve la tarifa de un producto de precio libre que la tenga', () => {
+    expect(referencePriceCents(implPro)).toBe(50000)
+  })
+
+  it('un producto de catálogo no tiene precio de referencia: su precio es el precio', () => {
+    expect(referencePriceCents(catalogProduct)).toBeNull()
+  })
+
+  it('precio libre a 0 sigue siendo «a convenir»', () => {
+    expect(
+      referencePriceCents({
+        code: 'software-qamarero',
+        category: 'service',
+        price_cents: 0,
+        pricing_mode: 'free_price',
+      }),
+    ).toBeNull()
+  })
+
+  it('tolera la BD pre-migración: sin price_cents no hay tarifa', () => {
+    expect(
+      referencePriceCents({ code: 'implementacion-pro', category: 'service' }),
+    ).toBeNull()
+  })
+
+  it('null y undefined no revientan', () => {
+    expect(referencePriceCents(null)).toBeNull()
+    expect(referencePriceCents(undefined)).toBeNull()
   })
 })

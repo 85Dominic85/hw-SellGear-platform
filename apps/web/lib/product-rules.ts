@@ -89,6 +89,28 @@ export function needsCustomName(p: ProductLike | null | undefined): boolean {
   return pricingMode(p) === 'free_price_named'
 }
 
+/**
+ * Precio de referencia (PVP) de un producto de precio libre, o `null` si no
+ * tiene tarifa.
+ *
+ * En los modos de precio libre `price_cents` NO es el importe que se factura
+ * —eso siempre es el snapshot `order_items.unit_price_cents` que introduce el
+ * AE, y el servidor lo exige— sino el precio de partida del servicio.
+ * Implementación Pro tiene PVP (500 €) y lo que varía es el descuento que le
+ * aplique el comercial; Software Qamarero y las ofertas mixtas se cotizan de
+ * cero, así que se quedan a 0 y siguen mostrando «Precio a medida».
+ *
+ * Antes de esto la tarjeta ponía «Precio a medida» para los tres y el AE
+ * tenía que saberse la tarifa de memoria.
+ */
+export function referencePriceCents(
+  p: ProductLike | null | undefined,
+): number | null {
+  if (!isFreePrice(p)) return null
+  const cents = p?.price_cents ?? 0
+  return cents > 0 ? cents : null
+}
+
 /** `false` ⇒ `discount_pct` debe ser 0. */
 export function allowsLineDiscount(p: ProductLike | null | undefined): boolean {
   if (!p) return true
