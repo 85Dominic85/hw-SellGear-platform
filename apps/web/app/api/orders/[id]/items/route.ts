@@ -27,7 +27,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { canEditOrder } from '@/lib/auth'
-import { validateLineDiscount } from '@/lib/orders-validation'
+import {
+  MAX_LINE_QTY,
+  validateLineDiscount,
+  validateUnitPriceCents,
+} from '@/lib/orders-validation'
 import { isCanaryIslands } from '@/lib/utils'
 import type { UserRole, Product } from '@/types/database'
 import {
@@ -98,7 +102,8 @@ export async function POST(
   }
 
   const qty = typeof body.qty === 'number' ? Math.floor(body.qty) : 0
-  if (qty < 1) {
+  // Cota superior por la columna (order_items.qty es INT), no de negocio.
+  if (qty < 1 || qty > MAX_LINE_QTY) {
     return NextResponse.json(
       { error: 'La cantidad debe ser un entero mayor o igual a 1.' },
       { status: 400 },
@@ -245,6 +250,17 @@ export async function POST(
     resolvedUnitPriceCents = overridePrice
     resolvedDiscountPct = 0
     resolvedVatRate = overrideVatRate ?? Number(otroProduct.vat_rate)
+  }
+
+  // El importe tiene que caber en order_items.unit_price_cents (INTEGER):
+  // si no, el insert revienta con "value out of range for type integer" y el
+  // recálculo del total del pedido de más abajo no llega a ejecutarse.
+  const priceCheck = validateUnitPriceCents(
+    resolvedUnitPriceCents,
+    resolvedProductName,
+  )
+  if (!priceCheck.ok) {
+    return NextResponse.json({ error: priceCheck.error }, { status: 400 })
   }
 
   // 6. Insert

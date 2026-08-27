@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { X, Loader2, Search } from 'lucide-react'
 import type { Product } from '@/types/database'
 import { formatEurosCents } from '@/lib/pricing'
+import { MAX_UNIT_PRICE_CENTS } from '@/lib/orders-validation'
 import {
   allowsLineDiscount,
   customNameLabel,
@@ -627,6 +628,7 @@ function CatalogTab({
               type="number"
               step="0.01"
               min={0.01}
+              max={MAX_UNIT_PRICE_CENTS / 100}
               value={priceOverride}
               onChange={(e) => onPriceOverrideChange(e.target.value)}
               placeholder="0.00"

@@ -14,6 +14,7 @@ import {
   referencePriceCents,
 } from '@/lib/product-rules'
 import { MAX_QTY } from '@/lib/catalog/order-link'
+import { MAX_UNIT_PRICE_CENTS } from '@/lib/orders-validation'
 
 // El estado del carrito y sus reducers viven en lib/catalog/rules.ts (dato
 // puro, compartido con /catalogo y con el modal de la ficha de pedido). Aquí
@@ -295,6 +296,9 @@ export default function CartLine({
             <input
               type="number"
               min={0}
+              // Tope de la columna order_items.unit_price_cents (INTEGER). El
+              // servidor lo rechaza con 400; aquí evita llegar hasta ahí.
+              max={MAX_UNIT_PRICE_CENTS / 100}
               step={0.01}
               value={
                 line.unit_price_override_cents === null

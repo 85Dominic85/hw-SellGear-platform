@@ -11,8 +11,10 @@
 
 import { describe, it, expect } from 'vitest'
 import {
+  MAX_UNIT_PRICE_CENTS,
   validateLineDiscount,
   validateGlobalDiscount,
+  validateUnitPriceCents,
 } from '@/lib/orders-validation'
 import type { ProductLike } from '@/lib/product-rules'
 import type { ProductCategory } from '@/types/database'
@@ -135,5 +137,42 @@ describe('validateGlobalDiscount', () => {
     expect(validateGlobalDiscount(NaN).ok).toBe(false)
     expect(validateGlobalDiscount('10' as unknown as number).ok).toBe(false)
     expect(validateGlobalDiscount(null as unknown as number).ok).toBe(false)
+  })
+})
+
+describe('validateUnitPriceCents', () => {
+  // order_items.unit_price_cents es INTEGER; orders.amount es NUMERIC(12,2) y
+  // aguanta mucho más. Un importe entre los dos límites dejaba el pedido
+  // creado y el insert de líneas reventado, y como ese fallo solo se registra
+  // con console.error la API respondía 200 con un pedido de cero artículos.
+  it('acepta un importe normal', () => {
+    expect(validateUnitPriceCents(50000, 'Implementación Pro')).toEqual({
+      ok: true,
+      cents: 50000,
+    })
+  })
+
+  it('acepta 0 (línea de catálogo a precio 0 o regalo)', () => {
+    expect(validateUnitPriceCents(0, 'X')).toEqual({ ok: true, cents: 0 })
+  })
+
+  it('acepta exactamente el máximo de la columna', () => {
+    const r = validateUnitPriceCents(MAX_UNIT_PRICE_CENTS, 'X')
+    expect(r.ok).toBe(true)
+  })
+
+  it('rechaza un céntimo por encima del máximo, que es lo que rompía el insert', () => {
+    const r = validateUnitPriceCents(MAX_UNIT_PRICE_CENTS + 1, 'Implementación Pro')
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toContain('Implementación Pro')
+  })
+
+  it('rechaza negativos, decimales y no-números', () => {
+    expect(validateUnitPriceCents(-1, 'X').ok).toBe(false)
+    expect(validateUnitPriceCents(10.5, 'X').ok).toBe(false)
+    expect(validateUnitPriceCents('50000', 'X').ok).toBe(false)
+    expect(validateUnitPriceCents(NaN, 'X').ok).toBe(false)
+    expect(validateUnitPriceCents(Infinity, 'X').ok).toBe(false)
+    expect(validateUnitPriceCents(null, 'X').ok).toBe(false)
   })
 })

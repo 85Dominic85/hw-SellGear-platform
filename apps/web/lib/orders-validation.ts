@@ -82,3 +82,50 @@ export function validateGlobalDiscount(
   }
   return { ok: true, pct }
 }
+
+/**
+ * Tope de `order_items.unit_price_cents`, que es INTEGER
+ * (migración 20260427000002): 2 147 483 647 céntimos ≈ 21,47 M €.
+ *
+ * No es un límite de negocio, es el de la columna, y hay que comprobarlo
+ * ANTES de crear nada. `orders.amount` es NUMERIC(12,2) y aguanta mucho más,
+ * así que un importe entre los dos límites deja el pedido insertado y el
+ * insert de líneas reventado con «value out of range for type integer». Como
+ * ese fallo hoy solo se registra con `console.error` (ver
+ * app/api/orders/route.ts, tras el insert de order_items), la API responde 200
+ * con el id, el AE aterriza en un pedido con importe y cero artículos, y Slack
+ * recibe un aviso con productos que no existen en la base de datos.
+ *
+ * Rechazarlo aquí cierra ese camino sin tocar la decisión de qué debe hacer el
+ * endpoint cuando el insert de líneas falla por otro motivo.
+ */
+export const MAX_UNIT_PRICE_CENTS = 2147483647
+
+/**
+ * Tope de `order_items.qty` (INT, con CHECK `qty > 0` en el esquema).
+ */
+export const MAX_LINE_QTY = 2147483647
+
+export function validateUnitPriceCents(
+  cents: unknown,
+  label: string,
+): { ok: true; cents: number } | { ok: false; error: string } {
+  if (typeof cents !== 'number' || !Number.isFinite(cents)) {
+    return { ok: false, error: `Precio inválido en "${label}".` }
+  }
+  if (!Number.isInteger(cents) || cents < 0) {
+    return {
+      ok: false,
+      error: `Precio inválido en "${label}": debe ser un importe positivo.`,
+    }
+  }
+  if (cents > MAX_UNIT_PRICE_CENTS) {
+    return {
+      ok: false,
+      error: `El precio de "${label}" supera el máximo admitido (${Math.floor(
+        MAX_UNIT_PRICE_CENTS / 100,
+      ).toLocaleString('es-ES')} €).`,
+    }
+  }
+  return { ok: true, cents }
+}

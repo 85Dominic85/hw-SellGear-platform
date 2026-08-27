@@ -4,7 +4,12 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { PurchaseType, Product, UserRole } from '@/types/database'
 import { cartTotals } from '@/lib/pricing'
 import { canCreateOrder } from '@/lib/auth'
-import { validateLineDiscount, validateGlobalDiscount } from '@/lib/orders-validation'
+import {
+  MAX_LINE_QTY,
+  validateGlobalDiscount,
+  validateLineDiscount,
+  validateUnitPriceCents,
+} from '@/lib/orders-validation'
 import { upsertAddressFromOrder } from '@/lib/address-book/upsert'
 import { isCanaryIslands } from '@/lib/utils'
 import { isValidPurchaseType } from '@/lib/purchase-type'
@@ -230,7 +235,9 @@ export async function POST(request: NextRequest) {
       )
     }
     const qty = typeof r.qty === 'number' ? Math.floor(r.qty) : 0
-    if (qty < 1) {
+    // Cota superior por la columna (order_items.qty es INT), no de negocio:
+    // sin ella el insert de líneas puede reventar después de crear el pedido.
+    if (qty < 1 || qty > MAX_LINE_QTY) {
       return NextResponse.json(
         { error: 'La cantidad debe ser un entero mayor o igual a 1.' },
         { status: 400 },
@@ -409,6 +416,15 @@ export async function POST(request: NextRequest) {
       if (it.product_name_override) {
         productName = it.product_name_override
       }
+    }
+    // El importe tiene que caber en order_items.unit_price_cents (INTEGER)
+    // ANTES de crear nada: si no, `orders` entra —su amount es NUMERIC(12,2) y
+    // aguanta mucho más— y el insert de líneas revienta, y ese fallo hoy solo
+    // se registra con console.error unas líneas más abajo, así que la API
+    // responde 200 con un pedido de cero artículos.
+    const priceCheck = validateUnitPriceCents(unitPriceCents, productName)
+    if (!priceCheck.ok) {
+      return NextResponse.json({ error: priceCheck.error }, { status: 400 })
     }
     resolved.push({
       product_id: product.id,
