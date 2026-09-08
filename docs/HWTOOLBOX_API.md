@@ -23,7 +23,11 @@ Un envío libre **no es un pedido**: no tiene tipo de compra, ni importe, ni lí
   - `GET /api/external/hwtoolbox/orders/{operation_id}` — detalle de pedido.
   - `GET /api/external/hwtoolbox/shipments` — listado paginado de envíos libres.
   - `GET /api/external/hwtoolbox/shipments/{shipment_id}` — detalle de envío.
-- **Base URL producción:** `https://hw-sellgear-platform.vercel.app`
+- **Base URL producción:** `https://hw-sell-gear-platform-tsm1.vercel.app`
+  > Corregida el 08-sep-2026. Este documento apuntaba a `https://hw-sellgear-platform.vercel.app`,
+  > que devuelve 404 hasta en la raíz — no existe. No hay dominio propio: es la URL del proyecto
+  > en Vercel. Si algún día se pone un dominio, hay que actualizar aquí y en `docs/HW_MAIN_PORTAL_API.md`,
+  > `.env.production.example` y `docs/CHANGELOG_2026-04-30_HW_PORTAL.md`, que siguen con la vieja.
 - **Auth:** header `X-API-Key` con la secret compartida.
 - **Tipo:** read-only. No hay escrituras desde HWToolbox.
 - **Scope pedidos:** solo en estado `enviado_proveedor`, `enviado`, `completado` o `bloqueado`. Los estados `nuevo`, `pendiente`, `falta_informacion` y `pagado` **no son visibles** (devuelven 404 en detalle, no aparecen en listado).
@@ -96,7 +100,7 @@ Filtro implícito siempre presente: `status IN ('enviado_proveedor','enviado','c
 
 ```bash
 curl -H "X-API-Key: $HWTOOLBOX_API_KEY" \
-     "https://hw-sellgear-platform.vercel.app/api/external/hwtoolbox/orders?q=Pepe&limit=10"
+     "https://hw-sell-gear-platform-tsm1.vercel.app/api/external/hwtoolbox/orders?q=Pepe&limit=10"
 ```
 
 ### Ejemplo TypeScript
@@ -105,7 +109,7 @@ curl -H "X-API-Key: $HWTOOLBOX_API_KEY" \
 import type { HwToolboxListResponse } from './types/hwtoolbox'
 
 const res = await fetch(
-  'https://hw-sellgear-platform.vercel.app/api/external/hwtoolbox/orders?limit=25',
+  'https://hw-sell-gear-platform-tsm1.vercel.app/api/external/hwtoolbox/orders?limit=25',
   { headers: { 'X-API-Key': process.env.MAINOPS_API_KEY! } },
 )
 if (!res.ok) throw new Error(`MainOps error ${res.status}`)
@@ -203,7 +207,7 @@ Si el pedido no existe **o** está en un estado no visible (borrador): respuesta
 
 ```bash
 curl -H "X-API-Key: $HWTOOLBOX_API_KEY" \
-     https://hw-sellgear-platform.vercel.app/api/external/hwtoolbox/orders/HW-202605-0001
+     https://hw-sell-gear-platform-tsm1.vercel.app/api/external/hwtoolbox/orders/HW-202605-0001
 ```
 
 ---
@@ -274,7 +278,7 @@ No existe `purchase_type`: un envío libre no es una venta.
 
 ```bash
 curl -H "X-API-Key: $HWTOOLBOX_API_KEY" \
-     "https://hw-sellgear-platform.vercel.app/api/external/hwtoolbox/shipments?limit=10"
+     "https://hw-sell-gear-platform-tsm1.vercel.app/api/external/hwtoolbox/shipments?limit=10"
 ```
 
 ---
@@ -362,7 +366,7 @@ Path param: `shipment_id` con formato `SH-YYYYMM-NNNN` (ej. `SH-202609-0055`).
 
 ```bash
 curl -H "X-API-Key: $HWTOOLBOX_API_KEY" \
-     https://hw-sellgear-platform.vercel.app/api/external/hwtoolbox/shipments/SH-202609-0055
+     https://hw-sell-gear-platform-tsm1.vercel.app/api/external/hwtoolbox/shipments/SH-202609-0055
 ```
 
 ## Estados visibles
