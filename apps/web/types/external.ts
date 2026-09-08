@@ -3,7 +3,7 @@
 // Consumido por HW Main Portal (dashboard agregador read-only).
 // =============================================================
 
-import type { OrderStatus, PurchaseType } from './database'
+import type { OrderStatus, PurchaseType, ShipmentStatus } from './database'
 
 export interface ExternalMetricsKpis {
   total_orders: number
@@ -194,4 +194,121 @@ export interface HwToolboxOrderDetail {
 export interface HwToolboxDetailResponse {
   generated_at: string
   order: HwToolboxOrderDetail
+}
+
+// =============================================================
+// Tipos públicos del endpoint /api/external/hwtoolbox/shipments
+//
+// Envíos TIPSA LIBRES (tabla `shipments`, id SH-YYYYMM-NNNN): etiquetas que
+// no cuelgan de un pedido — cliente a cliente, o material que vuelve a
+// nosotros. Son movimientos de almacén reales, así que HWToolbox los necesita
+// igual que los pedidos, pero NO son pedidos: no tienen estado del enum de
+// `orders`, ni tipo de compra, ni importe, ni líneas de producto.
+//
+// Lo que salió está en `content`, texto libre que escribe quien crea la
+// etiqueta ("PACK PREMIUM: TPV, 2 PRINTER WIFI...", "TPV PARA REPARACIÓN").
+// No hay forma de derivar SKU de ahí, así que se entrega tal cual y HWToolbox
+// decide qué hacer con él.
+//
+// Tampoco se inventa un estado: se exponen los hechos crudos (`shipped_at`,
+// `delivered_at`, `tracking_last_status` de TIPSA) y el consumidor concluye.
+// =============================================================
+
+export interface HwToolboxShipmentListItem {
+  /** Formato SH-YYYYMM-NNNN. */
+  shipment_id: string
+  /**
+   * Estado MANUAL que fija el equipo (`shipments.status`, enum propio de
+   * envíos — no el de pedidos). Es la columna «Estado» de la pestaña de
+   * envíos y manda sobre el tracking automático de TIPSA.
+   * `devuelto`, `cancelado` e `incidencia` cambian lo que un inventario debe
+   * concluir, así que va también en el listado.
+   */
+  status: ShipmentStatus
+  sender_name: string
+  recipient_name: string
+  recipient_city: string
+  /** Descripción libre de lo que va dentro. Puede ser null. */
+  content: string | null
+  packages: number
+  /**
+   * `true` = material que VUELVE (recogida / RMA). Para un inventario es la
+   * diferencia entre una entrada y una salida, así que va también en el
+   * listado y no solo en el detalle.
+   */
+  return_shipment: boolean
+  /** Albarán TIPSA. Null si la etiqueta aún no se generó. */
+  albaran: string | null
+  tracking_number: string | null
+  shipped_at: string | null
+  delivered_at: string | null
+  created_at: string
+}
+
+export interface HwToolboxShipmentsListResponse {
+  generated_at: string
+  pagination: HwToolboxListPagination
+  shipments: HwToolboxShipmentListItem[]
+}
+
+/** Quién creó el envío en MainOps. Null si la fila no tiene created_by. */
+export interface HwToolboxShipmentCreator {
+  full_name: string | null
+  email: string | null
+}
+
+export interface HwToolboxShipmentParty {
+  name: string
+  address: string
+  cp: string
+  city: string
+  phone: string | null
+}
+
+export interface HwToolboxShipmentRecipient extends HwToolboxShipmentParty {
+  email: string | null
+  contact_person: string | null
+}
+
+export interface HwToolboxShipmentDetail {
+  shipment_id: string
+  /** Estado manual del equipo. Ver HwToolboxShipmentListItem.status. */
+  status: ShipmentStatus
+  sender: HwToolboxShipmentParty
+  recipient: HwToolboxShipmentRecipient
+  /** Código de servicio TIPSA con el que se contrató. */
+  service_code: string
+  packages: number
+  weight_kg: number
+  content: string | null
+  /** Observaciones que viajan en la etiqueta. */
+  observations: string | null
+  /** Notas internas de MainOps. */
+  notes: string | null
+  /** Referencia libre del envío. */
+  reference: string | null
+  return_shipment: boolean
+  albaran: string | null
+  tracking_number: string | null
+  tracking_public_url: string | null
+  /** Último código de estado que devolvió TIPSA, tal cual ('1', '2'...). */
+  tracking_last_status: string | null
+  /**
+   * El mismo código traducido con `tipsaEventLabel`, la tabla que usa la app
+   * ('1' → «Alta», '2' → «Entregado»...). Un código suelto no dice nada, y
+   * duplicar la tabla en el consumidor la condena a desincronizarse.
+   */
+  tracking_last_status_label: string | null
+  tracking_last_checked_at: string | null
+  shipped_at: string | null
+  delivered_at: string | null
+  shipping_label_url: string | null
+  created_at: string
+  updated_at: string
+  created_by: HwToolboxShipmentCreator | null
+}
+
+export interface HwToolboxShipmentDetailResponse {
+  generated_at: string
+  shipment: HwToolboxShipmentDetail
 }

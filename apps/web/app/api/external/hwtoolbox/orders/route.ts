@@ -4,6 +4,15 @@ import { validateApiKey } from '@/lib/external-auth'
 import { applyCors, handlePreflight } from '@/lib/external-cors'
 import type { OrderStatus, PurchaseType } from '@/types/database'
 import { isValidPurchaseType } from '@/lib/purchase-type'
+import {
+  DEFAULT_LIMIT,
+  MAX_LIMIT,
+  MAX_OFFSET,
+  addOneDay,
+  clampInt,
+  ilikePattern,
+  isValidDate,
+} from '@/lib/external-query'
 import type {
   HwToolboxListResponse,
   HwToolboxOrderListItem,
@@ -27,9 +36,6 @@ export const HWTOOLBOX_VISIBLE_STATUSES: OrderStatus[] = [
 // Tras la centralizacion HWToolbox puede filtrar por saas_hardware sin
 // devolver 400.
 
-const DEFAULT_LIMIT = 25
-const MAX_LIMIT = 50
-
 export function OPTIONS(request: NextRequest) {
   return handlePreflight(request, 'HWTOOLBOX_ORIGIN')
 }
@@ -46,7 +52,7 @@ export async function GET(request: NextRequest) {
   const fromRaw = searchParams.get('from')
   const toRaw = searchParams.get('to')
   const limit = clampInt(searchParams.get('limit'), 1, MAX_LIMIT, DEFAULT_LIMIT)
-  const offset = clampInt(searchParams.get('offset'), 0, 100_000, 0)
+  const offset = clampInt(searchParams.get('offset'), 0, MAX_OFFSET, 0)
 
   // Validacion purchase_type (si viene)
   if (purchaseTypeRaw && !isValidPurchaseType(purchaseTypeRaw)) {
@@ -105,8 +111,7 @@ export async function GET(request: NextRequest) {
   }
   if (q) {
     // Busqueda en operation_id, customer_name o venue_name
-    const escaped = q.replace(/[%_]/g, (c) => `\\${c}`)
-    const pattern = `%${escaped}%`
+    const pattern = ilikePattern(q)
     query = query.or(
       `operation_id.ilike.${pattern},customer_name.ilike.${pattern},venue_name.ilike.${pattern}`,
     )
@@ -149,30 +154,4 @@ export async function GET(request: NextRequest) {
   const response = NextResponse.json(payload)
   response.headers.set('Cache-Control', 'private, max-age=30')
   return applyCors(response, request, 'HWTOOLBOX_ORIGIN')
-}
-
-// ----------------------- helpers -----------------------
-
-function clampInt(
-  raw: string | null,
-  min: number,
-  max: number,
-  fallback: number,
-): number {
-  if (!raw) return fallback
-  const n = Number.parseInt(raw, 10)
-  if (Number.isNaN(n)) return fallback
-  return Math.max(min, Math.min(max, n))
-}
-
-function isValidDate(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
-  const t = Date.parse(value)
-  return !Number.isNaN(t)
-}
-
-function addOneDay(iso: string): string {
-  const d = new Date(iso + 'T00:00:00Z')
-  d.setUTCDate(d.getUTCDate() + 1)
-  return d.toISOString().slice(0, 10)
 }
