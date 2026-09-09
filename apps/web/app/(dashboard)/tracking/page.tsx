@@ -13,6 +13,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import TrackingBoard from '@/components/tracking/TrackingBoard'
+import { isTerminalEvent, resolveOfficialStatus } from '@/lib/tipsa/services'
 import type { TrackingEntry } from '@/lib/tracking/types'
 import type { UserRole } from '@/types/database'
 
@@ -60,6 +61,33 @@ interface EventRow {
   shipment_id: string | null
   event_code: string
   event_date: string
+}
+
+/**
+ * El badge y la barra de progreso tienen que contar lo mismo.
+ *
+ * La barra se calcula en vivo desde `shipping_events`, pero el badge leia la
+ * columna `tracking_last_status`, que puede estar rancia: filas escritas antes
+ * del fix d3fa583 guardaron el codigo 3 (anotacion post-entrega) pisando al 2.
+ * Resultado: barra "Entregado" con badge "Incidencia" al lado.
+ *
+ * Con los eventos delante son la fuente de verdad — `resolveOfficialStatus` ya
+ * sabe que el 3 despues del 2 no cuenta. Sin eventos caemos a la columna.
+ */
+function officialFromEvents(
+  events: Array<{ event_code: string; event_date: string }>,
+  storedStatus: string | null,
+  storedDeliveredAt: string | null,
+): { status: string | null; deliveredAt: string | null } {
+  const official = resolveOfficialStatus(events, (e) => e.event_code)
+  if (!official) return { status: storedStatus, deliveredAt: storedDeliveredAt }
+  return {
+    status: official.event_code,
+    // Solo rellenamos delivered_at si falta: puede haberse puesto a mano.
+    deliveredAt:
+      storedDeliveredAt ??
+      (isTerminalEvent(official.event_code) ? official.event_date : null),
+  }
 }
 
 export default async function TrackingPage() {
@@ -166,6 +194,8 @@ export default async function TrackingPage() {
       if (o.venue_name && o.venue_name !== o.customer_name) subtitleParts.push(o.venue_name)
       if (o.shipping_city) subtitleParts.push(o.shipping_city)
       if (o.creator?.full_name) subtitleParts.push(`AE ${o.creator.full_name}`)
+      const events = eventsByOrder.get(o.id) ?? []
+      const official = officialFromEvents(events, o.tracking_last_status, o.delivered_at)
       return {
         kind: 'order',
         id: o.id,
@@ -175,13 +205,13 @@ export default async function TrackingPage() {
         subtitle: subtitleParts.length > 0 ? subtitleParts.join(' · ') : null,
         albaran: o.tracking_number,
         trackingPublicUrl: o.tracking_public_url,
-        trackingLastStatus: o.tracking_last_status,
+        trackingLastStatus: official.status,
         trackingLastCheckedAt: o.tracking_last_checked_at,
-        deliveredAt: o.delivered_at,
+        deliveredAt: official.deliveredAt,
         shippedAt: o.shipped_at,
         createdBy: o.created_by,
         createdByName: o.creator?.full_name ?? null,
-        events: eventsByOrder.get(o.id) ?? [],
+        events,
       }
     }),
     ...shipments.map((s): TrackingEntry => {
@@ -189,6 +219,8 @@ export default async function TrackingPage() {
       if (s.recipient_city) subtitleParts.push(s.recipient_city)
       if (s.sender_name) subtitleParts.push(`De ${s.sender_name}`)
       if (s.creator?.full_name) subtitleParts.push(`Creado por ${s.creator.full_name}`)
+      const events = eventsByShipment.get(s.id) ?? []
+      const official = officialFromEvents(events, s.tracking_last_status, s.delivered_at)
       return {
         kind: 'shipment',
         id: s.id,
@@ -198,13 +230,13 @@ export default async function TrackingPage() {
         subtitle: subtitleParts.length > 0 ? subtitleParts.join(' · ') : null,
         albaran: s.tracking_number,
         trackingPublicUrl: s.tracking_public_url,
-        trackingLastStatus: s.tracking_last_status,
+        trackingLastStatus: official.status,
         trackingLastCheckedAt: s.tracking_last_checked_at,
-        deliveredAt: s.delivered_at,
+        deliveredAt: official.deliveredAt,
         shippedAt: s.shipped_at,
         createdBy: s.created_by,
         createdByName: s.creator?.full_name ?? null,
-        events: eventsByShipment.get(s.id) ?? [],
+        events,
       }
     }),
   ]

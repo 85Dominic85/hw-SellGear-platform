@@ -119,10 +119,13 @@ export function resolveTimelineSteps(events: TimelineInput[]): TimelineStep[] {
  * Porcentaje de progreso 0-100 basado en el paso actual, util para pintar
  * la barra continua debajo de los puntos. Un envio en step 3 (reparto) tiene
  * 3/4 = 75% de progreso; en step 4 (entregado) tiene 100%.
+ *
+ * El rail que pinta este porcentaje va de centro a centro de los puntos
+ * extremos, asi que step 0 es 0% (el propio punto marca el arranque) y step 4
+ * es 100% (la linea muere justo en "Entregado").
  */
 export function timelineProgressPct(steps: TimelineStep[]): number {
   const currentIdx = steps.findIndex((s) => s.status === 'current')
   if (currentIdx < 0) return 0
-  if (currentIdx === 0) return 5 // pequena barra visible en step 0
   return Math.round((currentIdx / (steps.length - 1)) * 100)
 }

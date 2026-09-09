@@ -122,9 +122,11 @@ describe('timelineProgressPct', () => {
     expect(timelineProgressPct(steps)).toBe(0)
   })
 
-  it('step 0 (documentado) -> 5% (barra minima visible)', () => {
+  // El rail va de centro a centro de los puntos extremos: en step 0 la linea
+  // mide 0 porque el arranque ES el primer punto.
+  it('step 0 (documentado) -> 0%', () => {
     const steps = resolveTimelineSteps([e('1', '2026-05-01T10:00:00Z')])
-    expect(timelineProgressPct(steps)).toBe(5)
+    expect(timelineProgressPct(steps)).toBe(0)
   })
 
   it('step 2 (HUB destino) -> 50%', () => {

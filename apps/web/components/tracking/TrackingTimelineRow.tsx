@@ -57,13 +57,18 @@ export default function TrackingTimelineRow({ entry }: TrackingTimelineRowProps)
         )}
       </div>
 
-      {/* Barra de 5 pasos */}
-      <div className="relative h-14 px-2">
-        <div className="absolute left-2 right-2 top-[22px] h-[3px] rounded-full bg-gray-200" />
-        <div
-          className={cn('absolute left-2 top-[22px] h-[3px] rounded-full', FILL[currentTone])}
-          style={{ width: `calc((100% - 16px) * ${pct} / 100)` }}
-        />
+      {/* Barra de 5 pasos.
+          El rail va de centro a centro de los puntos extremos: con 5 columnas
+          iguales esos centros caen al 10% y al 90%, de ahi el inset. Asi
+          "Documentado" es el arranque del recorrido y "Entregado" el final —
+          sin tramo de linea sobrando por fuera. */}
+      <div className="relative h-14">
+        <div className="absolute left-[10%] right-[10%] top-[22px] h-[3px] rounded-full bg-gray-200">
+          <div
+            className={cn('h-full rounded-full', FILL[currentTone])}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
         <div className="relative grid h-full grid-cols-5">
           {steps.map((step, i) => (
             <div key={i} className="flex flex-col items-center">
