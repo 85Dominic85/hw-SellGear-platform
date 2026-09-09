@@ -2,36 +2,35 @@ import type { TrackingEntry } from '@/lib/tracking/types'
 import TrackingTimelineRow from './TrackingTimelineRow'
 
 /**
- * Orden: lo mas reciente arriba.
+ * Orden: por numero de pedido, del mas alto al mas bajo.
  *
- * La "recencia" de un envio es la fecha de su ultimo evento real, con
- * `shippedAt` de reserva para los que aun no tienen historial de TIPSA. NO se
- * usa `trackingLastCheckedAt`: eso es cuando LO CONSULTAMOS NOSOTROS, no cuando
- * paso algo, y ordenar por ahi mezclaba envios de julio con los de esta semana
- * sin ningun criterio visible para quien mira la lista.
+ * Los identificadores son PREFIJO-AAAAMM-SECUENCIA (HW-202609-2055 para
+ * pedidos, SH-202609-0056 para envios libres). Se ordena por el AAAAMM y
+ * despues por la secuencia, las dos de mayor a menor, asi que arriba queda
+ * siempre el pedido mas nuevo. El prefijo no entra en la comparacion: como HW y
+ * SH llevan contadores separados, ordenar la cadena entera pondria todos los SH
+ * por delante de los HW solo porque la "S" va despues de la "H".
  *
- * Tampoco se agrupa por urgencia. Se probo poner las incidencias primero y el
- * efecto era que un envio de hace dos meses encabezaba la tabla. Las
- * incidencias ya se distinguen solas: barra ambar y badge propio.
+ * Antes se ordenaba por la fecha del ultimo evento. No servia: el backfill toca
+ * decenas de envios en el mismo minuto, con lo que la lista salia barajada.
+ * Y antes de eso se ordenaba por tracking_last_checked_at, que es cuando LO
+ * CONSULTAMOS NOSOTROS — un dato interno que no le dice nada a quien mira.
+ *
+ * Tampoco se agrupa por urgencia: hacerlo dejaba un envio de hace dos meses
+ * encabezando la tabla. Las incidencias ya se distinguen con la barra ambar y
+ * su badge.
  */
-function recencyOf(entry: TrackingEntry): number {
-  let last = 0
-  for (const ev of entry.events) {
-    const t = new Date(ev.event_date).getTime()
-    if (Number.isFinite(t) && t > last) last = t
-  }
-  if (last > 0) return last
-  const fallback = entry.shippedAt ?? entry.trackingLastCheckedAt
-  const t = fallback ? new Date(fallback).getTime() : 0
-  return Number.isFinite(t) ? t : 0
+export function orderKey(publicId: string): number {
+  const m = /(\d{6})-(\d+)/.exec(publicId)
+  if (!m) return 0
+  return Number(m[1]) * 100000 + Number(m[2])
 }
 
-function sortByRecency(entries: TrackingEntry[]): TrackingEntry[] {
+function sortByOrderNumber(entries: TrackingEntry[]): TrackingEntry[] {
   return [...entries].sort((a, b) => {
-    const diff = recencyOf(b) - recencyOf(a)
+    const diff = orderKey(b.publicId) - orderKey(a.publicId)
     if (diff !== 0) return diff
-    // Desempate estable por identificador para que dos envios del mismo
-    // momento no bailen entre recargas.
+    // Desempate estable para que dos filas no bailen entre recargas.
     return b.publicId.localeCompare(a.publicId)
   })
 }
@@ -43,7 +42,7 @@ interface TrackingTimelineSectionProps {
 export default function TrackingTimelineSection({
   entries,
 }: TrackingTimelineSectionProps) {
-  const sorted = sortByRecency(entries)
+  const sorted = sortByOrderNumber(entries)
 
   return (
     <section>
