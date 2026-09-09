@@ -40,18 +40,24 @@ export interface TrackingEntry {
 
 /**
  * Categoria para agrupar en el kanban. Derivada de tracking_last_status.
+ *
+ * Codigos segun el catalogo oficial de TIPSA (ver TIPSA_EVENT_LABELS en
+ * lib/tipsa/services.ts). OJO al leer codigo antiguo: hasta 2026-09-09 esta
+ * funcion usaba un mapa equivocado en el que el 2 era "entregado" y el 3
+ * "incidencia", con lo que el kanban metia las entregas reales en la columna
+ * de incidencias y daba por entregado lo que solo iba en reparto.
  */
 export type TrackingCategory =
-  | 'pending' // sin recogida (null, 0, 1)
-  | 'transit' // 4, 5, 7, 8, 10, 11, 15, 18
-  | 'delivered' // 2
-  | 'incident' // 3
-  | 'returned' // 6
+  | 'pending' // sin recoger: null, 0 DOCUMENTADO
+  | 'transit' // 1 TRANSITO, 2 REPARTO, 7 RECANALIZADO, 14 DISPONIBLE, 15 ENTREGA PARCIAL, y desconocidos
+  | 'delivered' // 3 ENTREGADO
+  | 'incident' // 4 INCIDENCIA, 6 FALTA DE EXPEDICION, 9 FALTA EXPED. ADMIN
+  | 'returned' // 5 DEVUELTO, 10 DESTRUIDO
 
 export function categorize(code: string | null | undefined): TrackingCategory {
-  if (!code || code === '0' || code === '1') return 'pending'
-  if (code === '2') return 'delivered'
-  if (code === '3') return 'incident'
-  if (code === '6') return 'returned'
+  if (!code || code === '0') return 'pending'
+  if (code === '3') return 'delivered'
+  if (code === '4' || code === '6' || code === '9') return 'incident'
+  if (code === '5' || code === '10') return 'returned'
   return 'transit'
 }

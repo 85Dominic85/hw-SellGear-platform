@@ -96,16 +96,28 @@ export interface TipsaLabelResult {
 }
 
 /**
- * Codigos de estado TIPSA (V_COD_TIPO_EST) mapeados a texto humano.
- * Source: docs/integrations/tipsa/extracted/Documentacion/*.pdf
+ * Codigos de estado TIPSA (V_COD_TIPO_EST).
+ *
+ * Catalogo oficial: pagina 22 ("Tabla de tipos de estados") de
+ * docs/integrations/tipsa/extracted/Documentacion/
+ *   Documentacion WebServices 64.0_resumen_ES.pdf
+ * Las etiquetas vivas estan en TIPSA_EVENT_LABELS (lib/tipsa/services.ts);
+ * aqui solo se listan para que el tipo documente algo cierto.
+ *
+ * OJO: hasta 2026-09-09 este comentario publicaba un mapa deducido y falso
+ * (2="Entregado", 3="Incidencia"), que estaba corrido respecto al real.
  */
 export type TipsaEventCode =
-  | '1'   // Alta
-  | '2'   // Entregado
-  | '3'   // Incidencia
-  | '4'   // En transito
-  | '5'   // En reparto
-  | '6'   // Devuelto origen
+  | '0'   // Documentado
+  | '1'   // En transito
+  | '2'   // En reparto
+  | '3'   // Entregado      (terminal)
+  | '4'   // Incidencia
+  | '5'   // Devuelto       (terminal)
+  | '6'   // Falta de expedicion
+  | '7'   // Recanalizado
+  | '14'  // Disponible para recoger
+  | '15'  // Entrega parcial
   | string
 
 export interface TipsaShippingEvent {

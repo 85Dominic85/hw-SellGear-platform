@@ -295,8 +295,11 @@ export interface HwToolboxShipmentDetail {
   tracking_last_status: string | null
   /**
    * El mismo código traducido con `tipsaEventLabel`, la tabla que usa la app
-   * ('1' → «Alta», '2' → «Entregado»...). Un código suelto no dice nada, y
-   * duplicar la tabla en el consumidor la condena a desincronizarse.
+   * ('1' → «En tránsito», '2' → «En reparto», '3' → «Entregado»...). Un código
+   * suelto no dice nada, y duplicar la tabla en el consumidor la condena a
+   * desincronizarse — que es justo lo que pasó: hasta 2026-09-09 la app usaba
+   * un catálogo equivocado en el que el 2 era «Entregado» y el 3 «Incidencia».
+   * Si un consumidor guardó esa interpretación, tiene que revisarla.
    */
   tracking_last_status_label: string | null
   tracking_last_checked_at: string | null

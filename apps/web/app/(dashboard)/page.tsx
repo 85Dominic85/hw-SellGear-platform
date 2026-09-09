@@ -4,8 +4,11 @@ import HomePanel, { type CategoryStats } from '@/components/home/HomePanel'
 import type { OrderStatus, PurchaseType, UserRole } from '@/types/database'
 import type { SlaMetrics } from '@/types/metrics'
 
-// Estados terminales: no se cuentan como "activos en transito"
-const ACTIVE_SHIPMENT_BLOCK = new Set<string>(['2', '6'])
+// Estados terminales TIPSA: no se cuentan como "activos en transito".
+// 3 ENTREGADO y 5 DEVUELTO (catalogo oficial, ver TIPSA_TERMINAL_CODES).
+// Antes decia {2,6}, con el mapa viejo: contaba como activo lo ya entregado y
+// daba por cerrado lo que solo iba en reparto.
+const ACTIVE_SHIPMENT_BLOCK = new Set<string>(['3', '5'])
 
 // Las 3 categorias mas usadas que se muestran como CategoryTiles.
 // Las otras (hardware_financiacion, otro) siguen accesibles desde sidebar.

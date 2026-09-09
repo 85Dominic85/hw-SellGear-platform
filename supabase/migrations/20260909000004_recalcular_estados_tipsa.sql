@@ -57,6 +57,70 @@
 --     where status = 'completado' and delivered_at is null;
 -- =============================================================================
 
+-- ------------------------------------------- 0. red de seguridad ------------
+-- Guardamos los valores de antes por si hay que volver atras. `IF NOT EXISTS`
+-- hace que una segunda ejecucion NO pise el snapshot: lo que queda guardado es
+-- siempre el estado original, que es justo lo que se quiere para restaurar.
+--
+-- RLS activado sin ninguna policy: Supabase expone el esquema public por
+-- PostgREST, y estas tablas llevan datos de pedidos. Sin policies nadie las lee
+-- salvo el service_role, que se salta RLS.
+--
+-- Para restaurar (solo si algo sale mal):
+--   UPDATE public.orders o SET tracking_last_status = b.tracking_last_status,
+--                              delivered_at = b.delivered_at
+--     FROM public._bk_tipsa_20260909_orders b WHERE b.id = o.id;
+--   UPDATE public.shipments s SET tracking_last_status = b.tracking_last_status,
+--                                 delivered_at = b.delivered_at
+--     FROM public._bk_tipsa_20260909_shipments b WHERE b.id = s.id;
+--   UPDATE public.shipping_events e SET event_code = b.event_code,
+--                                       event_label = b.event_label
+--     FROM public._bk_tipsa_20260909_events b WHERE b.id = e.id;
+--
+-- Cuando el cambio lleve unos dias asentado se pueden borrar las tres tablas.
+
+CREATE TABLE IF NOT EXISTS public._bk_tipsa_20260909_orders AS
+  SELECT id, tracking_last_status, delivered_at, status, updated_at
+  FROM public.orders
+  WHERE carrier = 'tipsa';
+
+CREATE TABLE IF NOT EXISTS public._bk_tipsa_20260909_shipments AS
+  SELECT id, tracking_last_status, delivered_at
+  FROM public.shipments;
+
+CREATE TABLE IF NOT EXISTS public._bk_tipsa_20260909_events AS
+  SELECT id, event_code, event_label
+  FROM public.shipping_events
+  WHERE carrier = 'tipsa';
+
+ALTER TABLE public._bk_tipsa_20260909_orders    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public._bk_tipsa_20260909_shipments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public._bk_tipsa_20260909_events    ENABLE ROW LEVEL SECURITY;
+
+-- ----------------------------- 0b. congelar updated_at ---------------------
+-- orders tiene TRES triggers de UPDATE, no uno. Ademas de
+-- orders_auto_delivered_at esta `orders_updated_at` (20260219000001:166), un
+-- BEFORE UPDATE que hace NEW.updated_at = now() en CUALQUIER update, mire o no
+-- el status. Igual en shipments (20260505000004:85).
+--
+-- Sin desactivarlos, esta migracion pisaria el updated_at de practicamente
+-- todas las filas con eventos TIPSA — el mapa estaba corrido, asi que casi
+-- todas cambian de valor. Y eso rompe dos cosas:
+--
+--   * SlaIndicator (components/orders/SlaIndicator.tsx) usa updated_at como
+--     aproximacion de "cuando se bloqueo el pedido". Un pedido bloqueado hace
+--     6 dias pasaria a mostrar "90d — Pausado". No se puede recuperar desde
+--     updated_at: habria que reconstruirlo de status_history.
+--   * OrderDetailFields lo muestra como "ultima modificacion": cientos de
+--     pedidos apareceriann tocados hoy sin que nadie los haya tocado.
+--
+-- updated_at es el unico dato de esta migracion que no vive en ningun otro
+-- sitio. Mismo patron que uso la migracion 20260414000002 (lineas 16 y 45).
+-- Requiere ser owner de la tabla: en el SQL Editor de Supabase con el rol
+-- postgres lo es.
+ALTER TABLE public.orders    DISABLE TRIGGER orders_updated_at;
+ALTER TABLE public.shipments DISABLE TRIGGER shipments_updated_at;
+
 -- --------------------------------------- 1. eventos sinteticos de alta ------
 -- Al crear un envio escribimos nosotros un evento inicial para que la ficha no
 -- salga vacia hasta el primer barrido del cron. Le poniamos codigo 1, que en el
@@ -101,20 +165,33 @@ WHERE x.order_id = o.id
 --
 -- El trigger orders_auto_delivered_at solo actua cuando cambia `status`, y aqui
 -- no lo tocamos, asi que no hace falta desactivarlo.
+-- Sin COALESCE a updated_at. La migracion 20260414000002 uso ese fallback, pero
+-- alli era seguro; aqui updated_at es un valor volatil y ademas el objetivo es
+-- reparar, no inventar. Si un pedido completado no tiene rastro en
+-- status_history (importados, migrados por caminos antiguos), lo dejamos como
+-- esta: es preferible un delivered_at sospechoso a una fecha fabricada que se
+-- cuele en get_sla_metrics como una entrega de hoy con delivery_days enorme.
 UPDATE public.orders o
-SET delivered_at = COALESCE(
-  (SELECT sh.changed_at FROM public.status_history sh
-   WHERE sh.order_id = o.id AND sh.to_status = 'completado'
-   ORDER BY sh.changed_at DESC LIMIT 1),
-  o.updated_at
+SET delivered_at = (
+  SELECT h.changed_at
+  FROM public.status_history h
+  WHERE h.order_id = o.id AND h.to_status = 'completado'
+  ORDER BY h.changed_at DESC
+  LIMIT 1
 )
 WHERE o.status = 'completado'
   AND o.delivered_at IS NOT NULL
+  -- lo escribio el refresco de TIPSA, no el trigger
   AND EXISTS (
     SELECT 1 FROM public.shipping_events e
     WHERE e.order_id = o.id
       AND e.carrier = 'tipsa'
       AND e.event_date = o.delivered_at
+  )
+  -- y tenemos de donde reconstruirlo
+  AND EXISTS (
+    SELECT 1 FROM public.status_history h
+    WHERE h.order_id = o.id AND h.to_status = 'completado'
   );
 
 -- Un pedido que TIPSA marco como entregado sin estar 'completado' tenia
@@ -139,8 +216,13 @@ WITH oficial AS (
          FILTER (WHERE e.event_code IN ('3', '5')))[1],
       (array_agg(e.event_code ORDER BY e.event_date DESC))[1]
     ) AS code,
+    -- Terminal, no solo entregado: {3,5}, lo mismo que escribe el cron
+    -- (isTerminalEvent en api/cron/tipsa-refresh). Si aqui usaramos solo el 3,
+    -- un envio devuelto quedaria con delivered_at NULL hasta que pasara el
+    -- barrido y se lo volviera a poner — la columna significaria una cosa antes
+    -- del cron y otra despues.
     (array_agg(e.event_date ORDER BY e.event_date DESC)
-       FILTER (WHERE e.event_code = '3'))[1] AS entregado_en
+       FILTER (WHERE e.event_code IN ('3', '5')))[1] AS terminado_en
   FROM public.shipping_events e
   WHERE e.carrier = 'tipsa' AND e.shipment_id IS NOT NULL
   GROUP BY e.shipment_id
@@ -148,13 +230,34 @@ WITH oficial AS (
 UPDATE public.shipments s
 SET
   tracking_last_status = x.code,
-  delivered_at = x.entregado_en
+  delivered_at = x.terminado_en
 FROM oficial x
 WHERE x.shipment_id = s.id
   AND (
     s.tracking_last_status IS DISTINCT FROM x.code
-    OR s.delivered_at IS DISTINCT FROM x.entregado_en
+    OR s.delivered_at IS DISTINCT FROM x.terminado_en
   );
+
+-- ------- 3b. shipments.status auto-sincronizado mal: NO se toca aqui --------
+-- El boton "Actualizar" de la ficha de un envio libre (api/shipments/[id]/
+-- refresh-tracking) traducia el codigo TIPSA al estado de negocio con el mapa
+-- viejo, y dejaba constancia en status_history. Escribio 'entregado' donde
+-- tocaba 'en_curso' (codigo 2 = REPARTO) y 'incidencia' donde tocaba
+-- 'entregado' (codigo 3).
+--
+-- shipments.status NO se corrige por migracion a proposito: es estado de
+-- negocio, una persona puede haberlo revisado despues, y 'entregado' es casi
+-- terminal en SHIPMENT_STATUS_TRANSITIONS. Reescribirlo en masa por inferencia
+-- puede tapar trabajo humano. El codigo ya no volvera a escribir mal (ver el
+-- remapeo en esa ruta); lo que quedo mal se revisa a mano con esta consulta:
+--
+--   SELECT s.shipment_id, s.status AS estado_actual, s.tracking_last_status,
+--          h.comment, h.changed_at
+--   FROM public.shipments s
+--   JOIN public.status_history h ON h.shipment_id = s.id
+--   WHERE h.comment LIKE 'Auto-sync desde TIPSA%'
+--     AND h.shipment_to_status = s.status   -- nadie lo ha tocado despues
+--   ORDER BY h.changed_at DESC;
 
 -- ------------------------------- 4. etiquetas de eventos guardadas ----------
 -- event_label se congelo al insertar cada fila, con el mapa equivocado
@@ -183,3 +286,18 @@ FROM (VALUES
 WHERE e.carrier = 'tipsa'
   AND e.event_code = c.code
   AND e.event_label IS DISTINCT FROM c.label;
+
+-- ------------------------------------- 5. reactivar los triggers ------------
+ALTER TABLE public.shipments ENABLE TRIGGER shipments_updated_at;
+ALTER TABLE public.orders    ENABLE TRIGGER orders_updated_at;
+
+-- ------------------------- 6. documentacion de la columna en la BD ----------
+-- El COMMENT de la migracion 20260421000001 publica el mapa falso a quien mire
+-- el esquema. Se corrige aqui para que no quede ninguna copia del mapa viejo.
+COMMENT ON COLUMN public.orders.tracking_last_status IS
+  'Codigo de estado TIPSA (V_COD_TIPO_EST). Catalogo oficial: 0 Documentado, '
+  '1 En transito, 2 En reparto, 3 Entregado, 4 Incidencia, 5 Devuelto, '
+  '6 Falta de expedicion, 7 Recanalizado, 14 Disponible para recoger, '
+  '15 Entrega parcial. Terminales: 3 y 5. Fuente: pag. 22 de "Documentacion '
+  'WebServices 64.0_resumen_ES.pdf". OJO: hasta 2026-09-09 el proyecto usaba un '
+  'mapa deducido y equivocado en el que el 2 era "Entregado" y el 3 "Incidencia".';

@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
         shipping_saturday: saturdayDelivery,
         shipped: true,
         shipped_at: now,
-        tracking_last_status: '1',
+        tracking_last_status: '0',
         tracking_last_checked_at: now,
       })
       .eq('id', order.id)

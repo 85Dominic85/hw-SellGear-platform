@@ -347,7 +347,11 @@ Path param: `shipment_id` con formato `SH-YYYYMM-NNNN` (ej. `SH-202609-0055`).
 - **No se inventa un estado de progreso.** Van los hechos crudos y el consumidor concluye:
   - `status` — lo que dice el equipo (manual, y es lo que manda en la app).
   - `tracking_last_status` — el último código que devolvió TIPSA, tal cual (`'1'`, `'2'`…).
-  - `tracking_last_status_label` — el mismo código traducido con la tabla que usa MainOps (`'1'` → «Alta», `'2'` → «Entregado», `'3'` → «Incidencia», `'4'` → «En tránsito», `'5'` → «En reparto», `'6'` → «Devuelto al origen»; un código desconocido da `Estado {code}`). Se traduce en MainOps a propósito: duplicar la tabla en el consumidor la condena a desincronizarse.
+  - `tracking_last_status_label` — el mismo código traducido con la tabla que usa MainOps (`'0'` → «Documentado», `'1'` → «En tránsito», `'2'` → «En reparto», `'3'` → «Entregado», `'4'` → «Incidencia», `'5'` → «Devuelto», `'7'` → «Recanalizado», `'14'` → «Disponible para recoger»; un código desconocido da `Estado {code}`). Se traduce en MainOps a propósito: duplicar la tabla en el consumidor la condena a desincronizarse.
+
+> **⚠️ Cambio de significado — 2026-09-09.** Hasta esa fecha MainOps usaba un catálogo de códigos **deducido y equivocado**, en el que `'2'` era «Entregado» y `'3'` «Incidencia». El catálogo oficial de TIPSA dice justo lo contrario: **`'2'` es REPARTO** (el paquete va en la furgoneta) y **`'3'` es ENTREGADO**. Los terminales son el `'3'` y el `'5'`, no el `'2'` y el `'6'`.
+>
+> El campo no cambia de forma — sigue siendo el mismo string — pero **cambia de significado**. Si HWToolbox (o cualquier otro consumidor) guardó su propia interpretación de estos números, o dedujo «entregado» del `'2'`, hay que revisarla. Lo más seguro es leer `tracking_last_status_label`, que MainOps mantiene al día, en vez del código crudo.
   - `shipped_at` / `delivered_at` — fechas reales del transportista.
 - **`observations`** viaja impreso en la etiqueta; **`notes`** son notas internas de MainOps. Los dos son texto libre.
 - **`created_by`** sale de `shipments.created_by` join `user_profiles`. `null` si la fila no lo tiene.

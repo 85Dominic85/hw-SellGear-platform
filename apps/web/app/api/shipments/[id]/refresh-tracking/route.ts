@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { fetchTracking } from '@/lib/tipsa/client'
-import { isTerminalEvent, loadTipsaConfig } from '@/lib/tipsa/services'
+import { isTerminalEvent, loadTipsaConfig, resolveOfficialStatus } from '@/lib/tipsa/services'
 
 export const runtime = 'nodejs'
 
@@ -70,33 +70,47 @@ export async function POST(_request: NextRequest, { params }: Ctx) {
       if (!insertError) inserted++
     }
 
-    const lastEvent = tracking.events[tracking.events.length - 1]
+    // Estado oficial, no "el ultimo evento": TIPSA sigue emitiendo lecturas
+    // despues de entregar (vimos un 14 tras un 3), y sin esta regla una de esas
+    // degradaba un envio ya entregado.
+    const officialEvent = resolveOfficialStatus(tracking.events, (e) => e.code)
     const now = new Date().toISOString()
 
     const updates: Record<string, unknown> = {
-      tracking_last_status: lastEvent?.code ?? null,
+      tracking_last_status: officialEvent?.code ?? null,
       tracking_last_checked_at: now,
     }
-    if (lastEvent && isTerminalEvent(lastEvent.code)) {
-      updates.delivered_at = lastEvent.date
+    // Aqui si escribimos delivered_at: en shipments esa columna es de TIPSA
+    // (no tiene el trigger que si gobierna orders.delivered_at).
+    if (officialEvent && isTerminalEvent(officialEvent.code)) {
+      updates.delivered_at = officialEvent.date
     }
 
-    // Auto-sync del estado manual SOLO si sigue en 'pendiente' (no tocado por usuario):
-    //   - TIPSA 2 (Entregado) -> 'entregado'
-    //   - TIPSA 6 (Devuelto origen) -> 'devuelto'
-    //   - TIPSA 3 (Incidencia) -> 'incidencia'
-    //   - TIPSA 4 (En transito) o 5 (En reparto) -> 'en_curso'
-    // Si el usuario ya cambio el estado manualmente, NO se pisa.
+    // Auto-sync del estado manual SOLO si sigue en 'pendiente' (no tocado por
+    // usuario). Catalogo oficial de codigos (ver TIPSA_EVENT_LABELS):
+    //   3 ENTREGADO -> 'entregado'
+    //   5 DEVUELTO  -> 'devuelto'
+    //   4 INCIDENCIA-> 'incidencia'
+    //   1 TRANSITO / 2 REPARTO / 7 RECANALIZADO / 14 DISPONIBLE -> 'en_curso'
+    //   0 DOCUMENTADO no mueve nada: aun no lo ha recogido el transportista.
+    //
+    // OJO: hasta 2026-09-09 este mapa usaba el catalogo equivocado y marcaba
+    // 'entregado' con el codigo 2, que es REPARTO — o sea, daba por entregado un
+    // paquete que seguia en la furgoneta, y encima lo dejaba escrito en
+    // status_history. Lo que quedo mal se revisa a mano (ver migracion
+    // 20260909000004, apartado 3b).
     const currentStatus = shipment.status as string | undefined
-    if (currentStatus === 'pendiente' && lastEvent) {
+    if (currentStatus === 'pendiente' && officialEvent) {
       const map: Record<string, string> = {
-        '2': 'entregado',
-        '3': 'incidencia',
-        '4': 'en_curso',
-        '5': 'en_curso',
-        '6': 'devuelto',
+        '1': 'en_curso',
+        '2': 'en_curso',
+        '3': 'entregado',
+        '4': 'incidencia',
+        '5': 'devuelto',
+        '7': 'en_curso',
+        '14': 'en_curso',
       }
-      const newManualStatus = map[lastEvent.code]
+      const newManualStatus = map[officialEvent.code]
       if (newManualStatus && newManualStatus !== currentStatus) {
         updates.status = newManualStatus
         // Auditoria del cambio automatico.
@@ -106,7 +120,7 @@ export async function POST(_request: NextRequest, { params }: Ctx) {
           shipment_to_status: newManualStatus,
           changed_by: null,
           changed_at: now,
-          comment: `Auto-sync desde TIPSA evento ${lastEvent.code}`,
+          comment: `Auto-sync desde TIPSA evento ${officialEvent.code}`,
         })
       }
     }
@@ -117,7 +131,7 @@ export async function POST(_request: NextRequest, { params }: Ctx) {
       ok: true,
       events_count: tracking.events.length,
       inserted,
-      last_status: lastEvent?.code ?? null,
+      last_status: officialEvent?.code ?? null,
     })
   } catch (err) {
     const error = err as Error

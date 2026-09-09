@@ -176,7 +176,7 @@ export default function ShipmentTrackingPanel({
                 className="flex items-start gap-2 text-xs text-gray-600"
               >
                 <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-700">
-                  {ev.event_label ?? tipsaEventLabel(ev.event_code)}
+                  {tipsaEventLabel(ev.event_code)}
                 </span>
                 <span className="text-gray-500">{formatDate(ev.event_date)}</span>
               </li>

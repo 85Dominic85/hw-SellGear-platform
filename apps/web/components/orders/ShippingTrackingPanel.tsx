@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { AlertCircle, ExternalLink, Info, RefreshCw, Truck, Loader2, Trash2 } from 'lucide-react'
 import CreateShipmentModal from './CreateShipmentModal'
 import ShippingLabelViewer from './ShippingLabelViewer'
-import { isIncidenceEvent, resolveOfficialStatus } from '@/lib/tipsa/services'
+import { isIncidenceEvent, resolveOfficialStatus, tipsaEventLabel } from '@/lib/tipsa/services'
 import type { ShippingEvent } from '@/types/database'
 
 interface ShippingTrackingPanelProps {
@@ -333,17 +333,18 @@ export default function ShippingTrackingPanel({
   )
 }
 
+/**
+ * Etiqueta del codigo TIPSA. Delega en tipsaEventLabel, que es el catalogo
+ * oficial y el que usan tambien el badge y la API externa.
+ *
+ * Este helper tenia su propia tabla de codigos, copiada del mapa antiguo — el
+ * que decia 2="Entregado" y 3="Incidencia". Al corregir el catalogo se quedo
+ * atras y esta pantalla siguio mostrando las entregas como incidencias. Una
+ * segunda tabla de codigos solo sirve para desincronizarse: no la reintroduzcas.
+ */
 function labelForCode(code: string | null): string {
   if (!code) return '—'
-  const map: Record<string, string> = {
-    '1': 'Alta',
-    '2': 'Entregado',
-    '3': 'Incidencia',
-    '4': 'En tránsito',
-    '5': 'En reparto',
-    '6': 'Devuelto al origen',
-  }
-  return map[code] ?? `Estado ${code}`
+  return tipsaEventLabel(code)
 }
 
 function formatDateTime(iso: string): string {

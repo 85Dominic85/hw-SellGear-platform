@@ -237,7 +237,7 @@ export async function POST(request: NextRequest) {
         tracking_public_url: publicUrl,
         shipping_label_url: shippingLabelUrl,
         shipped_at: now,
-        tracking_last_status: '1',
+        tracking_last_status: '0',
         tracking_last_checked_at: now,
       })
       .eq('id', shipment.id)

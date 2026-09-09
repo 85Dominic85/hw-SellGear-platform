@@ -1,17 +1,25 @@
+import { categorize, type TrackingCategory } from '@/lib/tracking/types'
 import type { TrackingEntry } from '@/lib/tracking/types'
 import TrackingTimelineRow from './TrackingTimelineRow'
 
 /**
  * Orden de urgencia: incidencia primero, entregados al final.
  * Dentro del mismo grupo, lo mas reciente arriba.
+ *
+ * Se apoya en categorize() en vez de traducir codigos por su cuenta: tener un
+ * segundo mapa aqui fue justo lo que dejo esta lista ordenando al reves cuando
+ * se corrigio el catalogo de TIPSA.
  */
+const URGENCY_BY_CATEGORY: Record<TrackingCategory, number> = {
+  incident: 0,
+  returned: 1,
+  pending: 2,
+  transit: 3,
+  delivered: 4,
+}
+
 function urgencyRank(entry: TrackingEntry): number {
-  const code = entry.trackingLastStatus ?? ''
-  if (code === '3') return 0 // incidencia real
-  if (code === '6') return 1 // devuelto
-  if (!code || code === '0' || code === '1') return 2 // sin recogida
-  if (code === '2') return 4 // entregado
-  return 3 // en transito
+  return URGENCY_BY_CATEGORY[categorize(entry.trackingLastStatus)]
 }
 
 function sortByUrgency(entries: TrackingEntry[]): TrackingEntry[] {
