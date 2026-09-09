@@ -255,10 +255,10 @@ describe('ConsEnvEstados', () => {
     const xml = fixture('ConsEnvEstados/ConsEnvEstados_response.txt')
     const parsed = parseConsEnvEstadosResponse(xml, '9999171970')
     expect(parsed.events.length).toBe(5)
-    // Primer evento es "Alta" (codigo 1)
+    // Primer evento es codigo 1 = TRANSITO
     expect(parsed.events[0].code).toBe('1')
-    expect(parsed.events[0].label).toBe('Alta')
-    // Ultimo es codigo 3 (incidencia) segun fixture
+    expect(parsed.events[0].label).toBe('En tránsito')
+    // Ultimo es codigo 3 = ENTREGADO segun fixture
     expect(parsed.events[parsed.events.length - 1].code).toBe('3')
     // Todas las fechas son ISO
     for (const e of parsed.events) {
@@ -309,11 +309,13 @@ describe('parseTipsaDate', () => {
 })
 
 describe('tipsaEventLabel', () => {
+  // Catalogo oficial, pag. 22 del PDF de WebServices. El detalle de por que
+  // este mapa cambio el 2026-09-09 esta en tipsa-status.test.ts.
   it('maps known codes', () => {
-    expect(tipsaEventLabel('1')).toBe('Alta')
-    expect(tipsaEventLabel('2')).toBe('Entregado')
-    expect(tipsaEventLabel('3')).toBe('Incidencia')
-    expect(tipsaEventLabel('4')).toBe('En tránsito')
+    expect(tipsaEventLabel('1')).toBe('En tránsito')
+    expect(tipsaEventLabel('2')).toBe('En reparto')
+    expect(tipsaEventLabel('3')).toBe('Entregado')
+    expect(tipsaEventLabel('4')).toBe('Incidencia')
   })
   it('falls back on unknown codes', () => {
     expect(tipsaEventLabel('99')).toBe('Estado 99')

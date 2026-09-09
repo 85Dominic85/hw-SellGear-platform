@@ -1,16 +1,23 @@
 /**
- * Tests para los helpers de estado oficial TIPSA:
- *  - resolveOfficialStatus: ignora codigo 3 (Incidencia) post-entrega.
- *  - isPostDeliveryNote: detecta anotaciones tras un Entregado.
+ * Tests para los helpers de estado oficial TIPSA.
  *
- * TIPSA emite codigo 3 tanto para incidencias reales (antes de entregar)
- * como para anotaciones post-entrega del repartidor (ej. "entregado al portero").
- * El estado oficial debe ignorar estas anotaciones para no marcar como rojo
- * un envio que ya esta entregado correctamente.
+ * Catalogo oficial de codigos (PDF "Documentacion WebServices 64.0_resumen_ES",
+ * pag. 22), verificado uno a uno contra la web publica de TIPSA para el albaran
+ * 0000012023:
+ *   0 DOCUMENTADO · 1 TRANSITO · 2 REPARTO · 3 ENTREGADO · 4 INCIDENCIA
+ *   5 DEVUELTO · 7 RECANALIZADO · 14 DISPONIBLE · 15 ENTREGA PARCIAL
+ *
+ * Los terminales son el 3 y el 5. Una vez llega uno, manda sobre cualquier
+ * evento posterior: TIPSA sigue emitiendo lecturas despues de entregar.
  */
 
 import { describe, expect, it } from 'vitest'
-import { isPostDeliveryNote, resolveOfficialStatus } from '@/lib/tipsa/services'
+import {
+  isIncidenceEvent,
+  isTerminalEvent,
+  resolveOfficialStatus,
+  tipsaEventLabel,
+} from '@/lib/tipsa/services'
 
 interface E {
   code: string
@@ -20,140 +27,110 @@ interface E {
 const ev = (code: string, date: string): E => ({ code, date })
 const getCode = (e: E) => e.code
 
-describe('resolveOfficialStatus', () => {
-  it('returns null when there are no events', () => {
-    expect(resolveOfficialStatus<E>([], getCode)).toBeNull()
+describe('tipsaEventLabel', () => {
+  it('usa el catalogo oficial', () => {
+    expect(tipsaEventLabel('0')).toBe('Documentado')
+    expect(tipsaEventLabel('1')).toBe('En tránsito')
+    expect(tipsaEventLabel('2')).toBe('En reparto')
+    expect(tipsaEventLabel('3')).toBe('Entregado')
+    expect(tipsaEventLabel('4')).toBe('Incidencia')
+    expect(tipsaEventLabel('5')).toBe('Devuelto')
+    expect(tipsaEventLabel('7')).toBe('Recanalizado')
+    expect(tipsaEventLabel('14')).toBe('Disponible para recoger')
   })
 
-  it('returns the only event when there is one', () => {
-    const events = [ev('1', '2026-05-01T10:00:00Z')]
-    expect(resolveOfficialStatus(events, getCode)?.code).toBe('1')
-  })
-
-  // Caso real de produccion (albaran 0000012023): TIPSA emitio un codigo 14
-  // — que no tenemos catalogado — despues del 2. Un envio no se des-entrega:
-  // el estado oficial sigue siendo Entregado.
-  it('un codigo desconocido posterior no degrada un Entregado', () => {
-    const events = [
-      ev('0', '2026-09-07T12:07:00Z'),
-      ev('1', '2026-09-07T12:35:00Z'),
-      ev('4', '2026-09-07T21:19:00Z'),
-      ev('2', '2026-09-08T07:20:00Z'),
-      ev('14', '2026-09-08T09:37:04Z'),
-    ]
-    expect(resolveOfficialStatus(events, getCode)?.code).toBe('2')
-  })
-
-  it('un codigo desconocido SIN entrega previa si es el estado oficial', () => {
-    const events = [
-      ev('1', '2026-09-07T12:35:00Z'),
-      ev('4', '2026-09-07T21:19:00Z'),
-      ev('14', '2026-09-08T09:37:04Z'),
-    ]
-    expect(resolveOfficialStatus(events, getCode)?.code).toBe('14')
-  })
-
-  it('un devuelto (6) posterior a la entrega gana: es el ultimo terminal', () => {
-    const events = [
-      ev('2', '2026-09-08T07:20:00Z'),
-      ev('3', '2026-09-08T08:00:00Z'),
-      ev('6', '2026-09-09T11:00:00Z'),
-    ]
-    expect(resolveOfficialStatus(events, getCode)?.code).toBe('6')
-  })
-
-  it('returns the last event when none is a note (code 3)', () => {
-    const events = [
-      ev('1', '2026-05-01T08:00:00Z'),
-      ev('4', '2026-05-01T12:00:00Z'),
-      ev('5', '2026-05-02T07:00:00Z'),
-      ev('2', '2026-05-02T10:45:00Z'),
-    ]
-    expect(resolveOfficialStatus(events, getCode)?.code).toBe('2')
-  })
-
-  it('ignores trailing code-3 notes after delivery (real bug case)', () => {
-    // Caso real del usuario: TIPSA envia codigo 3 tras codigo 2.
-    // El estado oficial sigue siendo Entregado (codigo 2).
-    const events = [
-      ev('1', '2026-05-04T15:02:00Z'),
-      ev('4', '2026-05-04T18:32:00Z'),
-      ev('5', '2026-05-05T08:47:00Z'),
-      ev('5', '2026-05-06T07:05:00Z'),
-      ev('2', '2026-05-06T10:45:00Z'),
-      ev('3', '2026-05-06T12:45:00Z'), // anotacion post-entrega
-    ]
-    const resolved = resolveOfficialStatus(events, getCode)
-    expect(resolved?.code).toBe('2')
-    expect(resolved?.date).toBe('2026-05-06T10:45:00Z')
-  })
-
-  it('keeps code-3 as official when it is a real incident before any delivery', () => {
-    // Si el unico evento "ultimo" es codigo 3 SIN un codigo 2 anterior,
-    // sigue siendo el estado oficial (incidencia real).
-    const events = [
-      ev('1', '2026-05-01T08:00:00Z'),
-      ev('4', '2026-05-01T15:00:00Z'),
-      ev('3', '2026-05-02T10:00:00Z'),
-    ]
-    const resolved = resolveOfficialStatus(events, getCode)
-    expect(resolved?.code).toBe('4') // ultimo no-codigo-3
-  })
-
-  it('returns the last event when ALL events are code 3', () => {
-    // Edge case: solo incidencias. Devuelve la ultima.
-    const events = [
-      ev('3', '2026-05-01T08:00:00Z'),
-      ev('3', '2026-05-02T10:00:00Z'),
-    ]
-    const resolved = resolveOfficialStatus(events, getCode)
-    expect(resolved?.date).toBe('2026-05-02T10:00:00Z')
-  })
-
-  it('works with custom getCode function (ShippingEvent shape)', () => {
-    // Verifica que la firma generica funciona con objetos que tienen
-    // event_code en lugar de code (como las filas de la tabla shipping_events).
-    interface DbRow {
-      event_code: string
-      event_date: string
-    }
-    const events: DbRow[] = [
-      { event_code: '1', event_date: '2026-05-01T08:00:00Z' },
-      { event_code: '2', event_date: '2026-05-02T10:00:00Z' },
-      { event_code: '3', event_date: '2026-05-02T12:00:00Z' },
-    ]
-    const resolved = resolveOfficialStatus(events, (e) => e.event_code)
-    expect(resolved?.event_code).toBe('2')
+  it('cae a "Estado {code}" con codigos fuera del catalogo', () => {
+    // El 18 llega en produccion pero no esta en la tabla v64.0: no lo
+    // inventamos.
+    expect(tipsaEventLabel('18')).toBe('Estado 18')
+    expect(tipsaEventLabel('99')).toBe('Estado 99')
   })
 })
 
-describe('isPostDeliveryNote', () => {
-  it('returns false for non code-3 events', () => {
-    const events = [ev('1', '2026-05-01T08:00:00Z'), ev('2', '2026-05-02T10:00:00Z')]
-    expect(isPostDeliveryNote(events, 0, getCode)).toBe(false)
-    expect(isPostDeliveryNote(events, 1, getCode)).toBe(false)
+describe('isTerminalEvent', () => {
+  it('solo 3 (Entregado) y 5 (Devuelto) cierran el recorrido', () => {
+    expect(isTerminalEvent('3')).toBe(true)
+    expect(isTerminalEvent('5')).toBe(true)
+    // El 2 es REPARTO, no la entrega: el paquete sigue en la furgoneta.
+    expect(isTerminalEvent('2')).toBe(false)
+    expect(isTerminalEvent('4')).toBe(false)
+    expect(isTerminalEvent('14')).toBe(false)
+  })
+})
+
+describe('resolveOfficialStatus', () => {
+  it('devuelve null si no hay eventos', () => {
+    expect(resolveOfficialStatus<E>([], getCode)).toBeNull()
   })
 
-  it('returns true for code-3 that comes after a code-2', () => {
+  it('devuelve el unico evento cuando solo hay uno', () => {
+    expect(resolveOfficialStatus([ev('0', '2026-05-01T10:00:00Z')], getCode)?.code).toBe('0')
+  })
+
+  // Recorrido real del albaran 0000012023 (horas Madrid), tal cual lo devuelve
+  // ConsEnvEstados y tal cual lo pinta dinapaqweb.
+  it('recorrido real completo: acaba en Entregado', () => {
     const events = [
-      ev('1', '2026-05-01T08:00:00Z'),
-      ev('2', '2026-05-02T10:00:00Z'),
-      ev('3', '2026-05-02T12:00:00Z'),
+      ev('0', '2026-09-07T14:07:00Z'), // 16:07 Documentado
+      ev('1', '2026-09-07T14:35:00Z'), // 16:35 Transito
+      ev('4', '2026-09-07T23:19:00Z'), // 01:19 Incidencia (otra direccion)
+      ev('2', '2026-09-08T06:16:00Z'), // 08:16 Reparto
+      ev('14', '2026-09-08T09:37:00Z'), // 11:37 Disponible
+      ev('3', '2026-09-08T09:56:00Z'), // 11:56 Entregado
     ]
-    expect(isPostDeliveryNote(events, 2, getCode)).toBe(true)
+    expect(resolveOfficialStatus(events, getCode)?.code).toBe('3')
   })
 
-  it('returns false for code-3 that comes BEFORE any code-2 (real incident)', () => {
+  it('una lectura posterior a la entrega no la pisa', () => {
     const events = [
-      ev('1', '2026-05-01T08:00:00Z'),
-      ev('3', '2026-05-01T15:00:00Z'),
-      ev('4', '2026-05-02T10:00:00Z'),
+      ev('2', '2026-09-08T06:16:00Z'),
+      ev('3', '2026-09-08T09:56:00Z'),
+      ev('14', '2026-09-08T11:00:00Z'),
     ]
-    expect(isPostDeliveryNote(events, 1, getCode)).toBe(false)
+    expect(resolveOfficialStatus(events, getCode)?.code).toBe('3')
   })
 
-  it('returns false for out-of-bounds index', () => {
-    const events = [ev('1', '2026-05-01T08:00:00Z')]
-    expect(isPostDeliveryNote(events, 99, getCode)).toBe(false)
+  it('un codigo sin catalogar posterior tampoco pisa la entrega', () => {
+    const events = [
+      ev('3', '2026-09-08T09:56:00Z'),
+      ev('18', '2026-09-08T11:00:00Z'),
+    ]
+    expect(resolveOfficialStatus(events, getCode)?.code).toBe('3')
+  })
+
+  it('sin terminal, el estado es el ultimo evento — incluida una incidencia', () => {
+    const events = [
+      ev('0', '2026-09-07T14:07:00Z'),
+      ev('1', '2026-09-07T14:35:00Z'),
+      ev('4', '2026-09-07T23:19:00Z'),
+    ]
+    expect(resolveOfficialStatus(events, getCode)?.code).toBe('4')
+  })
+
+  it('sin terminal, un codigo desconocido si es el estado oficial', () => {
+    const events = [ev('1', '2026-09-07T14:35:00Z'), ev('18', '2026-09-08T11:00:00Z')]
+    expect(resolveOfficialStatus(events, getCode)?.code).toBe('18')
+  })
+
+  it('un devuelto posterior a la entrega gana: es el ultimo terminal', () => {
+    const events = [
+      ev('3', '2026-09-08T07:20:00Z'),
+      ev('5', '2026-09-09T11:00:00Z'),
+    ]
+    expect(resolveOfficialStatus(events, getCode)?.code).toBe('5')
+  })
+
+  it('el reparto (2) no cuenta como final: si no hay 3, el estado es 2', () => {
+    const events = [ev('1', '2026-09-07T14:35:00Z'), ev('2', '2026-09-08T06:16:00Z')]
+    expect(resolveOfficialStatus(events, getCode)?.code).toBe('2')
+  })
+})
+
+describe('isIncidenceEvent', () => {
+  it('solo el codigo 4', () => {
+    expect(isIncidenceEvent('4')).toBe(true)
+    // El 3 es la entrega, no una incidencia. Este era justo el error.
+    expect(isIncidenceEvent('3')).toBe(false)
+    expect(isIncidenceEvent('2')).toBe(false)
   })
 })

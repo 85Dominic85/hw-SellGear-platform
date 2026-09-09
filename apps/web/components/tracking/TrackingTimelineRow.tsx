@@ -39,6 +39,8 @@ export default function TrackingTimelineRow({ entry }: TrackingTimelineRowProps)
   const steps = resolveTimelineSteps(entry.events)
   const pct = timelineProgressPct(steps)
   const currentTone: StepTone = steps.find((s) => s.status === 'current')?.tone ?? 'muted'
+  // Media columna a cada lado: donde cae el centro del primer y ultimo punto.
+  const railInset = 100 / (2 * steps.length)
 
   return (
     <Link
@@ -57,19 +59,25 @@ export default function TrackingTimelineRow({ entry }: TrackingTimelineRowProps)
         )}
       </div>
 
-      {/* Barra de 5 pasos.
-          El rail va de centro a centro de los puntos extremos: con 5 columnas
-          iguales esos centros caen al 10% y al 90%, de ahi el inset. Asi
+      {/* Barra de pasos.
+          El rail va de centro a centro de los puntos extremos: con N columnas
+          iguales esos centros caen a 100/(2N)% de cada borde. Asi
           "Documentado" es el arranque del recorrido y "Entregado" el final —
           sin tramo de linea sobrando por fuera. */}
       <div className="relative h-14">
-        <div className="absolute left-[10%] right-[10%] top-[22px] h-[3px] rounded-full bg-gray-200">
+        <div
+          className="absolute top-[22px] h-[3px] rounded-full bg-gray-200"
+          style={{ left: `${railInset}%`, right: `${railInset}%` }}
+        >
           <div
             className={cn('h-full rounded-full', FILL[currentTone])}
             style={{ width: `${pct}%` }}
           />
         </div>
-        <div className="relative grid h-full grid-cols-5">
+        <div
+          className="relative grid h-full"
+          style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}
+        >
           {steps.map((step, i) => (
             <div key={i} className="flex flex-col items-center">
               <span

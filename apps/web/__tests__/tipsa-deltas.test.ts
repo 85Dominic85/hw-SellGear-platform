@@ -64,7 +64,7 @@ describe('parseEnvEstIncCambiosCdata', () => {
     expect(deltas).toHaveLength(3)
     expect(deltas[0].albaran).toBe('0000011291')
     expect(deltas[0].code).toBe('4')
-    expect(deltas[0].label).toBe('En tránsito')
+    expect(deltas[0].label).toBe('Incidencia')
     // 05/06/2026 en MM/DD = 6 mayo 2026 10:00 Madrid CEST (+2) = 08:00 UTC
     expect(deltas[0].date).toBe('2026-05-06T08:00:00.000Z')
     expect(deltas[2].albaran).toBe('0000011346')

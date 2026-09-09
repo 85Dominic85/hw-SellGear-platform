@@ -226,12 +226,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: updateError.message }, { status: 500 })
     }
 
-    // 12. Insertar evento inicial (Alta)
+    // 12. Evento inicial, para que la ficha no salga vacia hasta el primer
+    // barrido del cron. Codigo 0 = DOCUMENTADO, que es exactamente lo que
+    // TIPSA emite al dar de alta el envio (y lo que muestra su web como
+    // "PENDIENTE DE ENTREGAR A TIPSA").
+    //
+    // Antes poniamos codigo 1 con etiqueta "Alta": en el catalogo oficial el 1
+    // es TRANSITO, asi que estabamos marcando como "en camino" un paquete que
+    // ni siquiera se habia recogido.
     await admin.from('shipping_events').insert({
       order_id: order.id,
       carrier: 'tipsa',
-      event_code: '1',
-      event_label: 'Alta',
+      event_code: '0',
+      event_label: 'Documentado',
       event_date: now,
       raw_payload: { albaran: shipResult.albaran, guid: shipResult.guid },
     })

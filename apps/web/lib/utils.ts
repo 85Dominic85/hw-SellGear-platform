@@ -74,24 +74,25 @@ export const SHIPMENT_STATUS_COLORS: Record<ShipmentStatus, string> = {
 // =============================================================
 // TIPSA - codigos de estado del transportista (V_COD_TIPO_EST)
 // Se pintan igual que el resto de badges del proyecto.
-// Los codigos 0, 7, 8, 10, 11, 15 y 18 son mapeo aproximado deducido de la
-// web publica de TIPSA; sustituir cuando nos pasen el catalogo oficial.
+// Catalogo oficial: ver TIPSA_EVENT_LABELS en lib/tipsa/services.ts.
 // =============================================================
 
 export const TIPSA_STATUS_COLORS: Record<string, string> = {
   '0':  'bg-gray-100 text-gray-800',    // Documentado
-  '1':  'bg-gray-100 text-gray-800',    // Alta
-  '2':  'bg-green-50 text-green-700 ring-2 ring-green-500 font-semibold', // Entregado (terminal)
-  '3':  'bg-amber-100 text-amber-800',  // Incidencia
-  '4':  'bg-blue-100 text-blue-800',    // En transito
-  '5':  'bg-blue-100 text-blue-800',    // En reparto
-  '6':  'bg-red-100 text-red-800',      // Devuelto al origen
-  '7':  'bg-blue-100 text-blue-800',    // Lectura en agencia
-  '8':  'bg-blue-100 text-blue-800',    // En reparto
-  '10': 'bg-blue-100 text-blue-800',    // En delegacion destino
-  '11': 'bg-blue-100 text-blue-800',    // En reparto
-  '15': 'bg-blue-100 text-blue-800',    // Pendiente de llegada
-  '18': 'bg-blue-100 text-blue-800',    // En transito interno
+  '1':  'bg-blue-100 text-blue-800',    // En transito
+  '2':  'bg-blue-100 text-blue-800',    // En reparto
+  '3':  'bg-green-50 text-green-700 ring-2 ring-green-500 font-semibold', // Entregado (terminal)
+  '4':  'bg-amber-100 text-amber-800',  // Incidencia
+  '5':  'bg-red-100 text-red-800',      // Devuelto (terminal)
+  '6':  'bg-amber-100 text-amber-800',  // Falta de expedicion
+  '7':  'bg-blue-100 text-blue-800',    // Recanalizado
+  '9':  'bg-amber-100 text-amber-800',  // Falta de expedicion administrativa
+  '10': 'bg-red-100 text-red-800',      // Destruido
+  '11': 'bg-gray-100 text-gray-800',    // Recogida
+  '12': 'bg-blue-100 text-blue-800',    // Leida repartidor
+  '13': 'bg-blue-100 text-blue-800',    // Leida
+  '14': 'bg-blue-100 text-blue-800',    // Disponible para recoger
+  '15': 'bg-amber-100 text-amber-800',  // Entrega parcial
 }
 
 /** Fallback para codigos que TIPSA anada y aun no hayamos mapeado. */

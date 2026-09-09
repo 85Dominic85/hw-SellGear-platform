@@ -248,12 +248,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: updateError.message }, { status: 500 })
     }
 
-    // 5. Insert evento Alta.
+    // 5. Evento inicial. Codigo 0 = DOCUMENTADO, lo mismo que emite TIPSA al
+    // dar de alta el envio. Ver la nota en tipsa/create-shipment/route.ts:
+    // antes usabamos el 1, que en el catalogo oficial es TRANSITO.
     await admin.from('shipping_events').insert({
       shipment_id: shipment.id,
       carrier: 'tipsa',
-      event_code: '1',
-      event_label: 'Alta',
+      event_code: '0',
+      event_label: 'Documentado',
       event_date: now,
       raw_payload: { albaran: shipResult.albaran, guid: shipResult.guid },
     })

@@ -1,20 +1,23 @@
 // =============================================================================
 // resolveTimelineSteps
 // -----------------------------------------------------------------------------
-// Mapea una lista de eventos TIPSA (shipping_events del envio) a los 5 pasos
+// Mapea una lista de eventos TIPSA (shipping_events del envio) a los 4 pasos
 // del timeline horizontal que se muestra en /tracking:
 //   0: Documentado
 //   1: En transito
-//   2: HUB destino
-//   3: En reparto
-//   4: Entregado
+//   2: En reparto
+//   3: Entregado
 //
-// El "paso actual" es el paso al que corresponde el estado oficial del envio
-// (ignorando codigo 3 = anotacion post-entrega si viene tras codigo 2).
+// Cuatro pasos y no cinco porque son los unicos que la API sabe contar. El
+// antiguo "HUB destino" no existe como estado: las lecturas de HUB salen en la
+// web publica de TIPSA pero ConsEnvEstados no las devuelve, asi que ese punto
+// no se encendia nunca.
 //
-// Si el estado oficial es codigo 3 (incidencia real, sin entrega posterior)
-// mantenemos el paso donde estaba antes de la incidencia y marcamos tono
-// "warn". Si es codigo 6 (devuelto) marcamos "crit" en el paso final.
+// Codigos que no son un punto del recorrido — 4 INCIDENCIA, 14 DISPONIBLE —
+// no mueven la barra: dejan el paso donde estaba y tinen el punto actual
+// (ambar para la incidencia). El estado exacto lo dice el badge de al lado.
+//
+// El catalogo de codigos vive en TIPSA_EVENT_LABELS (lib/tipsa/services.ts).
 // =============================================================================
 
 export type StepTone = 'muted' | 'info' | 'ok' | 'warn' | 'crit'
@@ -33,40 +36,34 @@ export interface TimelineInput {
 export const TIMELINE_STEP_LABELS = [
   'Documentado',
   'En tránsito',
-  'HUB destino',
   'En reparto',
   'Entregado',
 ] as const
 
 /**
- * Mapa codigo -> indice de paso (0-4).
- * Los codigos no mapeados o desconocidos caen a step 1 (tránsito) por defecto
- * salvo que se decida otra cosa.
+ * Mapa codigo -> indice de paso (0-3). Solo los codigos que SON un punto del
+ * recorrido. Un codigo ausente de este mapa no mueve la barra.
  */
 const CODE_TO_STEP: Record<string, number> = {
   '0': 0, // Documentado
-  '1': 0, // Alta
-  '4': 1, // En transito
-  '7': 1, // Lectura en agencia (transito interno)
-  '8': 3, // En reparto (alias)
-  '15': 1, // Pendiente de llegada (aun en transito)
-  '18': 1, // Transito interno
-  '10': 2, // En delegacion destino
-  '5': 3, // En reparto
-  '11': 3, // En reparto (alias)
-  '2': 4, // Entregado
-  '6': 4, // Devuelto al origen (final)
+  '1': 1, // En transito
+  '7': 1, // Recanalizado (sigue viajando, por otra ruta)
+  '2': 2, // En reparto
+  '15': 2, // Entrega parcial (parte del envio se entrego; el resto sigue)
+  '3': 3, // Entregado
+  '5': 3, // Devuelto (final)
+  '10': 3, // Destruido (final)
 }
 
-/** Codigo "anotacion" — 3 post-entrega no cambia el paso. */
-const NOTE_CODE = '3'
+/** 4 INCIDENCIA — un contratiempo, no un punto del viaje. */
+const INCIDENCE_CODE = '4'
 
 /**
  * Estados finales del recorrido. Espejo de TIPSA_TERMINAL_CODES en
  * lib/tipsa/services.ts — se duplica a proposito: este modulo viaja al bundle
  * de cliente (TrackingBoard es 'use client') y services.ts lee process.env.
  */
-const TERMINAL_CODES = new Set(['2', '6'])
+const TERMINAL_CODES = new Set(['3', '5'])
 
 /**
  * Calcula los 5 pasos del timeline para un envio, dado su lista completa
@@ -78,55 +75,50 @@ export function resolveTimelineSteps(events: TimelineInput[]): TimelineStep[] {
     (a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime(),
   )
 
-  // Estado oficial. Primero un terminal (2/6) si existe: un envio no se
-  // "des-entrega", asi que ni el codigo 3 ni un codigo sin catalogar posterior
-  // (visto el 14 en produccion) mueven el paso hacia atras. Si no hay terminal,
-  // el ultimo evento que no sea la anotacion 3.
-  let officialCode: string | null = null
+  if (sorted.length === 0) {
+    return TIMELINE_STEP_LABELS.map((label) => ({
+      label,
+      status: 'pending' as const,
+      tone: 'muted' as const,
+    }))
+  }
+
+  // Estado oficial. Un terminal (3 Entregado / 5 Devuelto) manda siempre: un
+  // envio no se des-entrega y TIPSA sigue emitiendo lecturas despues (vimos un
+  // 14 posterior a un 3). Si no lo hay, el ultimo evento tal cual.
+  let officialCode = sorted[sorted.length - 1].event_code
   for (let i = sorted.length - 1; i >= 0; i--) {
     if (TERMINAL_CODES.has(sorted[i].event_code)) {
       officialCode = sorted[i].event_code
       break
     }
   }
-  if (officialCode === null) {
+
+  // Tono del paso actual segun el estado oficial.
+  let currentTone: StepTone = 'info'
+  if (officialCode === '3') currentTone = 'ok'
+  else if (officialCode === '5' || officialCode === '10') currentTone = 'crit'
+  else if (officialCode === INCIDENCE_CODE) currentTone = 'warn'
+
+  // Paso actual. Si el estado oficial no es un punto del recorrido (una
+  // incidencia, un 14 Disponible, o un codigo que TIPSA aun no nos ha
+  // documentado) la barra se queda en el ultimo punto por el que SI paso, en
+  // vez de inventarse uno. El badge de al lado dice el estado exacto.
+  let currentStep = CODE_TO_STEP[officialCode] ?? null
+  if (currentStep === null) {
     for (let i = sorted.length - 1; i >= 0; i--) {
-      if (sorted[i].event_code !== NOTE_CODE) {
-        officialCode = sorted[i].event_code
+      const step = CODE_TO_STEP[sorted[i].event_code]
+      if (step !== undefined) {
+        currentStep = step
         break
       }
     }
   }
-
-  // Si TODOS son codigo 3 (raro), usar el ultimo.
-  if (!officialCode && sorted.length > 0) {
-    officialCode = sorted[sorted.length - 1].event_code
-  }
-
-  // Tono del paso actual:
-  // - '3' (incidencia real, sin entrega) -> warn
-  // - '6' (devuelto)                     -> crit
-  // - '2' (entregado)                    -> ok
-  // - resto                              -> info
-  let currentTone: StepTone = 'info'
-  if (officialCode === '2') currentTone = 'ok'
-  else if (officialCode === '6') currentTone = 'crit'
-  else if (officialCode === NOTE_CODE) currentTone = 'warn'
-
-  // Paso actual: el que le corresponde al codigo oficial.
-  // Si es codigo 3, usamos el paso del ultimo evento NO-3 antes de la incidencia.
-  let currentStep: number | null = null
-  if (officialCode !== null) {
-    currentStep = CODE_TO_STEP[officialCode] ?? 1 // default: tránsito
-    // Nota: si officialCode ES '3' (raro caso "todo son incidencias"), tratamos
-    // como transito para no romper la barra.
-    if (officialCode === NOTE_CODE) currentStep = 1
-  }
+  // Ningun evento conocido: dejamos la barra en "Documentado", que es lo unico
+  // que sabemos seguro de un envio que existe.
+  if (currentStep === null) currentStep = 0
 
   return TIMELINE_STEP_LABELS.map((label, i) => {
-    if (currentStep === null) {
-      return { label, status: 'pending' as const, tone: 'muted' as const }
-    }
     if (i < currentStep) return { label, status: 'done' as const, tone: 'info' as const }
     if (i === currentStep) return { label, status: 'current' as const, tone: currentTone }
     return { label, status: 'pending' as const, tone: 'muted' as const }
@@ -135,12 +127,12 @@ export function resolveTimelineSteps(events: TimelineInput[]): TimelineStep[] {
 
 /**
  * Porcentaje de progreso 0-100 basado en el paso actual, util para pintar
- * la barra continua debajo de los puntos. Un envio en step 3 (reparto) tiene
- * 3/4 = 75% de progreso; en step 4 (entregado) tiene 100%.
+ * la barra continua debajo de los puntos. Con 4 pasos, un envio en step 2
+ * (reparto) tiene 2/3 = 67%; en step 3 (entregado) tiene 100%.
  *
  * El rail que pinta este porcentaje va de centro a centro de los puntos
- * extremos, asi que step 0 es 0% (el propio punto marca el arranque) y step 4
- * es 100% (la linea muere justo en "Entregado").
+ * extremos, asi que step 0 es 0% (el propio punto marca el arranque) y el
+ * ultimo paso es 100% (la linea muere justo en "Entregado").
  */
 export function timelineProgressPct(steps: TimelineStep[]): number {
   const currentIdx = steps.findIndex((s) => s.status === 'current')

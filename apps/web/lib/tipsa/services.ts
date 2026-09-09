@@ -49,26 +49,43 @@ export const DEFAULT_SERVICES_CATALOG: Array<{ code: string; label: string }> = 
 
 /**
  * Mapeo de codigos de evento TIPSA a etiqueta humana.
- * Source: docs/integrations/tipsa/extracted/Ejemplos/ConsEnvEstados y web publica TIPSA.
- * Los codigos 0, 7, 8, 10, 11, 15, 18 son mapeo "educado" deducido de la web
- * publica TIPSA para envios reales; sustituir por labels oficiales cuando
- * TIPSA nos pase el catalogo completo.
+ *
+ * Fuente: catalogo oficial "Tabla de tipos de estados", pagina 22 de
+ * docs/integrations/tipsa/extracted/Documentacion/
+ *   Documentacion WebServices 64.0_resumen_ES.pdf
+ *
+ * Verificado ademas contra la web publica de TIPSA para el albaran 0000012023
+ * (09/09/2026): los seis eventos que devuelve la API encajan uno a uno con lo
+ * que muestra dinapaqweb —
+ *   0 @16:07 Documentado · 1 @16:35 TRANSITO · 4 @01:19 incidencia
+ *   ("solicitada en otra direccion") · 2 @08:16 REPARTO · 14 @11:37 DISPONIBLE
+ *   · 3 @11:56 ENTREGADO.
+ *
+ * OJO al leer codigo antiguo: hasta 2026-09-09 este mapa estaba corrido y daba
+ * 2 = "Entregado" y 3 = "Incidencia", justo al reves de la realidad (2 es el
+ * reparto, 3 la entrega). De ahi venia la logica de "anotacion post-entrega",
+ * que era una lectura equivocada de la secuencia normal 2 -> 3.
+ *
+ * El codigo 18 aparece en produccion pero no esta en la tabla (que es de la
+ * v64.0 y el WSDL va por la v74.0): se queda sin etiqueta a proposito.
  * Si aparece un codigo desconocido se devuelve "Estado {code}".
  */
 export const TIPSA_EVENT_LABELS: Record<string, string> = {
   '0': 'Documentado',
-  '1': 'Alta',
-  '2': 'Entregado',
-  '3': 'Incidencia',
-  '4': 'En tránsito',
-  '5': 'En reparto',
-  '6': 'Devuelto al origen',
-  '7': 'Lectura en agencia',
-  '8': 'En reparto',
-  '10': 'En delegación destino',
-  '11': 'En reparto',
-  '15': 'Pendiente de llegada',
-  '18': 'En tránsito interno',
+  '1': 'En tránsito',
+  '2': 'En reparto',
+  '3': 'Entregado',
+  '4': 'Incidencia',
+  '5': 'Devuelto',
+  '6': 'Falta de expedición',
+  '7': 'Recanalizado',
+  '9': 'Falta de expedición administrativa',
+  '10': 'Destruido',
+  '11': 'Recogida',
+  '12': 'Leída repartidor',
+  '13': 'Leída',
+  '14': 'Disponible para recoger',
+  '15': 'Entrega parcial',
 }
 
 export function tipsaEventLabel(code: TipsaEventCode): string {
@@ -76,29 +93,38 @@ export function tipsaEventLabel(code: TipsaEventCode): string {
 }
 
 /**
- * Estados "finales" que indican que ya no hay que seguir polleando.
+ * Estados "finales": el envio ya no se mueve mas.
+ *
+ * 3 ENTREGADO y 5 DEVUELTO cierran el recorrido. El 10 DESTRUIDO tambien es
+ * final pero no lo metemos aqui: no lo hemos visto nunca en produccion y
+ * preferimos que salga como estado desconocido a asumir de que va.
  */
-export const TIPSA_TERMINAL_CODES = new Set<string>(['2', '6'])
+export const TIPSA_TERMINAL_CODES = new Set<string>(['3', '5'])
 
 export function isTerminalEvent(code: TipsaEventCode): boolean {
   return TIPSA_TERMINAL_CODES.has(code)
 }
 
-/**
- * Codigo TIPSA que representa una "anotacion" (no un cambio de estado real).
- * Codigo 3 = "Incidencia" pero TIPSA lo emite tambien para anotaciones
- * post-entrega (ej. "entregado al portero", "ausente y dejado en buzon").
- */
-const NOTE_CODE = '3'
+/** Codigo 4 = INCIDENCIA. Un contratiempo del reparto, no un estado del viaje. */
+export const TIPSA_INCIDENCE_CODE = '4'
+
+export function isIncidenceEvent(code: TipsaEventCode): boolean {
+  return code === TIPSA_INCIDENCE_CODE
+}
 
 /**
  * Calcula el "estado oficial" del envio entre una lista cronologica de eventos.
- * El codigo 3 (Incidencia) DESPUES de un codigo 2 (Entregado) NO altera el estado:
- * TIPSA usa el codigo 3 tambien para anotaciones post-entrega del repartidor.
- * Devuelve el ultimo evento que NO sea solo una anotacion.
  *
- * Si todos los eventos son codigo 3 (incidencia previa real), devuelve el ultimo.
- * Si la lista esta vacia devuelve null.
+ * Regla: si en algun momento llego un evento terminal (3 Entregado /
+ * 5 Devuelto) ese es el estado, aunque despues venga cualquier otra cosa. Un
+ * envio no se des-entrega, y TIPSA sigue emitiendo lecturas despues de la
+ * entrega — vimos un 14 (Disponible) posterior a un 3. Sin esta regla un
+ * codigo posterior, catalogado o no, degradaba una entrega confirmada.
+ *
+ * Sin evento terminal, el estado es simplemente el ultimo evento: incluidas las
+ * incidencias (codigo 4), que es justo lo que un AE necesita ver.
+ *
+ * Devuelve null si la lista esta vacia.
  *
  * Generico: acepta cualquier objeto via funcion `getCode` extractora. Asi sirve
  * tanto para `TipsaShippingEvent` (parser SOAP) como para `ShippingEvent` (DB).
@@ -111,39 +137,11 @@ export function resolveOfficialStatus<T>(
 ): T | null {
   if (events.length === 0) return null
 
-  // Un envio no se "des-entrega". Si en algun momento llego un evento terminal
-  // (2 Entregado / 6 Devuelto) ese es el estado final: lo que venga despues son
-  // anotaciones. Vale para el codigo 3 del repartidor y, sobre todo, para
-  // codigos que TIPSA emite y aun no tenemos catalogados — en produccion
-  // aparece un 14 despues del 2 que sin esta regla degradaba un "Entregado" a
-  // "Estado 14". Ante un codigo desconocido, no pisar una entrega confirmada.
   for (let i = events.length - 1; i >= 0; i--) {
     if (TIPSA_TERMINAL_CODES.has(getCode(events[i]))) return events[i]
   }
 
-  for (let i = events.length - 1; i >= 0; i--) {
-    if (getCode(events[i]) !== NOTE_CODE) return events[i]
-  }
   return events[events.length - 1]
-}
-
-/**
- * Devuelve true si el evento `events[index]` es una "anotacion post-entrega"
- * (codigo 3 que vino despues de un codigo 2). En ese caso debe renderizarse
- * con estilo secundario (no como incidencia real).
- *
- * Asume `events` ordenado cronologicamente ascendente.
- */
-export function isPostDeliveryNote<T>(
-  events: T[],
-  index: number,
-  getCode: (e: T) => string,
-): boolean {
-  if (!events[index] || getCode(events[index]) !== NOTE_CODE) return false
-  for (let i = 0; i < index; i++) {
-    if (getCode(events[i]) === '2') return true
-  }
-  return false
 }
 
 /**
