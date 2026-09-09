@@ -124,6 +124,7 @@ export async function POST(request: NextRequest) {
     let updatedShipments = 0
     let processed = 0
     let notFound = 0
+    let failed = 0
 
     for (const albaran of byAlbaran) {
       const parent = await findParent(admin, albaran)
@@ -155,6 +156,12 @@ export async function POST(request: NextRequest) {
         const tracking = await fetchTracking(config, albaran)
         events = tracking.events
       } catch (err) {
+        // Fallo puntual de TIPSA (timeout, sesion caducada). No abortamos el
+        // barrido entero por un albaran, pero lo contamos: mas abajo eso impide
+        // avanzar el cursor, para que el siguiente tick vuelva a detectarlo.
+        // Sin eso el envio se quedaria con el estado viejo para siempre, porque
+        // el feed de deltas solo lo nombra mientras esta dentro de la ventana.
+        failed += 1
         console.error(
           `[cron/tipsa-refresh] ConsEnvEstados ${albaran}:`,
           (err as Error).message,
@@ -232,7 +239,19 @@ export async function POST(request: NextRequest) {
       processed += 1
     }
 
-    await saveCursor(admin, now)
+    // Solo avanzamos el cursor si TODOS los albaranes se han podido consultar.
+    // Si alguno fallo, dejarlo donde esta hace que el siguiente tick repita la
+    // misma ventana y lo reintente; el UNIQUE de shipping_events hace que
+    // reprocesar lo ya guardado no cueste nada. Si el fallo fuera permanente el
+    // cursor se quedaria atras, pero el recorte a 23.5h acota la ventana y el
+    // contador `albaranes_fallidos` de la respuesta lo deja a la vista.
+    if (failed === 0) {
+      await saveCursor(admin, now)
+    } else {
+      console.warn(
+        `[cron/tipsa-refresh] ${failed} albaranes fallaron; no se avanza el cursor para reintentarlos`,
+      )
+    }
 
     return NextResponse.json({
       ok: true,
@@ -242,6 +261,8 @@ export async function POST(request: NextRequest) {
       deltas_received: deltas.length,
       albaranes_unicos: byAlbaran.size,
       albaranes_desconocidos: notFound,
+      albaranes_fallidos: failed,
+      cursor_avanzado: failed === 0,
       duration_ms: Date.now() - started,
     })
   } catch (err) {
