@@ -43,7 +43,7 @@ Terminales: **`3` y `5`** (antes creíamos que eran el `2` y el `6`).
 | `GET /shipments/{shipmentId}` | `tracking_last_status_label` | Sí, pero ya viene traducido y correcto |
 | `GET /shipments/{shipmentId}` y `GET /shipments` | `delivered_at` | **Sí — ahora es la entrega real, no la salida a reparto** |
 | `GET /orders*` | — | No. No exponen nada de TIPSA |
-| `GET /metrics` | — | No. Solo expone `tracking_number` |
+| `GET /metrics` | bloque `sla` | **Sí, indirectamente** — sale de `get_sla_metrics`, que se calcula sobre `orders.delivered_at` |
 
 ## Impacto en los datos ya corregidos
 
@@ -100,9 +100,15 @@ sabemos que es falso. Un aviso explícito y una doc corregida cubren el caso.
 > históricos recalculados.
 >
 > **Qué os afecta:** el campo `tracking_last_status` de
-> `GET /api/external/hwtoolbox/shipments/{shipmentId}`, y el `delivered_at` de
-> los envíos libres. Los endpoints de pedidos (`/orders`) y `/metrics` no
-> exponen nada de esto, así que no cambian.
+> `GET /api/external/hwtoolbox/shipments/{shipmentId}` y el `delivered_at` de los
+> envíos libres. Los endpoints de pedidos (`/orders`) no exponen nada de esto y
+> no cambian.
+>
+> Ojo con `GET /api/external/metrics`: no expone códigos de TIPSA, pero su bloque
+> `sla` sale de `orders.delivered_at`, y hemos corregido esa columna en 5 pedidos
+> a los que el refresco de TIPSA les había escrito una fecha que no tocaba. Si
+> guardáis series históricas de esas métricas, los números de esos periodos se
+> mueven un poco.
 >
 > **Ojo con esto:** el campo no cambia de formato, sigue siendo el mismo string.
 > No se os va a romper nada — el riesgo es que siga funcionando y os devuelva lo
