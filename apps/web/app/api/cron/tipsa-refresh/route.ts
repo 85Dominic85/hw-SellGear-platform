@@ -160,6 +160,10 @@ export async function POST(request: NextRequest) {
         .select('event_code, event_date')
         .eq(fkColumn, parent.id)
         .order('event_date', { ascending: true })
+        // Desempate estable: hay albaranes con dos eventos en el mismo segundo
+        // (visto un 18 y un 2 a la vez). Sin orden secundario, el estado
+        // oficial cambia de una pasada a otra.
+        .order('id', { ascending: true })
 
       const official = resolveOfficialStatus(
         (allEvents ?? []) as Array<{ event_code: string; event_date: string }>,

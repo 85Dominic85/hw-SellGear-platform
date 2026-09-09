@@ -90,6 +90,10 @@ export default async function OrderDetailPage({
       .select('*')
       .eq('order_id', id)
       .order('event_date', { ascending: false })
+      // Desempate estable por id (secuencia de insercion = orden en que los
+      // devolvio TIPSA). Sin el, dos eventos con el mismo segundo se ordenan
+      // de forma arbitraria y el estado oficial baila entre recargas.
+      .order('id', { ascending: false })
     shippingEvents = (events ?? []) as ShippingEvent[]
   } catch {
     // Tabla no existe aun — seguimos sin eventos.

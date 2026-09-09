@@ -173,7 +173,9 @@ export default async function TrackingPage() {
     } else {
       evQuery = evQuery.in('shipment_id', shipmentIds)
     }
-    const { data: eventsRaw } = await evQuery.order('event_date', { ascending: true })
+    const { data: eventsRaw } = await evQuery
+      .order('event_date', { ascending: true })
+      .order('id', { ascending: true })
     const events = (eventsRaw ?? []) as EventRow[]
     for (const ev of events) {
       const bucket = { event_code: ev.event_code, event_date: ev.event_date }

@@ -45,6 +45,7 @@ export default async function ShipmentDetailPage({ params }: PageProps) {
     .select('*')
     .eq('shipment_id', shipment.id)
     .order('event_date', { ascending: true })
+    .order('id', { ascending: true })
 
   const events = (eventsData ?? []) as ShippingEvent[]
 

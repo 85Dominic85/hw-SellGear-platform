@@ -39,6 +39,12 @@
 --
 -- Solo toca filas con eventos TIPSA. Un envio sin eventos se queda como esta.
 --
+-- Todos los array_agg desempatan por e.id ademas de por fecha. Hay albaranes con
+-- dos eventos en el mismo segundo exacto (el 0000011785 tiene un 18 y un 2 a las
+-- 06:27:19), y sin orden secundario array_agg(...)[1] devuelve uno u otro de
+-- forma arbitraria: la misma consulta daba resultados distintos entre pasadas.
+-- El id es la secuencia de insercion, o sea el orden en que TIPSA los devolvio.
+--
 -- Verificacion (las dos primeras filas deben dar 0 despues de aplicar):
 --   with oficial as (
 --     select order_id, shipment_id,
@@ -130,21 +136,22 @@ ALTER TABLE public.shipments DISABLE TRIGGER shipments_updated_at;
 --
 -- Se distinguen de los codigo 1 autenticos por el raw_payload: los nuestros lo
 -- escribimos como {albaran, guid}, los de TIPSA traen los atributos del SOAP
--- (V_COD_TIPO_EST, V_COD_AGE_ALTA...). De ahi el `? 'guid'`.
+-- (V_COD_TIPO_EST, V_COD_AGE_ALTA...). De ahi el jsonb_exists(raw_payload, 'guid') — se usa la funcion y no
+-- el operador ? porque algunos clientes lo tratan como placeholder de parametro.
 UPDATE public.shipping_events
 SET event_code = '0'
 WHERE carrier = 'tipsa'
   AND event_code = '1'
-  AND raw_payload ? 'guid';
+  AND jsonb_exists(raw_payload, 'guid');
 
 -- ------------------------------ 2. orders: SOLO tracking_last_status --------
 WITH oficial AS (
   SELECT
     e.order_id,
     COALESCE(
-      (array_agg(e.event_code ORDER BY e.event_date DESC)
+      (array_agg(e.event_code ORDER BY e.event_date DESC, e.id DESC)
          FILTER (WHERE e.event_code IN ('3', '5')))[1],
-      (array_agg(e.event_code ORDER BY e.event_date DESC))[1]
+      (array_agg(e.event_code ORDER BY e.event_date DESC, e.id DESC))[1]
     ) AS code
   FROM public.shipping_events e
   WHERE e.carrier = 'tipsa' AND e.order_id IS NOT NULL
@@ -212,16 +219,16 @@ WITH oficial AS (
   SELECT
     e.shipment_id,
     COALESCE(
-      (array_agg(e.event_code ORDER BY e.event_date DESC)
+      (array_agg(e.event_code ORDER BY e.event_date DESC, e.id DESC)
          FILTER (WHERE e.event_code IN ('3', '5')))[1],
-      (array_agg(e.event_code ORDER BY e.event_date DESC))[1]
+      (array_agg(e.event_code ORDER BY e.event_date DESC, e.id DESC))[1]
     ) AS code,
     -- Terminal, no solo entregado: {3,5}, lo mismo que escribe el cron
     -- (isTerminalEvent en api/cron/tipsa-refresh). Si aqui usaramos solo el 3,
     -- un envio devuelto quedaria con delivered_at NULL hasta que pasara el
     -- barrido y se lo volviera a poner — la columna significaria una cosa antes
     -- del cron y otra despues.
-    (array_agg(e.event_date ORDER BY e.event_date DESC)
+    (array_agg(e.event_date ORDER BY e.event_date DESC, e.id DESC)
        FILTER (WHERE e.event_code IN ('3', '5')))[1] AS terminado_en
   FROM public.shipping_events e
   WHERE e.carrier = 'tipsa' AND e.shipment_id IS NOT NULL
