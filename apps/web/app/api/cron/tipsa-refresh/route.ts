@@ -13,6 +13,13 @@ export const dynamic = 'force-dynamic'
 // El sweep hace N queries a Supabase; damos margen por si hay muchos deltas.
 export const maxDuration = 60
 
+// TIPSA rechaza ventanas de mas de 24h en ConsEnvEstIncCambiosEstados
+// ("El rango de fechas no puede superar las 24 horas"). Dejamos 30 min de
+// colchon para no rozar el limite por desfase de reloj.
+const MAX_WINDOW_MS = 23.5 * 3600 * 1000
+// Solape hacia atras sobre el cursor para no perder eventos por ese desfase.
+const OVERLAP_MS = 5 * 60 * 1000
+
 /**
  * POST /api/cron/tipsa-refresh
  *
@@ -65,11 +72,26 @@ export async function POST(request: NextRequest) {
     const lastPoll =
       typeof lastPollRaw === 'string'
         ? new Date(lastPollRaw)
-        : new Date(now.getTime() - 24 * 3600 * 1000)
-    // 5 min de solape: el UNIQUE de shipping_events descarta lo repetido y
-    // asi no perdemos eventos por desfase de reloj entre Supabase y TIPSA.
-    const since = new Date(lastPoll.getTime() - 5 * 60 * 1000).toISOString()
+        : new Date(now.getTime() - MAX_WINDOW_MS)
+
+    // 5 min de solape hacia atras: el UNIQUE de shipping_events descarta lo
+    // repetido y asi no perdemos eventos por desfase de reloj con TIPSA.
+    const desiredSince = new Date(lastPoll.getTime() - OVERLAP_MS)
+    // TIPSA rechaza ventanas > 24h ("El rango de fechas no puede superar las
+    // 24 horas"), asi que la recortamos. Si el cron ha estado parado mas de un
+    // dia, esta pasada solo cubre las ultimas 23h; el resto se recupera
+    // pulsando "Actualizar" en la ficha del envio concreto.
+    const earliestAllowed = new Date(now.getTime() - MAX_WINDOW_MS)
+    const sinceDate = desiredSince < earliestAllowed ? earliestAllowed : desiredSince
+
+    const truncated = desiredSince < earliestAllowed
+    const since = sinceDate.toISOString()
     const until = now.toISOString()
+    if (truncated) {
+      console.warn(
+        `[cron/tipsa-refresh] cursor ${lastPoll.toISOString()} mas viejo que 24h; ventana recortada a ${since}`,
+      )
+    }
 
     // ---- 2. Deltas TIPSA ----
     const config = loadTipsaConfig()
