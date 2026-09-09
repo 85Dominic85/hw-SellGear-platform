@@ -210,15 +210,15 @@ export default async function TrackingPage() {
   ]
 
   return (
-    <div>
-      <header className="border-b border-gray-200 bg-white px-4 py-4 dark:border-gray-800 dark:bg-gray-900">
-        <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-gray-100">
-          Tracking de envíos TIPSA
-        </h1>
-        <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-          Estado en tiempo real de todos los envíos activos · actualizado cada 30 min
-        </p>
-      </header>
+    <div className="mx-auto max-w-7xl space-y-6 px-6 py-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Tracking</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Estado de los envíos TIPSA activos · se actualiza solo cada 30 min
+          </p>
+        </div>
+      </div>
       <TrackingBoard entries={entries} currentUserId={user.id} />
     </div>
   )

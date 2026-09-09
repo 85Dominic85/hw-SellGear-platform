@@ -1,22 +1,12 @@
 import Link from 'next/link'
 import type { TrackingEntry } from '@/lib/tracking/types'
-import TipsaStatusBadge, { toneForStatus } from './TipsaStatusBadge'
-
-const TONE_STRIPE: Record<ReturnType<typeof toneForStatus>, string> = {
-  muted: 'border-t-gray-400',
-  info: 'border-t-blue-500',
-  ok: 'border-t-green-500',
-  warn: 'border-t-amber-500',
-  crit: 'border-t-red-500',
-}
+import TipsaStatusBadge from './TipsaStatusBadge'
 
 interface TrackingCardProps {
   entry: TrackingEntry
 }
 
 export default function TrackingCard({ entry }: TrackingCardProps) {
-  const tone = toneForStatus(entry.trackingLastStatus)
-  const stripeClass = TONE_STRIPE[tone]
   const age = entry.trackingLastCheckedAt
     ? relativeTime(entry.trackingLastCheckedAt)
     : null
@@ -24,40 +14,33 @@ export default function TrackingCard({ entry }: TrackingCardProps) {
   return (
     <Link
       href={entry.href}
-      className={`block rounded-lg border border-gray-200 border-t-2 ${stripeClass} bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-gray-700 dark:bg-gray-900`}
+      className="block rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:ring-1 hover:ring-gray-400"
     >
-      <div className="mb-1.5 flex items-start justify-between gap-2">
-        <span className="font-mono text-[11px] font-medium text-gray-500 dark:text-gray-400">
-          {entry.publicId}
-        </span>
-        {age && (
-          <span className="text-[10px] text-gray-400 dark:text-gray-500">
-            hace {age}
-          </span>
-        )}
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <span className="font-mono text-xs text-gray-500">{entry.publicId}</span>
+        {age && <span className="text-xs text-gray-400">hace {age}</span>}
       </div>
-      <div className="mb-1 line-clamp-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+
+      <p className="line-clamp-2 text-sm font-medium text-gray-900">
         {entry.displayName}
-      </div>
+      </p>
       {entry.subtitle && (
-        <div className="mb-2 line-clamp-1 text-xs text-gray-500 dark:text-gray-400">
-          {entry.subtitle}
-        </div>
+        <p className="mt-0.5 line-clamp-1 text-sm text-gray-500">{entry.subtitle}</p>
       )}
-      <div className="mb-2">
-        <TipsaStatusBadge code={entry.trackingLastStatus} size="xs" />
+
+      <div className="mt-3">
+        <TipsaStatusBadge code={entry.trackingLastStatus} />
       </div>
-      <div className="flex items-center justify-between border-t border-gray-100 pt-2 dark:border-gray-800">
+
+      <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
         {entry.albaran ? (
-          <span className="font-mono text-[10px] text-gray-400 dark:text-gray-500">
+          <span className="font-mono text-xs tabular-nums text-gray-400">
             {entry.albaran}
           </span>
         ) : (
-          <span className="text-[10px] text-gray-400">Sin albarán</span>
+          <span className="text-xs text-gray-400">Sin albarán</span>
         )}
-        <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">
-          Ver ficha ›
-        </span>
+        <span className="text-xs font-medium text-brand">Ver ficha →</span>
       </div>
     </Link>
   )

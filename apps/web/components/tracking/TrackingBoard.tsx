@@ -109,7 +109,7 @@ export default function TrackingBoard({
   const liveHint = `Actualizado hace ${relative(lastRefresh)}`
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="space-y-6">
       <TrackingFilters value={filters} onChange={setFilters} liveHint={liveHint} />
       <TrackingTimelineSection entries={filtered} />
       <TrackingKanbanSection

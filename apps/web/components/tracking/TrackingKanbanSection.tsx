@@ -1,5 +1,6 @@
 'use client'
 
+import { cn } from '@/lib/utils'
 import type { TrackingEntry } from '@/lib/tracking/types'
 import TrackingKanbanBoard from './TrackingKanbanBoard'
 
@@ -15,49 +16,35 @@ export default function TrackingKanbanSection({
   onToggle,
 }: TrackingKanbanSectionProps) {
   return (
-    <section className="border-t border-gray-200 px-4 py-5 dark:border-gray-800">
-      <details
-        open={open}
-        onToggle={(e) => onToggle((e.target as HTMLDetailsElement).open)}
-        className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900"
+    <section>
+      <button
+        type="button"
+        onClick={() => onToggle(!open)}
+        className="mb-3 flex w-full items-center gap-2 text-left"
       >
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
-          <div className="flex items-center gap-3">
-            <svg
-              className={`h-4 w-4 flex-shrink-0 text-gray-400 transition-transform ${open ? 'rotate-90' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-            <div>
-              <h2 className="text-base font-bold tracking-tight text-gray-900 dark:text-gray-100">
-                Kanban por estado
-              </h2>
-              <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                {open
-                  ? 'Agrupado por columnas · click para recoger'
-                  : 'Vista agrupada · click para desplegar'}
-              </p>
-            </div>
-          </div>
-          <span className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 font-mono text-[11px] text-gray-600 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-400">
-            {entries.length}
-          </span>
-        </summary>
+        <svg
+          className={cn(
+            'h-3.5 w-3.5 flex-shrink-0 text-gray-400 transition-transform',
+            open && 'rotate-90',
+          )}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+          Agrupado por estado
+        </h2>
+        <span className="font-mono text-xs tabular-nums text-gray-400">
+          {entries.length}
+        </span>
+        <span className="ml-auto text-xs text-gray-400">
+          {open ? 'Ocultar' : 'Mostrar'}
+        </span>
+      </button>
 
-        {open && (
-          <div className="border-t border-gray-200 p-4 dark:border-gray-800">
-            <TrackingKanbanBoard entries={entries} />
-          </div>
-        )}
-      </details>
+      {open && <TrackingKanbanBoard entries={entries} />}
     </section>
   )
 }
