@@ -1,35 +1,38 @@
-import { categorize, type TrackingCategory } from '@/lib/tracking/types'
 import type { TrackingEntry } from '@/lib/tracking/types'
 import TrackingTimelineRow from './TrackingTimelineRow'
 
 /**
- * Orden de urgencia: incidencia primero, entregados al final.
- * Dentro del mismo grupo, lo mas reciente arriba.
+ * Orden: lo mas reciente arriba.
  *
- * Se apoya en categorize() en vez de traducir codigos por su cuenta: tener un
- * segundo mapa aqui fue justo lo que dejo esta lista ordenando al reves cuando
- * se corrigio el catalogo de TIPSA.
+ * La "recencia" de un envio es la fecha de su ultimo evento real, con
+ * `shippedAt` de reserva para los que aun no tienen historial de TIPSA. NO se
+ * usa `trackingLastCheckedAt`: eso es cuando LO CONSULTAMOS NOSOTROS, no cuando
+ * paso algo, y ordenar por ahi mezclaba envios de julio con los de esta semana
+ * sin ningun criterio visible para quien mira la lista.
+ *
+ * Tampoco se agrupa por urgencia. Se probo poner las incidencias primero y el
+ * efecto era que un envio de hace dos meses encabezaba la tabla. Las
+ * incidencias ya se distinguen solas: barra ambar y badge propio.
  */
-const URGENCY_BY_CATEGORY: Record<TrackingCategory, number> = {
-  incident: 0,
-  returned: 1,
-  pending: 2,
-  transit: 3,
-  delivered: 4,
+function recencyOf(entry: TrackingEntry): number {
+  let last = 0
+  for (const ev of entry.events) {
+    const t = new Date(ev.event_date).getTime()
+    if (Number.isFinite(t) && t > last) last = t
+  }
+  if (last > 0) return last
+  const fallback = entry.shippedAt ?? entry.trackingLastCheckedAt
+  const t = fallback ? new Date(fallback).getTime() : 0
+  return Number.isFinite(t) ? t : 0
 }
 
-function urgencyRank(entry: TrackingEntry): number {
-  return URGENCY_BY_CATEGORY[categorize(entry.trackingLastStatus)]
-}
-
-function sortByUrgency(entries: TrackingEntry[]): TrackingEntry[] {
+function sortByRecency(entries: TrackingEntry[]): TrackingEntry[] {
   return [...entries].sort((a, b) => {
-    const ra = urgencyRank(a)
-    const rb = urgencyRank(b)
-    if (ra !== rb) return ra - rb
-    const ta = a.trackingLastCheckedAt ? new Date(a.trackingLastCheckedAt).getTime() : 0
-    const tb = b.trackingLastCheckedAt ? new Date(b.trackingLastCheckedAt).getTime() : 0
-    return tb - ta
+    const diff = recencyOf(b) - recencyOf(a)
+    if (diff !== 0) return diff
+    // Desempate estable por identificador para que dos envios del mismo
+    // momento no bailen entre recargas.
+    return b.publicId.localeCompare(a.publicId)
   })
 }
 
@@ -40,7 +43,7 @@ interface TrackingTimelineSectionProps {
 export default function TrackingTimelineSection({
   entries,
 }: TrackingTimelineSectionProps) {
-  const sorted = sortByUrgency(entries)
+  const sorted = sortByRecency(entries)
 
   return (
     <section>
