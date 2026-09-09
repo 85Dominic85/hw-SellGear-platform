@@ -160,23 +160,38 @@ export default async function TrackingPage() {
   const eventsByShipment = new Map<string, Array<{ event_code: string; event_date: string }>>()
 
   if (orderIds.length > 0 || shipmentIds.length > 0) {
-    let evQuery = supabase
-      .from('shipping_events')
-      .select('order_id, shipment_id, event_code, event_date')
-      .eq('carrier', 'tipsa')
-    if (orderIds.length > 0 && shipmentIds.length > 0) {
-      evQuery = evQuery.or(
-        `order_id.in.(${orderIds.join(',')}),shipment_id.in.(${shipmentIds.join(',')})`,
-      )
-    } else if (orderIds.length > 0) {
-      evQuery = evQuery.in('order_id', orderIds)
-    } else {
-      evQuery = evQuery.in('shipment_id', shipmentIds)
+    // PostgREST corta a 1000 filas por defecto, y aqui hay ~2000 eventos. Sin
+    // paginar, la pagina se quedaba con las 1000 mas ANTIGUAS (van ordenadas
+    // por fecha ascendente) y los envios recientes — justo los de arriba de la
+    // lista — llegaban sin ningun evento: barra vacia con el badge en verde.
+    const PAGINA = 1000
+    const events: EventRow[] = []
+    for (let desde = 0; ; desde += PAGINA) {
+      let evQuery = supabase
+        .from('shipping_events')
+        .select('order_id, shipment_id, event_code, event_date')
+        .eq('carrier', 'tipsa')
+      if (orderIds.length > 0 && shipmentIds.length > 0) {
+        evQuery = evQuery.or(
+          `order_id.in.(${orderIds.join(',')}),shipment_id.in.(${shipmentIds.join(',')})`,
+        )
+      } else if (orderIds.length > 0) {
+        evQuery = evQuery.in('order_id', orderIds)
+      } else {
+        evQuery = evQuery.in('shipment_id', shipmentIds)
+      }
+      const { data: pagina } = await evQuery
+        .order('event_date', { ascending: true })
+        // Desempate estable: hay albaranes con dos eventos en el mismo segundo,
+        // y sin orden secundario la paginacion podria repetir o saltarse filas.
+        .order('id', { ascending: true })
+        .range(desde, desde + PAGINA - 1)
+
+      const lote = (pagina ?? []) as EventRow[]
+      events.push(...lote)
+      if (lote.length < PAGINA) break
     }
-    const { data: eventsRaw } = await evQuery
-      .order('event_date', { ascending: true })
-      .order('id', { ascending: true })
-    const events = (eventsRaw ?? []) as EventRow[]
+
     for (const ev of events) {
       const bucket = { event_code: ev.event_code, event_date: ev.event_date }
       if (ev.order_id) {
