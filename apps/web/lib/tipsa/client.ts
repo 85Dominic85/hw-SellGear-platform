@@ -7,10 +7,12 @@
 
 import {
   buildConsEnvEstadosEnvelope,
+  buildConsEnvEstIncCambiosEstadosEnvelope,
   buildConsEtiquetaEnvelope,
   buildGrabaEnvio24Envelope,
   buildLoginEnvelope,
   parseConsEnvEstadosResponse,
+  parseConsEnvEstIncCambiosEstadosResponse,
   parseConsEtiquetaResponse,
   parseGrabaEnvioResponse,
   parseLoginResponse,
@@ -24,6 +26,7 @@ import type {
   TipsaLabelResult,
   TipsaLoginResult,
   TipsaSession,
+  TipsaTrackingDelta,
   TipsaTrackingResult,
 } from './types'
 
@@ -155,6 +158,44 @@ export async function fetchTracking(
     })
     const xml = await postSoap(TIPSA_URLS[config.env].webserv, body, 'urn:DinaPaq-WebServService#ConsEnvEstados')
     return parseConsEnvEstadosResponse(xml, albaran)
+  })
+}
+
+/**
+ * Consulta TODOS los cambios de estado ocurridos en la ventana temporal
+ * [sinceDate, untilDate] con paginacion automatica. 1 sola llamada global
+ * en lugar de 1 por albaran — ideal para el cron de refresh masivo.
+ *
+ * Recorre todas las paginas hasta agotar (o hasta `maxPages` como salvavidas
+ * para no colgarse si TIPSA devuelve mal el iTotalPaginasOut).
+ */
+export async function fetchTrackingDeltas(
+  config: TipsaConfig,
+  sinceDate: string,
+  untilDate: string,
+  maxPages = 50,
+): Promise<TipsaTrackingDelta[]> {
+  return withSession(config, async (session) => {
+    const all: TipsaTrackingDelta[] = []
+    let page = 0
+    while (page < maxPages) {
+      const body = buildConsEnvEstIncCambiosEstadosEnvelope({
+        sessionId: session.id,
+        sinceDate,
+        untilDate,
+        page,
+      })
+      const xml = await postSoap(
+        TIPSA_URLS[config.env].webserv,
+        body,
+        'urn:DinaPaq-WebServService#ConsEnvEstIncCambiosEstados',
+      )
+      const parsed = parseConsEnvEstIncCambiosEstadosResponse(xml, page)
+      all.push(...parsed.deltas)
+      if (!parsed.hasMore) break
+      page += 1
+    }
+    return all
   })
 }
 

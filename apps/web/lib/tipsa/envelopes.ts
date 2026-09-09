@@ -9,6 +9,8 @@ import type {
   TipsaLoginResult,
   TipsaSender,
   TipsaShippingEvent,
+  TipsaTrackingDelta,
+  TipsaTrackingDeltasPage,
   TipsaTrackingResult,
 } from './types'
 
@@ -371,6 +373,130 @@ function tipsaLocalToUtcIso(
   )
   const offsetMs = madridAsUtc - naiveUtc
   return new Date(naiveUtc - offsetMs).toISOString()
+}
+
+// =========================================================
+// CONS ENV EST INC CAMBIOS ESTADOS (deltas globales por ventana temporal)
+// =========================================================
+// A diferencia de ConsEnvEstados (1 albaran -> N eventos), este metodo
+// devuelve TODOS los cambios de estado ocurridos en el rango
+// [dtFecHoraEstadoInicio, dtFecHoraEstadoFin] para TODOS los envios del
+// cliente, en 1 sola llamada paginada. Es el metodo que usa el cron.
+
+export interface ConsEnvEstIncCambiosEstadosInput {
+  sessionId: string
+  /** Fecha ISO UTC. Se convierte a "YYYY/MM/DD HH:MM:SS" (hora Madrid) para TIPSA. */
+  sinceDate: string
+  /** Fecha ISO UTC. Idem. */
+  untilDate: string
+  /** Numero de pagina (0-based). */
+  page?: number
+}
+
+/**
+ * Convierte una fecha ISO UTC al formato que espera este endpoint TIPSA:
+ * "YYYY/MM/DD HH:MM:SS" en hora local Europe/Madrid (sin sufijo TZ).
+ *
+ * Ojo: el request usa YYYY/MM/DD (formato europeo con /), a diferencia
+ * de la RESPUESTA que TIPSA emite en MM/DD/YYYY (formato US). No es
+ * inconsistencia mia — asi es TIPSA.
+ */
+export function formatTipsaRequestDate(isoUtc: string): string {
+  const d = new Date(isoUtc)
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Madrid',
+      hour12: false,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+      .formatToParts(d)
+      .map((p) => [p.type, p.value]),
+  )
+  const hh = parts.hour === '24' ? '00' : parts.hour
+  return `${parts.year}/${parts.month}/${parts.day} ${hh}:${parts.minute}:${parts.second}`
+}
+
+export function buildConsEnvEstIncCambiosEstadosEnvelope({
+  sessionId,
+  sinceDate,
+  untilDate,
+  page = 0,
+}: ConsEnvEstIncCambiosEstadosInput): string {
+  const since = formatTipsaRequestDate(sinceDate)
+  const until = formatTipsaRequestDate(untilDate)
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+  <soapenv:Header>
+    <tem:ROClientIDHeader>
+      <tem:ID>${xmlEscape(sessionId)}</tem:ID>
+    </tem:ROClientIDHeader>
+  </soapenv:Header>
+  <soapenv:Body>
+    <tem:WebServService___ConsEnvEstIncCambiosEstados>
+      <tem:dtFecHoraEstadoInicio>${xmlEscape(since)}</tem:dtFecHoraEstadoInicio>
+      <tem:dtFecHoraEstadoFin>${xmlEscape(until)}</tem:dtFecHoraEstadoFin>
+      <tem:iPagina>${xmlEscape(page)}</tem:iPagina>
+    </tem:WebServService___ConsEnvEstIncCambiosEstados>
+  </soapenv:Body>
+</soapenv:Envelope>`
+}
+
+export function parseConsEnvEstIncCambiosEstadosResponse(
+  xml: string,
+  requestedPage = 0,
+): TipsaTrackingDeltasPage {
+  const parsed = SHARED_PARSER.parse(xml)
+  const body = findFirst(parsed, 'WebServService___ConsEnvEstIncCambiosEstadosResponse')
+  if (!body) {
+    throw makeError('ConsEnvEstIncCambiosEstados response malformed', xml)
+  }
+  // CDATA con XML anidado <CONSULTA><ENV_EST_INC_CAMBIOS_ESTADOS .../>...</CONSULTA>
+  const cdata = pick(body, 'strEnvEstIncCambioEstado') ?? ''
+  const deltas = parseEnvEstIncCambiosCdata(cdata)
+  const totalPagesRaw = pick(body, 'iTotalPaginasOut')
+  const totalPages = totalPagesRaw ? Number(totalPagesRaw) : 1
+  return {
+    deltas,
+    page: requestedPage,
+    totalPages,
+    hasMore: requestedPage + 1 < totalPages,
+    rawResponse: xml,
+  }
+}
+
+/**
+ * Parsea el CDATA de deltas. Cada nodo ENV_EST_INC_CAMBIOS_ESTADOS trae
+ * V_ALBARAN, V_COD_TIPO_EST, D_FEC_HORA_ALTA_EST + campos _INC opcionales
+ * (V_OBS_INC = observacion de la incidencia si el codigo es 3).
+ */
+export function parseEnvEstIncCambiosCdata(cdata: string): TipsaTrackingDelta[] {
+  if (!cdata.trim()) return []
+  const parsed = SHARED_PARSER.parse(cdata)
+  const consulta = (parsed as Record<string, unknown>).CONSULTA
+  if (!consulta || typeof consulta !== 'object') return []
+  const nodes = (consulta as Record<string, unknown>).ENV_EST_INC_CAMBIOS_ESTADOS
+  const arr = Array.isArray(nodes) ? nodes : nodes ? [nodes] : []
+  return arr
+    .map((raw) => {
+      const attrs = extractAttrs(raw as Record<string, unknown>)
+      const code = attrs['V_COD_TIPO_EST'] ?? ''
+      const albaran = attrs['V_ALBARAN'] ?? ''
+      // Formato MM/DD/YYYY HH:MM:SS (hora Madrid) — usa el parser existente.
+      const dateStr = attrs['D_FEC_HORA_ALTA_EST'] ?? ''
+      return {
+        albaran,
+        code,
+        label: tipsaEventLabel(code),
+        date: parseTipsaDate(dateStr),
+        rawAttributes: attrs,
+      }
+    })
+    .filter((d) => d.code.length > 0 && d.albaran.length > 0)
 }
 
 // =========================================================

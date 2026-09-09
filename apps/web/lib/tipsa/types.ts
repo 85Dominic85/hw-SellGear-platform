@@ -121,6 +121,32 @@ export interface TipsaTrackingResult {
   rawResponse: string
 }
 
+/**
+ * Un delta devuelto por ConsEnvEstIncCambiosEstados: un cambio de estado
+ * ocurrido en la ventana temporal solicitada. Incluye el albaran para
+ * poder hacer lookup contra orders.tracking_number / shipments.tracking_number.
+ */
+export interface TipsaTrackingDelta {
+  albaran: string
+  code: TipsaEventCode
+  label: string
+  date: string // ISO UTC
+  /** Todos los atributos raw del XML (V_OBS_INC, V_COD_TIPO_INC, agencias, etc.). */
+  rawAttributes: Record<string, string>
+}
+
+/**
+ * Resultado paginado de ConsEnvEstIncCambiosEstados.
+ * hasMore indica si hay que llamar a la siguiente pagina.
+ */
+export interface TipsaTrackingDeltasPage {
+  deltas: TipsaTrackingDelta[]
+  page: number
+  totalPages: number
+  hasMore: boolean
+  rawResponse: string
+}
+
 export interface TipsaConfig {
   env: TipsaEnv
   credentials: TipsaCredentials

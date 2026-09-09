@@ -49,16 +49,26 @@ export const DEFAULT_SERVICES_CATALOG: Array<{ code: string; label: string }> = 
 
 /**
  * Mapeo de codigos de evento TIPSA a etiqueta humana.
- * Source: docs/integrations/tipsa/extracted/Ejemplos/ConsEnvEstados y docs PDFs.
+ * Source: docs/integrations/tipsa/extracted/Ejemplos/ConsEnvEstados y web publica TIPSA.
+ * Los codigos 0, 7, 8, 10, 11, 15, 18 son mapeo "educado" deducido de la web
+ * publica TIPSA para envios reales; sustituir por labels oficiales cuando
+ * TIPSA nos pase el catalogo completo.
  * Si aparece un codigo desconocido se devuelve "Estado {code}".
  */
 export const TIPSA_EVENT_LABELS: Record<string, string> = {
+  '0': 'Documentado',
   '1': 'Alta',
   '2': 'Entregado',
   '3': 'Incidencia',
   '4': 'En tránsito',
   '5': 'En reparto',
   '6': 'Devuelto al origen',
+  '7': 'Lectura en agencia',
+  '8': 'En reparto',
+  '10': 'En delegación destino',
+  '11': 'En reparto',
+  '15': 'Pendiente de llegada',
+  '18': 'En tránsito interno',
 }
 
 export function tipsaEventLabel(code: TipsaEventCode): string {
