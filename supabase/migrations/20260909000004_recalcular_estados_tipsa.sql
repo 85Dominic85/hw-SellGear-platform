@@ -18,22 +18,26 @@
 --
 -- Consecuencias en los datos guardados:
 --   * tracking_last_status guarda estados con el significado equivocado.
---   * delivered_at se relleno con la fecha del codigo 2, que es REPARTO — o sea
---     unas horas antes de la entrega real, y ademas puesto en envios que
---     salieron a reparto y nunca llegaron a entregarse.
+--   * orders.delivered_at quedo pisado. Esa columna NO es de TIPSA: la gobierna
+--     el trigger orders_auto_delivered_at (migracion 20260414000002), que la
+--     pone al pasar el pedido a 'completado', y de ahi comen las metricas de
+--     SLA. El refresco de TIPSA escribia encima la fecha del codigo 2, o sea la
+--     salida a reparto. Dos dueños para una columna.
+--   * shipments.delivered_at si es de TIPSA (no tiene trigger) y guarda la
+--     fecha del reparto en vez de la de la entrega.
 --
 -- QUE HACE
---   1. tracking_last_status = estado oficial, con la regla de resolveOfficialStatus()
+--   1. Reasigna a codigo 0 los eventos de alta que escribimos nosotros.
+--   2. tracking_last_status = estado oficial, con la regla de resolveOfficialStatus()
 --      (apps/web/lib/tipsa/services.ts): si hay evento terminal (3 ENTREGADO /
 --      5 DEVUELTO) el ultimo de ellos; si no, el ultimo evento cronologico.
---   2. delivered_at = fecha del evento 3 (ENTREGADO), y NULL si el envio nunca
---      llego a entregarse. Esto REDUCE el numero de pedidos marcados como
---      entregados: los que solo llegaron a REPARTO dejan de contar como tales.
+--   3. shipments.delivered_at = fecha del evento 3, NULL si nunca se entrego.
+--   4. Devuelve orders.delivered_at a su dueño: lo reconstruye desde
+--      status_history para los pedidos 'completado' cuyo valor coincide con un
+--      evento TIPSA (señal de que lo piso el refresco). El resto no se toca.
+--   5. Reescribe las event_label congeladas con el mapa viejo.
 --
 -- Solo toca filas con eventos TIPSA. Un envio sin eventos se queda como esta.
---
--- OJO si alguna metrica de SLA usa delivered_at: sus numeros van a cambiar.
--- Cambian a mejor (antes median contra la salida a reparto), pero cambian.
 --
 -- Verificacion (las dos primeras filas deben dar 0 despues de aplicar):
 --   with oficial as (
@@ -41,9 +45,7 @@
 --       coalesce(
 --         (array_agg(event_code order by event_date desc)
 --            filter (where event_code in ('3','5')))[1],
---         (array_agg(event_code order by event_date desc))[1]) as code,
---       (array_agg(event_date order by event_date desc)
---          filter (where event_code = '3'))[1] as entregado_en
+--         (array_agg(event_code order by event_date desc))[1]) as code
 --     from shipping_events where carrier = 'tipsa' group by 1, 2)
 --   select 'orders desfasadas', count(*) from orders o join oficial x on x.order_id = o.id
 --     where o.tracking_last_status is distinct from x.code
@@ -51,7 +53,8 @@
 --   select 'shipments desfasadas', count(*) from shipments s join oficial x on x.shipment_id = s.id
 --     where s.tracking_last_status is distinct from x.code
 --   union all
---   select 'orders entregadas', count(*) from orders where delivered_at is not null;
+--   select 'orders completado sin delivered_at', count(*) from orders
+--     where status = 'completado' and delivered_at is null;
 -- =============================================================================
 
 -- --------------------------------------- 1. eventos sinteticos de alta ------
@@ -70,7 +73,7 @@ WHERE carrier = 'tipsa'
   AND event_code = '1'
   AND raw_payload ? 'guid';
 
--- ------------------------------------------------------- 2. orders ----------
+-- ------------------------------ 2. orders: SOLO tracking_last_status --------
 WITH oficial AS (
   SELECT
     e.order_id,
@@ -78,22 +81,53 @@ WITH oficial AS (
       (array_agg(e.event_code ORDER BY e.event_date DESC)
          FILTER (WHERE e.event_code IN ('3', '5')))[1],
       (array_agg(e.event_code ORDER BY e.event_date DESC))[1]
-    ) AS code,
-    (array_agg(e.event_date ORDER BY e.event_date DESC)
-       FILTER (WHERE e.event_code = '3'))[1] AS entregado_en
+    ) AS code
   FROM public.shipping_events e
   WHERE e.carrier = 'tipsa' AND e.order_id IS NOT NULL
   GROUP BY e.order_id
 )
 UPDATE public.orders o
-SET
-  tracking_last_status = x.code,
-  delivered_at = x.entregado_en
+SET tracking_last_status = x.code
 FROM oficial x
 WHERE x.order_id = o.id
-  AND (
-    o.tracking_last_status IS DISTINCT FROM x.code
-    OR o.delivered_at IS DISTINCT FROM x.entregado_en
+  AND o.tracking_last_status IS DISTINCT FROM x.code;
+
+-- ------------- 2b. devolver orders.delivered_at a su dueño ------------------
+-- Un delivered_at que coincide EXACTAMENTE con la fecha de un evento TIPSA del
+-- propio pedido lo escribio el refresco de tracking, no el trigger: el trigger
+-- usa now() al cambiar de estado, que no cae al segundo en un evento del
+-- transportista. Esos son los que reconstruimos desde status_history, igual que
+-- hizo la migracion 20260414000002. Los demas no se tocan.
+--
+-- El trigger orders_auto_delivered_at solo actua cuando cambia `status`, y aqui
+-- no lo tocamos, asi que no hace falta desactivarlo.
+UPDATE public.orders o
+SET delivered_at = COALESCE(
+  (SELECT sh.changed_at FROM public.status_history sh
+   WHERE sh.order_id = o.id AND sh.to_status = 'completado'
+   ORDER BY sh.changed_at DESC LIMIT 1),
+  o.updated_at
+)
+WHERE o.status = 'completado'
+  AND o.delivered_at IS NOT NULL
+  AND EXISTS (
+    SELECT 1 FROM public.shipping_events e
+    WHERE e.order_id = o.id
+      AND e.carrier = 'tipsa'
+      AND e.event_date = o.delivered_at
+  );
+
+-- Un pedido que TIPSA marco como entregado sin estar 'completado' tenia
+-- delivered_at puesto por el refresco y nada que lo justifique: se limpia.
+UPDATE public.orders o
+SET delivered_at = NULL
+WHERE o.status <> 'completado'
+  AND o.delivered_at IS NOT NULL
+  AND EXISTS (
+    SELECT 1 FROM public.shipping_events e
+    WHERE e.order_id = o.id
+      AND e.carrier = 'tipsa'
+      AND e.event_date = o.delivered_at
   );
 
 -- ---------------------------------------------------- 3. shipments ----------

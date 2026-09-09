@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { fetchTracking } from '@/lib/tipsa/client'
-import { isTerminalEvent, loadTipsaConfig, resolveOfficialStatus } from '@/lib/tipsa/services'
+import { loadTipsaConfig, resolveOfficialStatus } from '@/lib/tipsa/services'
 
 export const runtime = 'nodejs'
 
@@ -85,18 +85,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Estado "oficial": ignora codigo 3 (Incidencia) cuando viene tras codigo 2 (Entregado).
-    // TIPSA usa codigo 3 tambien para anotaciones post-entrega del repartidor.
     // Asumimos que tracking.events viene ordenado cronologicamente ascendente.
     const officialEvent = resolveOfficialStatus(tracking.events, (e) => e.code)
     const now = new Date().toISOString()
 
+    // NO tocamos orders.delivered_at. Esa columna es del flujo del pedido: la
+    // pone el trigger orders_auto_delivered_at cuando pasa a 'completado' y de
+    // ahi comen las metricas de SLA. Escribir aqui la fecha de TIPSA era pisar
+    // el dato de otro dueño. La fecha de entrega del transportista se deriva de
+    // shipping_events cuando hace falta.
     const updates: Record<string, unknown> = {
       tracking_last_status: officialEvent?.code ?? null,
       tracking_last_checked_at: now,
-    }
-    // Si el estado oficial es terminal (entregado=2 o devuelto=6), marcar delivered_at.
-    if (officialEvent && isTerminalEvent(officialEvent.code)) {
-      updates.delivered_at = officialEvent.date
     }
 
     await admin.from('orders').update(updates).eq('id', order.id)

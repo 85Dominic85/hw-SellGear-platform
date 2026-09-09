@@ -64,15 +64,19 @@ interface EventRow {
 }
 
 /**
- * El badge y la barra de progreso tienen que contar lo mismo.
+ * El badge y la barra de progreso tienen que contar lo mismo, y ambos deben
+ * contar lo que dice TIPSA.
  *
- * La barra se calcula en vivo desde `shipping_events`, pero el badge leia la
- * columna `tracking_last_status`, que puede estar rancia: filas escritas antes
- * del fix d3fa583 guardaron el codigo 3 (anotacion post-entrega) pisando al 2.
- * Resultado: barra "Entregado" con badge "Incidencia" al lado.
+ * La barra se calcula en vivo desde `shipping_events`; el badge leia la columna
+ * `tracking_last_status`, que puede estar rancia (se escribio con el mapa de
+ * codigos equivocado que corregimos el 2026-09-09). Con los eventos delante,
+ * ellos mandan; sin eventos, caemos a la columna.
  *
- * Con los eventos delante son la fuente de verdad — `resolveOfficialStatus` ya
- * sabe que el 3 despues del 2 no cuenta. Sin eventos caemos a la columna.
+ * Para la fecha de fin pasa lo mismo pero al reves de como estaba: mandamos con
+ * el evento terminal de TIPSA (3 Entregado / 5 Devuelto), no con la columna. En
+ * `orders`, `delivered_at` es del flujo del pedido — la pone el trigger al
+ * marcarlo 'completado' — y aqui lo que interesa es si el paquete termino su
+ * viaje, que no es lo mismo.
  */
 function officialFromEvents(
   events: Array<{ event_code: string; event_date: string }>,
@@ -83,10 +87,9 @@ function officialFromEvents(
   if (!official) return { status: storedStatus, deliveredAt: storedDeliveredAt }
   return {
     status: official.event_code,
-    // Solo rellenamos delivered_at si falta: puede haberse puesto a mano.
-    deliveredAt:
-      storedDeliveredAt ??
-      (isTerminalEvent(official.event_code) ? official.event_date : null),
+    deliveredAt: isTerminalEvent(official.event_code)
+      ? official.event_date
+      : storedDeliveredAt,
   }
 }
 

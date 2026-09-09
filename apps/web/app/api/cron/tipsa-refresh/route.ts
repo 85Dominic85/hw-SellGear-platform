@@ -174,7 +174,11 @@ export async function POST(request: NextRequest) {
         tracking_last_status: official.event_code,
         tracking_last_checked_at: now.toISOString(),
       }
-      if (isTerminalEvent(official.event_code)) {
+      // delivered_at solo en shipments, que es donde esa columna es de TIPSA.
+      // En orders la gobierna el trigger orders_auto_delivered_at (pasa a
+      // 'completado') y de ahi comen las metricas de SLA: escribir aqui la
+      // fecha del transportista era pisar el dato de otro dueño.
+      if (parent.table === 'shipments' && isTerminalEvent(official.event_code)) {
         updates.delivered_at = official.event_date
       }
 
