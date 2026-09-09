@@ -62,6 +62,13 @@ const CODE_TO_STEP: Record<string, number> = {
 const NOTE_CODE = '3'
 
 /**
+ * Estados finales del recorrido. Espejo de TIPSA_TERMINAL_CODES en
+ * lib/tipsa/services.ts — se duplica a proposito: este modulo viaja al bundle
+ * de cliente (TrackingBoard es 'use client') y services.ts lee process.env.
+ */
+const TERMINAL_CODES = new Set(['2', '6'])
+
+/**
  * Calcula los 5 pasos del timeline para un envio, dado su lista completa
  * de shipping_events (orden cronologico cualquiera; la funcion los ordena).
  * Devuelve siempre 5 elementos (uno por paso), etiquetados con estado.
@@ -71,12 +78,23 @@ export function resolveTimelineSteps(events: TimelineInput[]): TimelineStep[] {
     (a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime(),
   )
 
-  // Estado oficial: ultimo evento NO codigo 3.
+  // Estado oficial. Primero un terminal (2/6) si existe: un envio no se
+  // "des-entrega", asi que ni el codigo 3 ni un codigo sin catalogar posterior
+  // (visto el 14 en produccion) mueven el paso hacia atras. Si no hay terminal,
+  // el ultimo evento que no sea la anotacion 3.
   let officialCode: string | null = null
   for (let i = sorted.length - 1; i >= 0; i--) {
-    if (sorted[i].event_code !== NOTE_CODE) {
+    if (TERMINAL_CODES.has(sorted[i].event_code)) {
       officialCode = sorted[i].event_code
       break
+    }
+  }
+  if (officialCode === null) {
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      if (sorted[i].event_code !== NOTE_CODE) {
+        officialCode = sorted[i].event_code
+        break
+      }
     }
   }
 

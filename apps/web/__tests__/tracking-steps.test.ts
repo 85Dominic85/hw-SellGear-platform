@@ -116,6 +116,24 @@ describe('resolveTimelineSteps', () => {
   })
 })
 
+describe('codigos sin catalogar tras la entrega', () => {
+  // Mismo caso real que en tipsa-status.test.ts: sin la regla "terminal gana",
+  // CODE_TO_STEP['14'] no existe y el fallback lo mandaba al paso 1 (transito),
+  // haciendo retroceder la barra de un envio ya entregado.
+  it('un 14 despues del 2 no mueve la barra hacia atras', () => {
+    const steps = resolveTimelineSteps([
+      e('0', '2026-09-07T12:07:00Z'),
+      e('1', '2026-09-07T12:35:00Z'),
+      e('4', '2026-09-07T21:19:00Z'),
+      e('2', '2026-09-08T07:20:00Z'),
+      e('14', '2026-09-08T09:37:04Z'),
+    ])
+    expect(steps[4].status).toBe('current')
+    expect(steps[4].tone).toBe('ok')
+    expect(timelineProgressPct(steps)).toBe(100)
+  })
+})
+
 describe('timelineProgressPct', () => {
   it('vacio -> 0', () => {
     const steps = resolveTimelineSteps([])

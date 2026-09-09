@@ -30,6 +30,38 @@ describe('resolveOfficialStatus', () => {
     expect(resolveOfficialStatus(events, getCode)?.code).toBe('1')
   })
 
+  // Caso real de produccion (albaran 0000012023): TIPSA emitio un codigo 14
+  // — que no tenemos catalogado — despues del 2. Un envio no se des-entrega:
+  // el estado oficial sigue siendo Entregado.
+  it('un codigo desconocido posterior no degrada un Entregado', () => {
+    const events = [
+      ev('0', '2026-09-07T12:07:00Z'),
+      ev('1', '2026-09-07T12:35:00Z'),
+      ev('4', '2026-09-07T21:19:00Z'),
+      ev('2', '2026-09-08T07:20:00Z'),
+      ev('14', '2026-09-08T09:37:04Z'),
+    ]
+    expect(resolveOfficialStatus(events, getCode)?.code).toBe('2')
+  })
+
+  it('un codigo desconocido SIN entrega previa si es el estado oficial', () => {
+    const events = [
+      ev('1', '2026-09-07T12:35:00Z'),
+      ev('4', '2026-09-07T21:19:00Z'),
+      ev('14', '2026-09-08T09:37:04Z'),
+    ]
+    expect(resolveOfficialStatus(events, getCode)?.code).toBe('14')
+  })
+
+  it('un devuelto (6) posterior a la entrega gana: es el ultimo terminal', () => {
+    const events = [
+      ev('2', '2026-09-08T07:20:00Z'),
+      ev('3', '2026-09-08T08:00:00Z'),
+      ev('6', '2026-09-09T11:00:00Z'),
+    ]
+    expect(resolveOfficialStatus(events, getCode)?.code).toBe('6')
+  })
+
   it('returns the last event when none is a note (code 3)', () => {
     const events = [
       ev('1', '2026-05-01T08:00:00Z'),

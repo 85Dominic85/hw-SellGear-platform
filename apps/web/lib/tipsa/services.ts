@@ -110,6 +110,17 @@ export function resolveOfficialStatus<T>(
   getCode: (e: T) => string,
 ): T | null {
   if (events.length === 0) return null
+
+  // Un envio no se "des-entrega". Si en algun momento llego un evento terminal
+  // (2 Entregado / 6 Devuelto) ese es el estado final: lo que venga despues son
+  // anotaciones. Vale para el codigo 3 del repartidor y, sobre todo, para
+  // codigos que TIPSA emite y aun no tenemos catalogados — en produccion
+  // aparece un 14 despues del 2 que sin esta regla degradaba un "Entregado" a
+  // "Estado 14". Ante un codigo desconocido, no pisar una entrega confirmada.
+  for (let i = events.length - 1; i >= 0; i--) {
+    if (TIPSA_TERMINAL_CODES.has(getCode(events[i]))) return events[i]
+  }
+
   for (let i = events.length - 1; i >= 0; i--) {
     if (getCode(events[i]) !== NOTE_CODE) return events[i]
   }
