@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { fetchTrackingDeltas } from '@/lib/tipsa/client'
+import { fetchTracking, fetchTrackingDeltas } from '@/lib/tipsa/client'
 import {
   isTerminalEvent,
   loadTipsaConfig,
   resolveOfficialStatus,
 } from '@/lib/tipsa/services'
-import type { TipsaTrackingDelta } from '@/lib/tipsa/types'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -35,9 +34,12 @@ const OVERLAP_MS = 5 * 60 * 1000
  * Flujo:
  *   1. Auth por X-Cron-Secret.
  *   2. Lee app_settings.tipsa_last_poll_at (cursor).
- *   3. Pide a TIPSA los cambios de estado de la ventana [cursor-5min, now]
- *      con UNA llamada paginada (ConsEnvEstIncCambiosEstados), no una por envio.
- *   4. Agrupa por albaran, inserta en shipping_events, recalcula el estado
+ *   3. Pide a TIPSA que albaranes han cambiado de estado en la ventana
+ *      [cursor-5min, now] con UNA llamada paginada
+ *      (ConsEnvEstIncCambiosEstados). Ese feed se usa SOLO como detector: sus
+ *      fechas son de propagacion, no del evento, asi que no valen de historial.
+ *   4. Para cada albaran movido pide su historial autoritativo
+ *      (ConsEnvEstados), lo inserta en shipping_events, recalcula el estado
  *      oficial y actualiza orders/shipments.
  *   5. Guarda el nuevo cursor.
  */
@@ -112,20 +114,18 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // ---- 3. Agrupar por albaran ----
-    const byAlbaran = new Map<string, TipsaTrackingDelta[]>()
-    for (const d of deltas) {
-      const list = byAlbaran.get(d.albaran) ?? []
-      list.push(d)
-      byAlbaran.set(d.albaran, list)
-    }
+    // ---- 3. Albaranes que se han movido ----
+    // Del delta solo nos quedamos con el albaran. El resto de campos (codigo,
+    // fecha) describen la propagacion al feed, no el evento — ver la nota mas
+    // abajo, en la llamada a ConsEnvEstados.
+    const byAlbaran = new Set<string>(deltas.map((d) => d.albaran))
 
     let updatedOrders = 0
     let updatedShipments = 0
     let processed = 0
     let notFound = 0
 
-    for (const [albaran, group] of byAlbaran) {
+    for (const albaran of byAlbaran) {
       const parent = await findParent(admin, albaran)
       if (!parent) {
         notFound += 1
@@ -134,16 +134,44 @@ export async function POST(request: NextRequest) {
 
       const fkColumn = parent.table === 'orders' ? 'order_id' : 'shipment_id'
 
-      // Insertar eventos. El UNIQUE (order_id|shipment_id, carrier, event_code,
-      // event_date) hace de dedupe: 23505 significa "ya lo teniamos".
-      for (const d of group) {
+      // Pedimos el historial AUTORITATIVO del albaran. Los deltas solo sirven
+      // para saber QUE albaranes se han movido, nunca como historial: la fecha
+      // que trae ConsEnvEstIncCambiosEstados NO es la del evento sino la de su
+      // propagacion al feed.
+      //
+      // Comprobado con el albaran 0000012005 (09/09/2026). Recorrido real segun
+      // ConsEnvEstados y segun la web publica de TIPSA, que coinciden al minuto:
+      //   0 doc 04/09 16:03 · 1 transito 04/09 18:15 · 4 incid 07/09 09:26
+      //   2 reparto 08/09 08:57 · 4 incid 08/09 13:38 · 3 ENTREGADO 08/09 14:23
+      // Lo que habia llegado por el feed para ese mismo envio:
+      //   1 el 08/09 18:50 · 18 el 09/09 07:29 · 2 el 09/09 07:29 · 4 el 09/09 17:15
+      // Fechas que no existen, y sin la entrega. El envio salia "En reparto con
+      // incidencia" cuando llevaba entregado desde el dia anterior.
+      //
+      // Coste: 1 llamada paginada de deltas + 1 por albaran que se ha movido
+      // (no por albaran vivo), que es un puñado por barrido.
+      let events: Array<{ code: string; label: string; date: string; rawAttributes: Record<string, string> }>
+      try {
+        const tracking = await fetchTracking(config, albaran)
+        events = tracking.events
+      } catch (err) {
+        console.error(
+          `[cron/tipsa-refresh] ConsEnvEstados ${albaran}:`,
+          (err as Error).message,
+        )
+        continue
+      }
+
+      // El UNIQUE (order_id|shipment_id, carrier, event_code, event_date) hace
+      // de dedupe: 23505 significa "ya lo teniamos".
+      for (const ev of events) {
         const { error } = await admin.from('shipping_events').insert({
           [fkColumn]: parent.id,
           carrier: 'tipsa',
-          event_code: d.code,
-          event_label: d.label,
-          event_date: d.date,
-          raw_payload: d.rawAttributes,
+          event_code: ev.code,
+          event_label: ev.label,
+          event_date: ev.date,
+          raw_payload: ev.rawAttributes,
         })
         if (error && error.code !== '23505') {
           console.error(
@@ -154,7 +182,8 @@ export async function POST(request: NextRequest) {
       }
 
       // Recalcular el estado oficial sobre TODOS los eventos del envio, no
-      // solo los recien llegados: el codigo 3 post-entrega no debe pisar al 2.
+      // solo los recien llegados: resolveOfficialStatus necesita ver si en
+      // algun momento hubo un terminal (3 Entregado / 5 Devuelto).
       const { data: allEvents } = await admin
         .from('shipping_events')
         .select('event_code, event_date')
